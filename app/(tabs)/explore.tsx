@@ -1,112 +1,156 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { FontSizes, Spacing } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
+import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import {
+  FlatList,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+// Mock data
+const MOCK_CONTACTS = [
+  {
+    id: "1",
+    name: "Alice Johnson",
+    status: "Available for chat",
+    online: true,
+  },
+  { id: "2", name: "Bob Smith", status: "At work", online: true },
+  { id: "3", name: "Charlie Brown", status: "Busy", online: false },
+  { id: "4", name: "Diana Prince", status: "Online", online: true },
+  { id: "5", name: "Eve Taylor", status: "Away", online: false },
+];
 
-export default function TabTwoScreen() {
+export default function ContactsScreen() {
+  const { colors } = useTheme();
+
+  const renderContactItem = ({ item }: any) => (
+    <TouchableOpacity style={styles.contactItem}>
+      {/* Avatar */}
+      <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+        <Text style={styles.avatarText}>
+          {item.name
+            .split(" ")
+            .map((w: string) => w[0])
+            .join("")
+            .slice(0, 2)}
+        </Text>
+        {item.online && (
+          <View style={[styles.onlineDot, { backgroundColor: "#34C759" }]} />
+        )}
+      </View>
+
+      <View style={styles.contactInfo}>
+        <Text style={[styles.contactName, { color: colors.text }]}>
+          {item.name}
+        </Text>
+        <Text
+          style={[styles.contactStatus, { color: colors.textSecondary }]}
+          numberOfLines={1}
+        >
+          {item.status}
+        </Text>
+      </View>
+
+      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+    </TouchableOpacity>
+  );
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: colors.background,
+            borderBottomColor: colors.border,
+          },
+        ]}
+      >
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          Danh bạ
+        </Text>
+        <TouchableOpacity>
+          <Ionicons
+            name="add-circle-outline"
+            size={28}
+            color={colors.primary}
+          />
+        </TouchableOpacity>
+      </View>
+
+      <FlatList
+        data={MOCK_CONTACTS}
+        renderItem={renderContactItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.base,
+    borderBottomWidth: 1,
+    paddingTop: Platform.OS === "ios" ? 60 : Spacing.base,
+  },
+  headerTitle: {
+    fontSize: FontSizes.xxl,
+    fontWeight: "700",
+  },
+  list: {
+    paddingVertical: Spacing.sm,
+  },
+  contactItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.md,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: Spacing.md,
+  },
+  avatarText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  onlineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  contactInfo: {
+    flex: 1,
+  },
+  contactName: {
+    fontSize: FontSizes.base,
+    fontWeight: "600",
+    marginBottom: Spacing.xs,
+  },
+  contactStatus: {
+    fontSize: FontSizes.sm,
   },
 });
