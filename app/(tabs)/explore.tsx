@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import "../../index.css";
 
 // Mock data
 const MOCK_CONTACTS = [
@@ -71,7 +72,10 @@ export default function ContactsScreen() {
           },
         ]}
       >
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
+        <Text
+          style={[styles.headerTitle, { color: colors.text }]}
+          className="text-red-500 text-xl font-bold text-blue-500"
+        >
           Danh bạ
         </Text>
         <TouchableOpacity>
