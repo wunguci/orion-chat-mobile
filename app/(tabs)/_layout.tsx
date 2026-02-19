@@ -57,6 +57,14 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="video-call"
+        options={{
+          title: "Video Call",
+          tabBarStyle: { display: "none" },
+          tabBarButton: () => null,
+        }}
+      />
     </Tabs>
   );
 }
