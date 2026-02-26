@@ -9,6 +9,20 @@ export const Colors = {
     background: "#FFFFFF",
     backgroundSecondary: "#F2F2F7",
 
+    // Orange Theme Colors (from index.css)
+    orangePrimary: "#ee652b",
+    orangeBgHeavy: "#fcede6",
+    orangeBgLight: "#fdfaf9",
+    orangeBorderLight: "#fbe7df",
+    grayPrimary: "#505050",
+    graySecondary: "#94a3b8",
+    blueDark: "#0052cc",
+
+    // Switch colors
+    switchTrackOn: "#ee652b", // Màu cam khi bật
+    switchTrackOff: "#E5E5EA", // Màu xám nhạt khi tắt
+    switchThumb: "#FFFFFF", // Nút tròn màu trắng
+
     // Primary - Zalo-like blue
     primary: "#0068FF",
     primaryLight: "#E6F2FF",
@@ -47,6 +61,20 @@ export const Colors = {
     textSecondary: "#98989D",
     background: "#000000",
     backgroundSecondary: "#1C1C1E",
+
+    // Orange Theme Colors (darker variants for dark mode)
+    orangePrimary: "#EE652B",
+    orangeBgHeavy: "#FCEDE6",
+    orangeBgLight: "#FDFAF9",
+    orangeBorderLight: "#FBE7DF",
+    grayPrimary: "#e5e5e5",
+    graySecondary: "#a8b4c8",
+    blueDark: "#0a84ff",
+
+    // Switch colors
+    switchTrackOn: "#EE652B", // Màu cam khi bật (sáng hơn cho dark mode)
+    switchTrackOff: "#94A3B8", // Màu xám đậm khi tắt
+    switchThumb: "#FFFFFF", // Nút tròn màu trắng
 
     // Primary
     primary: "#0A84FF",
