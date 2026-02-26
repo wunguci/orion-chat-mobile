@@ -1,3 +1,4 @@
+import { useThemeColors } from "@/hooks/useThemeColors";
 import { FontAwesome5 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -54,7 +55,7 @@ const PARTICIPANTS: Participant[] = [
     id: "1",
     name: "Phan Phước Hiệp",
     avatar: "PPH",
-    avatarBg: "#3b82f6",
+    avatarBg: "#0052cc",
     isMuted: false,
     isVideoOff: false,
     isHost: true,
@@ -95,7 +96,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
     id: "1",
     author: "Phan Phước Hiệp",
     avatar: "PPH",
-    avatarBg: "#3b82f6",
+    avatarBg: "#0052cc",
     time: "2:30 PM",
     text: "Hey everyone! Ready to start the meeting?",
   },
@@ -181,11 +182,12 @@ function PrimaryBtn({
   active?: boolean;
   large?: boolean;
 }) {
+  const colors = useThemeColors();
   const size = large ? 64 : 52;
   const iconSize = large ? 22 : 18;
   let bg = "rgba(255,255,255,0.15)";
-  if (active) bg = "#3b82f6";
-  if (danger) bg = "#ef4444";
+  if (active) bg = colors.orangePrimary;
+  if (danger) bg = colors.error;
 
   return (
     <TouchableOpacity
@@ -233,6 +235,7 @@ function SecondaryBtn({
   active?: boolean;
   badge?: number;
 }) {
+  const colors = useThemeColors();
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -245,20 +248,20 @@ function SecondaryBtn({
           height: 42,
           borderRadius: 12,
           backgroundColor: active
-            ? "rgba(59,130,246,0.3)"
+            ? "rgba(238,101,43,0.25)"
             : "rgba(255,255,255,0.1)",
           alignItems: "center",
           justifyContent: "center",
           borderWidth: 1,
           borderColor: active
-            ? "rgba(59,130,246,0.6)"
+            ? "rgba(238,101,43,0.55)"
             : "rgba(255,255,255,0.15)",
         }}
       >
         <FontAwesome5
           name={icon}
           size={15}
-          color={active ? "#93c5fd" : "rgba(255,255,255,0.85)"}
+          color={active ? colors.orangePrimary : "rgba(255,255,255,0.85)"}
         />
         {badge !== undefined && (
           <View
@@ -269,7 +272,7 @@ function SecondaryBtn({
               width: 16,
               height: 16,
               borderRadius: 8,
-              backgroundColor: "#22c55e",
+              backgroundColor: colors.success,
               alignItems: "center",
               justifyContent: "center",
               borderWidth: 1.5,
@@ -292,6 +295,7 @@ function SecondaryBtn({
 export default function VideoCallScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
 
   // State
   const [micEnabled, setMicEnabled] = useState(true);
@@ -476,7 +480,7 @@ export default function VideoCallScreen() {
               }}
             >
               <View style={{ position: "relative" }}>
-                <AvatarCircle letters="SJ" bg="#8b5cf6" size={34} />
+                <AvatarCircle letters="SJ" bg={colors.graySecondary} size={34} />
                 <View
                   style={{
                     position: "absolute",
@@ -485,7 +489,7 @@ export default function VideoCallScreen() {
                     width: 10,
                     height: 10,
                     borderRadius: 5,
-                    backgroundColor: "#22c55e",
+                    backgroundColor: colors.success,
                     borderWidth: 1.5,
                     borderColor: "rgba(0,0,0,0.65)",
                   }}
@@ -510,7 +514,7 @@ export default function VideoCallScreen() {
                       width: 6,
                       height: 6,
                       borderRadius: 3,
-                      backgroundColor: "#22c55e",
+                      backgroundColor: colors.success,
                     }}
                   />
                   <Text
@@ -535,19 +539,18 @@ export default function VideoCallScreen() {
                 </View>
                 <View
                   style={{
-                    backgroundColor: "rgba(59,130,246,0.2)",
+                    backgroundColor: "rgba(238,101,43,0.15)",
                     paddingHorizontal: 8,
                     paddingVertical: 4,
                     borderRadius: 8,
                     borderWidth: 1,
-                    borderColor: "rgba(59,130,246,0.35)",
+                    borderColor: "rgba(238,101,43,0.35)",
                   }}
                 >
-                  <FontAwesome5 name="video" size={10} color="#60a5fa" />
+                  <FontAwesome5 name="video" size={10} color={colors.orangePrimary} />
                 </View>
               </View>
             </View>
-
             <View
               style={{
                 position: "absolute",
@@ -590,7 +593,7 @@ export default function VideoCallScreen() {
                     width: 6,
                     height: 6,
                     borderRadius: 3,
-                    backgroundColor: "#22c55e",
+                    backgroundColor: colors.success,
                   }}
                 />
                 <Text style={{ color: "#fff", fontSize: 9, fontWeight: "600" }}>
@@ -619,9 +622,9 @@ export default function VideoCallScreen() {
                     overflow: "hidden",
                     borderWidth: 2,
                     borderColor: p.isSpeaking
-                      ? "#22c55e"
+                      ? colors.success
                       : "rgba(255,255,255,0.12)",
-                    shadowColor: p.isSpeaking ? "#22c55e" : "#000",
+                    shadowColor: p.isSpeaking ? colors.success : "#000",
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: p.isSpeaking ? 0.6 : 0.3,
                     shadowRadius: p.isSpeaking ? 8 : 4,
@@ -639,7 +642,7 @@ export default function VideoCallScreen() {
                         position: "absolute",
                         top: 8,
                         right: 8,
-                        backgroundColor: "#3b82f6",
+                        backgroundColor: colors.orangePrimary,
                         paddingHorizontal: 6,
                         paddingVertical: 3,
                         borderRadius: 6,
@@ -699,7 +702,7 @@ export default function VideoCallScreen() {
                       <FontAwesome5
                         name={p.isMuted ? "microphone-slash" : "microphone"}
                         size={10}
-                        color={p.isMuted ? "#ef4444" : "rgba(255,255,255,0.7)"}
+                        color={p.isMuted ? colors.error : "rgba(255,255,255,0.7)"}
                       />
                       <FontAwesome5
                         name="video"
@@ -784,11 +787,11 @@ export default function VideoCallScreen() {
                     width: 6,
                     height: 6,
                     borderRadius: 3,
-                    backgroundColor: "#ef4444",
+                    backgroundColor: colors.error,
                   }}
                 />
                 <Text
-                  style={{ color: "#f87171", fontSize: 10, fontWeight: "700" }}
+                  style={{ color: colors.error, fontSize: 10, fontWeight: "700" }}
                 >
                   REC
                 </Text>
@@ -814,7 +817,7 @@ export default function VideoCallScreen() {
               paddingVertical: 6,
               borderRadius: 9,
               backgroundColor:
-                currentView === "1-1" ? "#3b82f6" : "transparent",
+                currentView === "1-1" ? colors.orangePrimary : "transparent",
               flexDirection: "row",
               alignItems: "center",
               gap: 5,
@@ -832,7 +835,7 @@ export default function VideoCallScreen() {
               paddingVertical: 6,
               borderRadius: 9,
               backgroundColor:
-                currentView === "grid" ? "#3b82f6" : "transparent",
+                currentView === "grid" ? colors.orangePrimary : "transparent",
               flexDirection: "row",
               alignItems: "center",
               gap: 5,
@@ -988,14 +991,14 @@ export default function VideoCallScreen() {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                backgroundColor: "rgba(59,130,246,0.15)",
+                backgroundColor: "rgba(238,101,43,0.12)",
                 alignItems: "center",
                 justifyContent: "center",
                 borderWidth: 1,
-                borderColor: "rgba(59,130,246,0.3)",
+                borderColor: "rgba(238,101,43,0.35)",
               }}
             >
-              <FontAwesome5 name="comment-alt" size={15} color="#60a5fa" />
+              <FontAwesome5 name="comment-alt" size={15} color={colors.orangePrimary} />
             </View>
             <Text
               style={{
@@ -1084,7 +1087,7 @@ export default function VideoCallScreen() {
                   <View
                     style={{
                       backgroundColor: msg.isSelf
-                        ? "#3b82f6"
+                        ? colors.orangePrimary
                         : "rgba(255,255,255,0.08)",
                       borderRadius: 16,
                       borderBottomRightRadius: msg.isSelf ? 4 : 16,
@@ -1158,7 +1161,7 @@ export default function VideoCallScreen() {
                 height: 44,
                 borderRadius: 13,
                 backgroundColor: chatInput.trim()
-                  ? "#3b82f6"
+                  ? colors.orangePrimary
                   : "rgba(255,255,255,0.1)",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1167,7 +1170,7 @@ export default function VideoCallScreen() {
               <FontAwesome5
                 name="paper-plane"
                 size={15}
-                color={chatInput.trim() ? "#fff" : "rgba(255,255,255,0.35)"}
+                color={chatInput.trim() ? "#fff" : colors.graySecondary}
               />
             </TouchableOpacity>
           </View>
@@ -1209,14 +1212,14 @@ export default function VideoCallScreen() {
               width: 36,
               height: 36,
               borderRadius: 10,
-              backgroundColor: "rgba(139,92,246,0.15)",
+              backgroundColor: "rgba(238,101,43,0.12)",
               alignItems: "center",
               justifyContent: "center",
               borderWidth: 1,
-              borderColor: "rgba(139,92,246,0.3)",
+              borderColor: "rgba(238,101,43,0.35)",
             }}
           >
-            <FontAwesome5 name="users" size={14} color="#a78bfa" />
+            <FontAwesome5 name="users" size={14} color={colors.orangePrimary} />
           </View>
           <Text
             style={{ color: "#fff", fontSize: 16, fontWeight: "700", flex: 1 }}
@@ -1273,7 +1276,7 @@ export default function VideoCallScreen() {
                       width: 12,
                       height: 12,
                       borderRadius: 6,
-                      backgroundColor: "#22c55e",
+                      backgroundColor: colors.success,
                       borderWidth: 2,
                       borderColor: "#0f172a",
                     }}
@@ -1292,7 +1295,7 @@ export default function VideoCallScreen() {
                   {p.isHost && (
                     <View
                       style={{
-                        backgroundColor: "#3b82f6",
+                        backgroundColor: colors.orangePrimary,
                         paddingHorizontal: 6,
                         paddingVertical: 2,
                         borderRadius: 6,
@@ -1340,7 +1343,7 @@ export default function VideoCallScreen() {
                   <FontAwesome5
                     name={p.isMuted ? "microphone-slash" : "microphone"}
                     size={12}
-                    color={p.isMuted ? "#ef4444" : "rgba(255,255,255,0.6)"}
+                    color={p.isMuted ? colors.error : "rgba(255,255,255,0.6)"}
                   />
                 </View>
                 <View
