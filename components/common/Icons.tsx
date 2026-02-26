@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { Platform } from 'react-native';
 
 let Icons: any;

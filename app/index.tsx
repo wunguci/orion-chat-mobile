@@ -7,5 +7,5 @@ export default function Index() {
         console.log('App Index loaded');
     }, []);
 
-    return <Redirect href="/login" />;
+    return <Redirect href="/home" />;
 }
