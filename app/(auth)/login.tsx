@@ -110,7 +110,7 @@ export default function LoginScreen() {
           </Pressable>
 
           <Pressable
-            onPress={() => router.push("/(tabs)/video-call")}
+            onPress={() => router.push("../(tabs)")}
             className="mt-8 bg-[#2DB5B0] py-4 rounded-full items-center shadow-md"
           >
             <Text className="text-white text-lg font-semibold">Log in</Text>

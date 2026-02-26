@@ -52,8 +52,8 @@ interface ChatMessage {
 const PARTICIPANTS: Participant[] = [
   {
     id: "1",
-    name: "John Doe",
-    avatar: "JD",
+    name: "Phan Phước Hiệp",
+    avatar: "PPH",
     avatarBg: "#3b82f6",
     isMuted: false,
     isVideoOff: false,
@@ -62,8 +62,8 @@ const PARTICIPANTS: Participant[] = [
   },
   {
     id: "2",
-    name: "Sarah Johnson",
-    avatar: "SJ",
+    name: "Giang",
+    avatar: "G",
     avatarBg: "#8b5cf6",
     isMuted: false,
     isVideoOff: false,
@@ -72,7 +72,7 @@ const PARTICIPANTS: Participant[] = [
   },
   {
     id: "3",
-    name: "Michael Chen",
+    name: "Michael Vũ",
     avatar: "MC",
     avatarBg: "#f59e0b",
     isMuted: true,
@@ -94,7 +94,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
   {
     id: "1",
     author: "Phan Phước Hiệp",
-    avatar: "JD",
+    avatar: "PPH",
     avatarBg: "#3b82f6",
     time: "2:30 PM",
     text: "Hey everyone! Ready to start the meeting?",
@@ -102,7 +102,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
   {
     id: "2",
     author: "Giang",
-    avatar: "SJ",
+    avatar: "G",
     avatarBg: "#8b5cf6",
     time: "2:31 PM",
     text: "Yes, let's go through the project updates first",
@@ -495,7 +495,7 @@ export default function VideoCallScreen() {
                 <Text
                   style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}
                 >
-                  Sarah Johnson
+                  PPH
                 </Text>
                 <View
                   style={{
