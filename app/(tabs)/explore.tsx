@@ -74,7 +74,7 @@ export default function ContactsScreen() {
       >
         <Text
           style={[styles.headerTitle, { color: colors.text }]}
-          className="text-red-500 text-xl font-bold text-blue-500"
+          className="text-xl font-bold text-blue-500"
         >
           Danh bạ
         </Text>
