@@ -1,11 +1,2 @@
-import { Platform } from 'react-native';
-
-let Icons: any;
-
-if (Platform.OS === 'web') {
-    Icons = require('lucide-react');
-} else {
-    Icons = require('lucide-react-native');
-}
-
-export const { Eye, EyeOff } = Icons;
+// Native-specific icons using lucide-react-native
+export { Eye, EyeOff } from "lucide-react-native";

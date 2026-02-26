@@ -89,7 +89,7 @@ export default function Setting() {
         </View>
 
         {/* Account Settings */}
-        <SettingsSection title="Tài khoản">
+        <SettingsSection title="Cài đặt Chung">
           <View className="overflow-hidden rounded-lg">
             <SettingsItem
               icon={<User size={24} color={colors.orangePrimary} />}
@@ -114,14 +114,7 @@ export default function Setting() {
                 navigate("/notifycation-setting");
               }}
             />
-            <SettingsItem
-              icon={<Bell size={24} color={colors.orangePrimary} />}
-              title="Giao diện"
-              subtitle="Tùy chỉnh giao diện ứng dụng"
-              onPress={() => {
-                navigate("/apprearance-setting");
-              }}
-            />
+
             <SettingsItem
               icon={<Smartphone size={24} color={colors.orangePrimary} />}
               title="Thiết bị đã đăng nhập"
@@ -149,7 +142,7 @@ export default function Setting() {
               title="Chủ đề"
               subtitle="Tùy chỉnh màu sắc giao diện"
               onPress={() => {
-                /* Navigate to theme settings */
+                navigate("/apprearance-setting");
               }}
             />
           </View>
