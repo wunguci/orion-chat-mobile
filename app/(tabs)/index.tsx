@@ -1,224 +1,178 @@
-import { BorderRadius, FontSizes, Spacing } from '@/constants/theme';
+import ChatListItem from '@/components/chat/ChatListItem';
+import ChatSearchBar from '@/components/chat/ChatSearchBar';
+import ChatTabFilter, { ChatTab } from '@/components/chat/ChatTabFilter';
 import { useTheme } from '@/hooks/useTheme';
-import React from 'react';
-import { FlatList, Platform, StyleSheet, Text, View } from 'react-native';
+import { ChatItem } from '@/types/chat';
+import React, { useMemo, useState } from 'react';
+import { FlatList, StatusBar, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Mock data
-const MOCK_CHATS = [
+const MOCK_CHATS: ChatItem[] = [
     {
         id: '1',
-        name: 'John Doe',
-        lastMessage: 'Hey, how are you?',
-        time: '10:30',
-        unread: 2,
-        online: true,
+        name: 'Athena',
+        lastMessage: "That's a good idea 🔥",
+        time: '9:41 AM',
+        unread: 0,
+        isGroup: false,
+        isMuted: false,
+        isSentByMe: false,
+        isRead: false,
+        avatarUri: 'https://i.pravatar.cc/150?img=47',
     },
     {
         id: '2',
-        name: 'Jane Smith',
-        lastMessage: 'Meeting at 3pm',
-        time: 'Yesterday',
+        name: 'Olivia Isabella',
+        lastMessage: 'The weather will be perfect for th...',
+        time: '9:41 AM',
         unread: 0,
-        online: false,
+        isGroup: false,
+        isMuted: false,
+        isSentByMe: false,
+        isRead: false,
+        avatarUri: 'https://i.pravatar.cc/150?img=35',
     },
     {
         id: '3',
-        name: 'Team Chat',
-        lastMessage: 'Alice: Great work!',
-        time: '2 days ago',
+        name: 'Photographers',
+        lastMessage: "Here're my latest drone...",
+        time: '9:16 AM',
         unread: 5,
-        online: false,
+        isGroup: true,
+        isMuted: false,
+        isSentByMe: false,
+        isRead: false,
+        avatarUris: [
+            'https://i.pravatar.cc/150?img=10',
+            'https://i.pravatar.cc/150?img=20',
+        ],
+    },
+    {
+        id: '4',
+        name: 'Daryl, Ian Daniel, +1',
+        lastMessage: 'Store is out of stock',
+        time: 'Yesterday',
+        unread: 0,
+        isGroup: true,
+        isMuted: true,
+        isSentByMe: true,
+        isRead: false,
+        avatarUris: [
+            'https://i.pravatar.cc/150?img=5',
+            'https://i.pravatar.cc/150?img=15',
+        ],
+    },
+    {
+        id: '5',
+        name: 'SpaceX Crew-16 Launch',
+        lastMessage: "I've been there!",
+        time: 'Thursday',
+        unread: 0,
+        isGroup: true,
+        isMuted: false,
+        isSentByMe: false,
+        isRead: false,
+        avatarUris: [
+            'https://i.pravatar.cc/150?img=21',
+            'https://i.pravatar.cc/150?img=22',
+        ],
+    },
+    {
+        id: '6',
+        name: 'Lela Walsh',
+        lastMessage: "Next time it's my turn!",
+        time: '12/01/26',
+        unread: 0,
+        isGroup: false,
+        isMuted: false,
+        isSentByMe: false,
+        isRead: false,
+        avatarUri: 'https://i.pravatar.cc/150?img=38',
+    },
+    {
+        id: '7',
+        name: 'Roland Marks',
+        lastMessage: '@waldo Glad to hear 😊',
+        time: '12/01/26',
+        unread: 0,
+        isGroup: false,
+        isMuted: false,
+        isSentByMe: false,
+        isRead: false,
+        avatarUri: 'https://i.pravatar.cc/150?img=8',
+    },
+    {
+        id: '8',
+        name: 'Helen Flatley',
+        lastMessage: 'Ok',
+        time: '12/13/21',
+        unread: 0,
+        isGroup: false,
+        isMuted: false,
+        isSentByMe: true,
+        isRead: true,
+        avatarUri: 'https://i.pravatar.cc/150?img=45',
     },
 ];
 
 export default function ChatsScreen() {
-    const { colors } = useTheme();
+    const { colors, colorScheme } = useTheme();
+    const [search, setSearch] = useState('');
+    const [activeTab, setActiveTab] = useState<ChatTab>('all');
 
-    const renderChatItem = ({ item }: any) => (
-        <View
-            style={[
-                styles.chatCard,
-                { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-        >
-            <View style={styles.chatItem}>
-                {/* Avatar */}
-                <View
-                    style={[styles.avatar, { backgroundColor: colors.primary }]}
-                >
-                    <Text style={styles.avatarText}>
-                        {item.name
-                            .split(' ')
-                            .map((w: string) => w[0])
-                            .join('')
-                            .slice(0, 2)}
-                    </Text>
-                    {item.online && (
-                        <View
-                            style={[
-                                styles.onlineDot,
-                                { backgroundColor: '#34C759' },
-                            ]}
-                        />
-                    )}
-                </View>
+    const filteredChats = useMemo(() => {
+        let list = MOCK_CHATS;
 
-                <View style={styles.chatContent}>
-                    <View style={styles.chatHeader}>
-                        <Text style={[styles.chatName, { color: colors.text }]}>
-                            {item.name}
-                        </Text>
-                        <Text
-                            style={[
-                                styles.chatTime,
-                                { color: colors.textSecondary },
-                            ]}
-                        >
-                            {item.time}
-                        </Text>
-                    </View>
+        if (activeTab === 'unread') {
+            list = list.filter((c) => c.unread > 0);
+        }
 
-                    <View style={styles.chatFooter}>
-                        <Text
-                            style={[
-                                styles.lastMessage,
-                                { color: colors.textSecondary },
-                            ]}
-                            numberOfLines={1}
-                        >
-                            {item.lastMessage}
-                        </Text>
-                        {item.unread > 0 && (
-                            <View
-                                style={[
-                                    styles.badge,
-                                    { backgroundColor: colors.primary },
-                                ]}
-                            >
-                                <Text style={styles.badgeText}>
-                                    {item.unread}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                </View>
-            </View>
-        </View>
-    );
+        if (search.trim()) {
+            const q = search.toLowerCase();
+            list = list.filter(
+                (c) =>
+                    c.name.toLowerCase().includes(q) ||
+                    c.lastMessage.toLowerCase().includes(q),
+            );
+        }
+
+        return list;
+    }, [search, activeTab]);
 
     return (
-        <View
-            style={[styles.container, { backgroundColor: colors.background }]}
+        <SafeAreaView
+            style={{ flex: 1, backgroundColor: colors.background }}
+            edges={['top']}
         >
-            <View
-                style={[
-                    styles.header,
-                    {
-                        backgroundColor: colors.background,
-                        borderBottomColor: colors.border,
-                    },
-                ]}
-            >
-                <Text style={[styles.headerTitle, { color: colors.text }]}>
-                    Tin nhắn
-                </Text>
-            </View>
-
-            <FlatList
-                data={MOCK_CHATS}
-                renderItem={renderChatItem}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.list}
+            <StatusBar
+                barStyle={
+                    colorScheme === 'dark' ? 'light-content' : 'dark-content'
+                }
+                backgroundColor={colors.background}
             />
-        </View>
+
+            {/* Search bar with QR + menu */}
+            <ChatSearchBar value={search} onChangeText={setSearch} />
+
+            {/* Tab filter */}
+            <ChatTabFilter activeTab={activeTab} onTabChange={setActiveTab} />
+
+            {/* Chat list */}
+            <FlatList
+                data={filteredChats}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => <ChatListItem item={item} />}
+                ItemSeparatorComponent={() => (
+                    <View
+                        style={{
+                            height: 0.5,
+                            marginLeft: 80,
+                            backgroundColor: colors.divider,
+                        }}
+                    />
+                )}
+                showsVerticalScrollIndicator={false}
+            />
+        </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
-        paddingHorizontal: Spacing.base,
-        paddingVertical: Spacing.base,
-        borderBottomWidth: 1,
-        paddingTop: Platform.OS === 'ios' ? 60 : Spacing.base,
-    },
-    headerTitle: {
-        fontSize: FontSizes.xxl,
-        fontWeight: '700',
-    },
-    list: {
-        padding: Spacing.base,
-    },
-    chatCard: {
-        marginBottom: Spacing.md,
-        borderRadius: BorderRadius.md,
-        borderWidth: 1,
-    },
-    chatItem: {
-        flexDirection: 'row',
-        padding: Spacing.base,
-    },
-    avatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: Spacing.md,
-    },
-    avatarText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    onlineDot: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        position: 'absolute',
-        bottom: 0,
-        right: 0,
-        borderWidth: 2,
-        borderColor: '#FFFFFF',
-    },
-    chatContent: {
-        flex: 1,
-    },
-    chatHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: Spacing.xs,
-    },
-    chatName: {
-        fontSize: FontSizes.base,
-        fontWeight: '600',
-    },
-    chatTime: {
-        fontSize: FontSizes.sm,
-    },
-    chatFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    lastMessage: {
-        fontSize: FontSizes.base,
-        flex: 1,
-    },
-    badge: {
-        minWidth: 20,
-        height: 20,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 6,
-        marginLeft: Spacing.sm,
-    },
-    badgeText: {
-        color: '#FFFFFF',
-        fontSize: FontSizes.xs,
-        fontWeight: '600',
-    },
-});
