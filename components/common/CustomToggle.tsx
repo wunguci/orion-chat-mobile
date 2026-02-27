@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Pressable, StyleSheet } from "react-native";
+import { Animated, Platform, Pressable, StyleSheet } from "react-native";
 import { useThemeColors } from "../../hooks/useThemeColors";
 
 interface CustomToggleProps {
@@ -19,7 +19,7 @@ export default function CustomToggle({
   useEffect(() => {
     Animated.spring(animatedValue, {
       toValue: value ? 1 : 0,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== "web",
       friction: 8,
       tension: 100,
     }).start();
@@ -79,13 +79,19 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 13.5,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 2.5,
-    elevation: 4,
+    ...(Platform.OS === "web"
+      ? {
+          boxShadow: "0px 2px 2.5px rgba(0, 0, 0, 0.2)",
+        }
+      : {
+          shadowColor: "#000",
+          shadowOffset: {
+            width: 0,
+            height: 2,
+          },
+          shadowOpacity: 0.2,
+          shadowRadius: 2.5,
+          elevation: 4,
+        }),
   },
 });

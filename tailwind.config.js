@@ -5,11 +5,11 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        "orange-primary": "#ee652b",
-        "orange-bg-heavy": "#fcede6",
-        "orange-bg-light": "#fdfaf9",
-        "orange-border-light": "#fbe7df",
-        "gray-primary": "#505050",
+        "orange-primary": "#ee652b", //màu chính
+        "orange-bg-heavy": "#fcede6", // màu nền đậm
+        "orange-bg-light": "#fdfaf9", // màu nền nhạt
+        "orange-border-light": "#fbe7df", // màu border nhạt
+        "gray-primary": "#505050", // màu chữ chính
         "gray-border": "#EFF4F8",
         "gray-secondary": "#94a3b8",
         "blue-dark": "#0052cc",

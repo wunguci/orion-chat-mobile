@@ -31,7 +31,7 @@ export default function Setting() {
 
   // Mock user data
   const user = {
-    name: "Nguyễn Văn A",
+    name: "Nguyễn Văn Aa",
     email: "nguyenvana@example.com",
     avatar: "https://via.placeholder.com/100",
     phone: "+84 123 456 789",
@@ -50,7 +50,6 @@ export default function Setting() {
           text: "Đăng xuất",
           style: "destructive",
           onPress: () => {
-            // Handle logout logic here
             router.replace("/(auth)/login");
           },
         },

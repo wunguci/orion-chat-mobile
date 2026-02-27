@@ -1,7 +1,15 @@
 import { BorderRadius, FontSizes, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
+import { navigate } from "expo-router/build/global-state/routing";
 import React from "react";
-import { FlatList, Platform, StyleSheet, Text, View } from "react-native";
+import {
+  FlatList,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 // Mock data
 const MOCK_CHATS = [
@@ -35,11 +43,12 @@ export default function ChatsScreen() {
   const { colors } = useTheme();
 
   const renderChatItem = ({ item }: any) => (
-    <View
+    <TouchableOpacity
       style={[
         styles.chatCard,
         { backgroundColor: colors.card, borderColor: colors.border },
       ]}
+      onPress={() => navigate("/group-chat")}
     >
       <View style={styles.chatItem}>
         {/* Avatar */}
@@ -81,7 +90,7 @@ export default function ChatsScreen() {
           </View>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
