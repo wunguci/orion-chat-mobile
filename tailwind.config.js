@@ -13,6 +13,34 @@ module.exports = {
         "gray-border": "#EFF4F8",
         "gray-secondary": "#94a3b8",
         "blue-dark": "#0052cc",
+
+        // test colors
+        "teal-primary": "#14b8a6",
+        "teal-dark": "#0d9488",
+        "teal-light": "#ccfbf1",
+
+        green: {
+          primary: "#226262",
+          bgHeavy: "#D6F2F2",
+          bgLight: "#F4FFFF",
+          borderLight: "#D6F2F2",
+          online: "#22c55e",
+        },
+
+        gray: {
+          light: "#f1f5f9",
+          text: "#64748b", 
+        }, 
+
+        badge: {
+          blue: "#3b82f6",
+        },
+
+        teal: {
+          primary: "#14b8a6",
+          dark: "#0d9488",
+          light: "#ccfbf1",
+        },
       },
     },
   },
