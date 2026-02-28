@@ -480,7 +480,11 @@ export default function VideoCallScreen() {
               }}
             >
               <View style={{ position: "relative" }}>
-                <AvatarCircle letters="SJ" bg={colors.graySecondary} size={34} />
+                <AvatarCircle
+                  letters="SJ"
+                  bg={colors.graySecondary}
+                  size={34}
+                />
                 <View
                   style={{
                     position: "absolute",
@@ -547,7 +551,11 @@ export default function VideoCallScreen() {
                     borderColor: "rgba(238,101,43,0.35)",
                   }}
                 >
-                  <FontAwesome5 name="video" size={10} color={colors.orangePrimary} />
+                  <FontAwesome5
+                    name="video"
+                    size={10}
+                    color={colors.orangePrimary}
+                  />
                 </View>
               </View>
             </View>
@@ -702,7 +710,9 @@ export default function VideoCallScreen() {
                       <FontAwesome5
                         name={p.isMuted ? "microphone-slash" : "microphone"}
                         size={10}
-                        color={p.isMuted ? colors.error : "rgba(255,255,255,0.7)"}
+                        color={
+                          p.isMuted ? colors.error : "rgba(255,255,255,0.7)"
+                        }
                       />
                       <FontAwesome5
                         name="video"
@@ -791,7 +801,11 @@ export default function VideoCallScreen() {
                   }}
                 />
                 <Text
-                  style={{ color: colors.error, fontSize: 10, fontWeight: "700" }}
+                  style={{
+                    color: colors.error,
+                    fontSize: 10,
+                    fontWeight: "700",
+                  }}
                 >
                   REC
                 </Text>
@@ -998,7 +1012,11 @@ export default function VideoCallScreen() {
                 borderColor: "rgba(238,101,43,0.35)",
               }}
             >
-              <FontAwesome5 name="comment-alt" size={15} color={colors.orangePrimary} />
+              <FontAwesome5
+                name="comment-alt"
+                size={15}
+                color={colors.orangePrimary}
+              />
             </View>
             <Text
               style={{
