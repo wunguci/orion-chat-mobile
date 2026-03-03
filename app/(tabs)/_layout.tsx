@@ -106,6 +106,15 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="notes"
+        options={{
+          title: "Notes",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "document-text" : "document-text-outline"} size={24} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
