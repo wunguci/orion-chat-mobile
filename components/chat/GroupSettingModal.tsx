@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import CustomToggle from "../common/CustomToggle";
 import AddMemberModal from "./AddMemberModal";
+import ViewMembersModal from "./ViewMemberModal";
 
 interface GroupSettingsModalProps {
   visible: boolean;
@@ -34,9 +35,10 @@ interface MenuItem {
   description: string;
   menuType: MenuType;
   toggleKey?: string;
+  onPress?: () => void;
 }
 
-const currentGroupMembers = ["thu-hoi", "phan-phuoc-hiep"];
+const currentGroupMembers = ["user2", "user3", "user5"];
 
 export default function GroupSettingsModal({
   visible,
@@ -45,6 +47,7 @@ export default function GroupSettingsModal({
   groupMembers,
 }: GroupSettingsModalProps) {
   const [showAddMember, setShowAddMember] = useState(false);
+  const [showViewMembers, setShowViewMembers] = useState(false);
   const [toggleStates, setToggleStates] = useState({
     pinChat: false,
     hideChat: false,
@@ -97,6 +100,7 @@ export default function GroupSettingsModal({
         label: `Xem thành viên (${groupMembers})`,
         description: "",
         menuType: "dropdown",
+        onPress: () => setShowViewMembers(true),
       },
       {
         label: "Phê duyệt thành viên mới",
@@ -169,7 +173,7 @@ export default function GroupSettingsModal({
       animationType="slide"
       presentationStyle="fullScreen"
     >
-      <SafeAreaView edges={["top"]} className="flex-1">
+      <SafeAreaView className="flex-1 bg-orange-primary">
         <View className="flex-1 bg-white">
           {/* Header */}
           <View className="flex-row items-center justify-between bg-orange-primary px-4 py-4">
@@ -187,11 +191,11 @@ export default function GroupSettingsModal({
             <View className="items-center bg-white py-6">
               {/* Avatar */}
               <View className="relative">
-                <View className="h-32 w-32 items-center justify-center rounded-full bg-orange-primary">
+                <View className="h-32 w-32 items-center justify-center rounded-full bg-orange-bg-heavy">
                   <Text className="text-4xl font-bold text-white">HGN</Text>
                 </View>
-                <TouchableOpacity className="absolute bottom-0 right-0 rounded-full bg-white p-2">
-                  <ImageIcon size={20} color="#ee652b" />
+                <TouchableOpacity className="absolute bottom-0 right-0 rounded-full bg-orange-primary p-2 border border-white">
+                  <ImageIcon size={20} color="#ffffff" />
                 </TouchableOpacity>
               </View>
 
@@ -272,7 +276,10 @@ export default function GroupSettingsModal({
                           />
                         </View>
                       ) : (
-                        <TouchableOpacity className="flex-row items-center justify-between bg-white px-4 py-4">
+                        <TouchableOpacity
+                          className="flex-row items-center justify-between bg-white px-4 py-4"
+                          onPress={item.onPress}
+                        >
                           <View className="flex-1">
                             <Text className="text-base text-gray-primary">
                               {item.label}
@@ -319,6 +326,11 @@ export default function GroupSettingsModal({
         visible={showAddMember}
         onClose={() => setShowAddMember(false)}
         currentMembers={currentGroupMembers}
+      />
+      <ViewMembersModal
+        visible={showViewMembers}
+        onClose={() => setShowViewMembers(false)}
+        groupName={groupName}
       />
     </Modal>
   );

@@ -34,12 +34,12 @@ const users: User[] = [
   },
   {
     id: "user2",
-    name: "Ba",
+    name: "Thu hồi",
     avatar: "https://via.placeholder.com/48?text=Ba",
   },
   {
     id: "user3",
-    name: "Bà chủ tiệm Tap Nham",
+    name: "pHan pHước hIệp",
     avatar: "https://via.placeholder.com/48?text=BT",
   },
   {
@@ -49,7 +49,7 @@ const users: User[] = [
   },
   {
     id: "user5",
-    name: "Bảo Trọng",
+    name: "Duyên",
     avatar: "https://via.placeholder.com/48?text=BT2",
   },
   {
@@ -59,12 +59,12 @@ const users: User[] = [
   },
   {
     id: "user7",
-    name: "Buicongdanh",
+    name: "Danh nghiệp",
     avatar: "https://via.placeholder.com/48?text=BD",
   },
   {
     id: "user8",
-    name: "Bụng to Lò xo ngắn",
+    name: "Tích phân",
     avatar: "https://via.placeholder.com/48?text=BL",
   },
 ];
@@ -227,6 +227,11 @@ export default function AddMemberModal({
                       }`}
                     >
                       {item.username}
+                    </Text>
+                  )}
+                  {isAlreadyMember && (
+                    <Text className="text-xs text-gray-primary mt-0.5">
+                      Đã là thành viên
                     </Text>
                   )}
                 </View>

@@ -1,7 +1,9 @@
+import CreateGroupModal from "@/components/chat/CreateGroupModal";
 import { BorderRadius, FontSizes, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
+import { AntDesign } from "@expo/vector-icons";
 import { navigate } from "expo-router/build/global-state/routing";
-import React from "react";
+import React, { useState } from "react";
 import {
   FlatList,
   Platform,
@@ -41,6 +43,7 @@ const MOCK_CHATS = [
 
 export default function ChatsScreen() {
   const { colors } = useTheme();
+  const [createGroupVisible, setCreateGroupVisible] = useState(false);
 
   const renderChatItem = ({ item }: any) => (
     <TouchableOpacity
@@ -94,28 +97,43 @@ export default function ChatsScreen() {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border,
-          },
-        ]}
-      >
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Tin nhắn
-        </Text>
-      </View>
-
-      <FlatList
-        data={MOCK_CHATS}
-        renderItem={renderChatItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+    <>
+      <CreateGroupModal
+        visible={createGroupVisible}
+        onClose={() => {
+          setCreateGroupVisible(false);
+        }}
       />
-    </View>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View
+          className="d-flex flex-row justify-between"
+          style={[
+            styles.header,
+            {
+              backgroundColor: colors.background,
+              borderBottomColor: colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            Tin nhắn
+          </Text>
+          <TouchableOpacity
+            className="bg-orange-primary text-white rounded-full p-1"
+            onPress={() => setCreateGroupVisible(true)}
+          >
+            <AntDesign name="plus-circle" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
+
+        <FlatList
+          data={MOCK_CHATS}
+          renderItem={renderChatItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+        />
+      </View>
+    </>
   );
 }
 
