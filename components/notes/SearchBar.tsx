@@ -11,7 +11,7 @@ export default function SearchBar({
     value, onChangeText, placeholder = "Search your notes..."
 }: SearchBarProps) {
     return (
-        <View className="mx-4 mt-2 mb-2 bg-gray-light rounded-xl px-4 py-2 flex-row items-center">
+        <View className="mx-4 my-3 bg-gray-light rounded-xl px-4 py-1 flex-row items-center">
             < Ionicons name="search" size={30} color="#94a3b8"/>
             <TextInput
                 value={value}

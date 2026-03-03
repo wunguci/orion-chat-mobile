@@ -34,7 +34,7 @@ export default function CategoryFilter({
               key={category.key}
               onPress={() => onSelectCategory(category.key)}
               className={`px-4 py-1.5 rounded-full ${
-                isSelected ? "bg-teal-primary" : "bg-gray-light"
+                isSelected ? "bg-green-primary" : "bg-gray-light"
               }`}
               activeOpacity={0.8}
             >

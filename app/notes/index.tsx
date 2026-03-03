@@ -5,7 +5,14 @@ import { NoteCategory, NoteListItem } from "@/types/note";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { SafeAreaView, Text, TouchableOpacity, View, FlatList } from "react-native";
+import {
+  FlatList,
+  SafeAreaView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import FloatingActionButton from "@/components/notes/FloatingActionButton";
 
 const MOCK_NOTES: NoteListItem[] = [
   {
@@ -53,18 +60,24 @@ export default function NotesScreen() {
     "all" | NoteCategory
   >("all");
 
-    const filteredNotes = MOCK_NOTES.filter((note) => {
-        const matchesCategory = selectedCategory === 'all' || note.category === selectedCategory;
-        const matchesSearch = searchQuery === '' || 
-        note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        note.preview.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredNotes = MOCK_NOTES.filter((note) => {
+    const matchesCategory =
+      selectedCategory === "all" || note.category === selectedCategory;
+    const matchesSearch =
+      searchQuery === "" ||
+      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      note.preview.toLowerCase().includes(searchQuery.toLowerCase());
 
-        return matchesCategory && matchesSearch;
-    })
+    return matchesCategory && matchesSearch;
+  });
 
-    const handleNotePress = (id: string) => {
-        router.push(`/notes/${id}`);
-    }
+  const handleNotePress = (id: string) => {
+    router.push(`/notes/edit?id=${id}`);
+  };
+
+  const handleCreateNote = () => {
+    router.push("/notes/edit");
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -85,17 +98,21 @@ export default function NotesScreen() {
         onSelectCategory={setSelectedCategory}
       />
 
-      <FlatList 
+      {/* Note list */}
+      <FlatList
         data={filteredNotes}
         keyExtractor={(item) => item.id}
-        renderItem={({item}) => (
-            <View className="px-4">
-                <NoteCard note={item} onPress={handleNotePress}/>
-            </View>
+        renderItem={({ item }) => (
+          <View className="px-4">
+            <NoteCard note={item} onPress={handleNotePress} />
+          </View>
         )}
-        contentContainerStyle={{ paddingBottom: 100}}
+        contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       />
+
+      {/* Floating action button */}
+      <FloatingActionButton onPress={handleCreateNote}/>
     </SafeAreaView>
   );
 }
