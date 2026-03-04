@@ -7,6 +7,7 @@ import ViewModeTabs from "@/components/calendar/ViewModeTabs";
 import FloatingActionButton from "@/components/common/FloatingActionButton";
 import { formatDate } from "@/utils/calendar";
 import { useState } from "react";
+import MonthView from "@/components/calendar/MonthView";
 
 const MOCK_EVENTS: CalendarEvent[] = [
   {
@@ -101,6 +102,14 @@ export default function CalendarScreen() {
             />
 
             <ViewModeTabs activeView={viewMode} onChange={setViewMode}/>
+
+            {viewMode === 'month' && (
+                <MonthView 
+                    initialDate={currentDate}
+                    events={MOCK_EVENTS}
+                    onEventPress={handleEventPress}
+                />
+            )}
 
             <FloatingActionButton onPress={handleAddEvent}/>
         </SafeAreaView>

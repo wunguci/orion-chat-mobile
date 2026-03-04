@@ -1,5 +1,5 @@
 import { CalendarEvent } from "@/types/calendar";
-import { TouchableOpacity } from "react-native";
+import { TouchableOpacity, View, Text } from "react-native";
 
 interface EventListItemProps {
   event: CalendarEvent;
@@ -19,5 +19,20 @@ export default function EventListItem({ event, onPress }: EventListItemProps) {
             ? "border-blue-500"
             : "border-green-500";
 
-  return <TouchableOpacity></TouchableOpacity>;
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      className={`flex-row p-4 mb-3 bg-gray-50 rounded-lg border-l-4 ${borderColor}`}
+    >
+      <View className="mr-4">
+        <Text className="text-2xl font-bold text-gray-900">
+          {startTime.getHours().toString().padStart(2, '0')} : {startTime.getMinutes().toString().padStart(2, '0')}
+        </Text>
+        <Text className="text-xs text-gray">
+
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
 }
