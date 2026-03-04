@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import FloatingActionButton from "@/components/notes/FloatingActionButton";
+import FloatingActionButton from "@/components/common/FloatingActionButton";
 
 const MOCK_NOTES: NoteListItem[] = [
   {
