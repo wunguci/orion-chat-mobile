@@ -38,15 +38,27 @@ export default function CalendarGrid({
         <View key={weekIndex} className="flex-row">
           {week.map((day, dayIndex) => {
             const absDay = Math.abs(day);
-            const isCurrentMonth = day > 0 && day < 100;
+            const isCurrentMonth = day > 0;
 
             let actualMonth = month;
-            if (day < 0) actualMonth = month - 1;
-            if (day > 100) {
-              actualMonth = month + 1;
+            let actualDay = day;
+
+            if (day < 0) {
+              if (absDay > 100) {
+                // Tháng sau
+                actualMonth = month + 1;
+                actualDay = absDay - 100;
+              } else {
+                // Tháng trước
+                actualMonth = month - 1;
+                actualDay = absDay;
+              }
+            } else {
+              // Tháng hiện tại
+              actualDay = day;
             }
 
-            const date = new Date(year, actualMonth, absDay);
+            const date = new Date(year, actualMonth, actualDay);
             const dayEvents = getEventsForDate(events, date);
             const hasEvents = dayEvents.length > 0;
             const isToday = isSameDay(date, today);
@@ -55,7 +67,7 @@ export default function CalendarGrid({
             return (
               <DayCell
                 key={dayIndex}
-                day={absDay}
+                day={actualDay}
                 hasEvents={hasEvents}
                 isSelected={isSelected}
                 isToday={isToday}
