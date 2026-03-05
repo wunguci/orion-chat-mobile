@@ -9,6 +9,7 @@ import { formatDate } from "@/utils/calendar";
 import { useState } from "react";
 import MonthView from "@/components/calendar/MonthView";
 import DayView from "@/components/calendar/DayView";
+import WeekView from "@/components/calendar/WeekView";
 
 const MOCK_EVENTS: CalendarEvent[] = [
   {
@@ -106,6 +107,14 @@ export default function CalendarScreen() {
 
             {viewMode === 'day' && (
                 <DayView 
+                    date={currentDate}
+                    events={MOCK_EVENTS}
+                    onEventPress={handleEventPress}
+                />
+            )}
+
+            {viewMode === 'week' && (
+                <WeekView 
                     date={currentDate}
                     events={MOCK_EVENTS}
                     onEventPress={handleEventPress}

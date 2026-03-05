@@ -58,18 +58,18 @@ export default function DayTimeline({
 
         {/* events overlay */}
         <View className="absolute left-16 right-0 top-0 bottom-0 px-2">
-            {events.map((event) => {
-                const {top, height} = getEventPosition(event);
-                return (
-                    <View
-                        key={event.id}
-                        className="absolute left-0 right-0"
-                        style={{ top, height: Math.max(height, 60)}}
-                    >
-                        <EventCard event={event} onPress={() => onEventPress(event)} />
-                    </View>
-                )
-            })}
+          {events.map((event) => {
+            const { top, height } = getEventPosition(event);
+            return (
+              <View
+                key={event.id}
+                className="absolute left-0 right-0"
+                style={{ top, height: Math.max(height, 60) }}
+              >
+                <EventCard event={event} onPress={() => onEventPress(event)} />
+              </View>
+            );
+          })}
         </View>
       </View>
     </ScrollView>
