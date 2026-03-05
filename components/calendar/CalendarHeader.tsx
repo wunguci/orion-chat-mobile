@@ -18,7 +18,7 @@ export default function CalendarHeader({
     return (
       <View className="border-b border-gray-200 bg-white px-4 py-5 flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
-          <Ionicons name="calendar" size={24} className="text-gray-primary"/>
+          <Ionicons name="calendar" size={24} color={colors.textSecondary}/>
           <Text className="text-xl font-semibold text-gray-primary">{title}</Text>
         </View>
 

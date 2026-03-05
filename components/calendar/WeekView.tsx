@@ -24,26 +24,27 @@ export default function WeekView({
 
   const hours = Array.from(
     { length: END_HOUR - START_HOUR + 1 },
-    (_, i) => START_HOUR + i
+    (_, i) => START_HOUR + i,
   );
 
   const getDayEvents = (date: Date) => {
-    return events.filter(event => 
-        isSameDay(new Date(event.startTime), date)
-    )
-  }
+    return events.filter((event) => isSameDay(new Date(event.startTime), date));
+  };
 
   const getEventPosition = (event: CalendarEvent) => {
     const start = new Date(event.startTime);
     const end = new Date(event.endTime);
 
-    const top = (start.getHours() - START_HOUR) * HOUR_HEIGHT + 
-                (start.getMinutes() / 60) * HOUR_HEIGHT;
-    const durationHours = (end.getHours() - start.getTime()) / (1000 * 60 * 60);
+    const top =
+      (start.getHours() - START_HOUR) * HOUR_HEIGHT +
+      (start.getMinutes() / 60) * HOUR_HEIGHT;
+
+    const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+
     const height = durationHours * HOUR_HEIGHT;
-    
+
     return { top, height };
-  }
+  };
 
   return (
     <View className="flex-1 bg-white">
@@ -78,71 +79,71 @@ export default function WeekView({
 
       <ScrollView>
         <View className="flex-row">
-            {/* time col */}
-            <View className="w-16 border-r border-gray-200">
-                {hours.map((hour) => {
-                    const displayHour = hour % 12 || 12;
-                    const ampm = hour >= 12 ? 'PM' : 'AM';
+          {/* time col */}
+          <View className="w-16 border-r border-gray-200">
+            {hours.map((hour) => {
+              const displayHour = hour % 12 || 12;
+              const ampm = hour >= 12 ? "PM" : "AM";
+
+              return (
+                <View
+                  key={hour}
+                  style={{ height: HOUR_HEIGHT }}
+                  className="border-b border-gray-200 pt-1 pr-2"
+                >
+                  <Text className="text-xs text-gray-400 text-right">
+                    {displayHour.toString().padStart(2, "0")} {ampm}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* day cols with events */}
+          <View className="flex-1 flex-row">
+            {weekDates.map((weekDate, dayIndex) => {
+              const dayEvents = getDayEvents(weekDate);
+
+              return (
+                <View
+                  key={dayIndex}
+                  className="flex-1 border-r border-gray-200"
+                >
+                  {/* background grid */}
+                  {hours.map((hour) => (
+                    <View
+                      key={hour}
+                      style={{ height: HOUR_HEIGHT }}
+                      className="border-b border-gray-200"
+                    />
+                  ))}
+
+                  {/* events overlay */}
+                  {dayEvents.map((event) => {
+                    const { top, height } = getEventPosition(event);
 
                     return (
-                        <View 
-                            key={hour}
-                            style={{ height: HOUR_HEIGHT }}
-                            className="border-b border-gray-200 pt-1 pr-2"
-                        >
-                            <Text className="text-xs text-gray-400 text-right">
-                                {displayHour.toString().padStart(2, '0')} {ampm}
-                            </Text>
-                        </View>
-                    )
-                })}
-            </View>
-
-            {/* day cols with events */}
-            <View className="flex-1 flex-row">
-                {weekDates.map((date, dayIndex) => {
-                    const dayEvents = getDayEvents(date);
-
-                    return (
-                      <View 
-                        key={dayIndex}
-                        className="flex-1 border-r border-gray-200"
+                      <View
+                        key={event.id}
+                        style={{
+                          position: "absolute",
+                          top: top,
+                          left: 4,
+                          right: 4,
+                          height: Math.max(height, 60),
+                        }}
                       >
-                        {/* background grid */}
-                        {hours.map((hour) => (
-                          <View 
-                            key={hour}
-                            style={{ height: HOUR_HEIGHT }}
-                            className="border-b border-gray-200"
-                          />
-                        ))}
-
-                        {/* events overlay */}
-                        {dayEvents.map((event) => {
-                          const { top, height } = getEventPosition(event);
-
-                          return (
-                            <View 
-                              key={event.id}
-                              style={{
-                                position: 'absolute',
-                                top: top,
-                                left: 4,
-                                right: 4,
-                                height: Math.max(height, 60)
-                              }}
-                            >
-                              <EventCard 
-                                event={event}
-                                onPress={() => onEventPress(event)}
-                              />
-                            </View>
-                          )
-                        })}
+                        <EventCard
+                          event={event}
+                          onPress={() => onEventPress(event)}
+                        />
                       </View>
-                    )
-                })}
-            </View>
+                    );
+                  })}
+                </View>
+              );
+            })}
+          </View>
         </View>
       </ScrollView>
     </View>
