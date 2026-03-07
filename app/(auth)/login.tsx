@@ -60,7 +60,11 @@ export default function LoginScreen() {
                             <Text className="text-xs font-semibold text-gray-700 tracking-wide">
                                 PASSWORD
                             </Text>
-                            <Pressable>
+                            <Pressable
+                                onPress={() =>
+                                    router.push('/forgotPassword' as any)
+                                }
+                            >
                                 <Text className="text-xs font-semibold text-[#006275]">
                                     Forgot?
                                 </Text>

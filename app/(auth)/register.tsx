@@ -127,7 +127,7 @@ export default function RegisterScreen() {
                                     value={phone}
                                     onChangeText={setPhone}
                                     keyboardType="phone-pad"
-                                    className="w-full px-4 pt-4 pb-3.5 rounded-full border border-gray-300 bg-white"
+                                    className="w-full px-4 py-3.5 rounded-full border border-gray-300 bg-white"
                                 />
                             </View>
 
@@ -198,7 +198,7 @@ export default function RegisterScreen() {
                                 </Text>
                                 <View className="space-y-3">
                                     {/* At least 8 characters */}
-                                    <View className="flex-row items-center gap-3">
+                                    <View className="flex-row items-center gap-3 mb-2">
                                         <View
                                             className={`w-6 h-6 rounded-full items-center justify-center ${hasLength ? 'bg-[#2DB5B0]' : 'bg-white border-2 border-gray-300'}`}
                                         >
@@ -216,7 +216,7 @@ export default function RegisterScreen() {
                                     </View>
 
                                     {/* Special symbol */}
-                                    <View className="flex-row items-center gap-3">
+                                    <View className="flex-row items-center gap-3 mb-2">
                                         <View
                                             className={`w-6 h-6 rounded-full items-center justify-center ${hasSpecial ? 'bg-[#2DB5B0]' : 'bg-white border-2 border-gray-300'}`}
                                         >
@@ -336,7 +336,7 @@ export default function RegisterScreen() {
                                     value={fullName}
                                     onChangeText={setFullName}
                                     keyboardType="default"
-                                    className="border border-gray-300 rounded-full px-4 pt-3 pb-4 text-base text-gray-900 bg-white"
+                                    className="border border-gray-300 rounded-full px-4 py-3.5 text-base text-gray-900 bg-white"
                                 />
                             </View>
 
@@ -357,7 +357,7 @@ export default function RegisterScreen() {
                                             placeholderTextColor="#9CA3AF"
                                             value={dob}
                                             editable={false}
-                                            className="border border-gray-300  rounded-full px-4 pt-3 pb-4 text-base text-gray-900 bg-white"
+                                            className="border border-gray-300  rounded-full px-4 py-3.5 text-base text-gray-900 bg-white"
                                         />
                                     </View>
                                 </Pressable>

@@ -11,7 +11,7 @@ export default function WelcomeScreen() {
                         uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDIo7vyeQB9mKKi23s_iHq22VGc2dmZzPQKQxDovAjx6bnwiLNhdWXeoXrf0vtJZcooaVlY4ZHPtTRhUF73gp9T0riKIMB-r8u5heoWg-L-jdZhr5xx76Fc8f_oS7xnFGlCucC402lJL6t-_7KFw5s4KDzd21dv-yQP5v0cUBQybBoGqzk7iRDTOEptFy-5xJMinbRaErhSP5R1zXS10QxdB8Ge6VwDhQgZ9wsbLV8A7Q9kFrUxbJtVb5O5WIAbulX_S2nEkZryB66c',
                     }}
                     resizeMode="contain"
-                    className="w-64 h-64"
+                    className="w-64 h-64 rounded-full"
                 />
             </View>
 
@@ -32,7 +32,7 @@ export default function WelcomeScreen() {
                 {/* Register */}
                 <Pressable
                     onPress={() => router.push('/register')}
-                    className="w-full bg-[#2FB6B2] py-4 rounded-full items-center"
+                    className="w-full bg-[#2FB6B2] py-4 rounded-full items-center mb-3"
                 >
                     <Text className="text-white text-lg font-semibold">
                         Register
@@ -51,9 +51,9 @@ export default function WelcomeScreen() {
             </View>
 
             {/* ===== Footer ===== */}
-            <View className="flex-row items-center space-x-3">
+            <View className="flex-row items-center ">
                 <Text className="text-gray-300 text-sm">Terms of Service</Text>
-                <View className="w-1.5 h-1.5 bg-gray-300 rounded-full" />
+                <View className="w-1.5 h-1.5 bg-gray-300 rounded-full mx-3" />
                 <Text className="text-gray-300 text-sm">Privacy Policy</Text>
             </View>
         </View>
