@@ -131,7 +131,7 @@ export default function CreateGroupModal({
       <TouchableOpacity
         className={`h-6 w-6 rounded-full border-2 items-center justify-center ${
           selectedMembers.includes(contact.id)
-            ? "border-orange-primary bg-orange-primary"
+            ? "border-green-primary bg-green-primary"
             : "border-gray-300 bg-white"
         }`}
         onPress={() => toggleMember(contact.id)}
@@ -219,14 +219,14 @@ export default function CreateGroupModal({
               onPress={() => setActiveTab("recent")}
               className={`flex-1 items-center border-b-2 py-3 ${
                 activeTab === "recent"
-                  ? "border-orange-primary"
+                  ? "border-green-primary"
                   : "border-transparent"
               }`}
             >
               <Text
                 className={`font-semibold ${
                   activeTab === "recent"
-                    ? "text-orange-primary"
+                    ? "text-green-primary"
                     : "text-gray-secondary"
                 }`}
               >
@@ -237,14 +237,14 @@ export default function CreateGroupModal({
               onPress={() => setActiveTab("contacts")}
               className={`flex-1 items-center border-b-2 py-3 ${
                 activeTab === "contacts"
-                  ? "border-orange-primary"
+                  ? "border-green-primary"
                   : "border-transparent"
               }`}
             >
               <Text
                 className={`font-semibold ${
                   activeTab === "contacts"
-                    ? "text-orange-primary"
+                    ? "text-green-primary"
                     : "text-gray-secondary"
                 }`}
               >
@@ -278,7 +278,7 @@ export default function CreateGroupModal({
             className={`items-center justify-center rounded-full py-3 ${
               groupName.trim() === "" || selectedMembers.length === 0
                 ? "bg-gray-border"
-                : "bg-orange-primary"
+                : "bg-green-primary"
             }`}
           >
             <Text

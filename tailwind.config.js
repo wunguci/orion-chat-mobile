@@ -13,6 +13,11 @@ module.exports = {
         "gray-border": "#EFF4F8",
         "gray-secondary": "#94a3b8",
         "blue-dark": "#0052cc",
+
+        "green-primary": "#226262",
+        "green-bg-heavy": "#D6F2F2",
+        "green-bg-light": "#F4FFFF",
+        "green-border-light": "#D6F2F2",
       },
     },
   },

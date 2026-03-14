@@ -192,7 +192,7 @@ export default function AddMemberModal({
                 <View
                   className={`h-6 w-6 rounded-full border-2 items-center justify-center ${
                     isSelected
-                      ? "bg-orange-primary border-orange-primary"
+                      ? "bg-green-primary border-green-primary"
                       : isAlreadyMember
                         ? "bg-gray-200 border-gray-300"
                         : "bg-white border-gray-300"
@@ -276,7 +276,7 @@ export default function AddMemberModal({
           <TouchableOpacity
             disabled={selectedUsers.length === 0}
             className={`flex-1 rounded-full py-3 ${
-              selectedUsers.length > 0 ? "bg-orange-primary" : "bg-gray-200"
+              selectedUsers.length > 0 ? "bg-green-primary" : "bg-gray-200"
             }`}
           >
             <Text
