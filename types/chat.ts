@@ -16,7 +16,23 @@ export type ChatItem = {
 
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
 
-export type MessageType = 'text' | 'image' | 'link_preview' | 'video_preview';
+export type MessageType =
+    | 'text'
+    | 'image'
+    | 'video'
+    | 'file'
+    | 'link_preview'
+    | 'video_preview';
+
+export interface AttachmentAsset {
+    uri: string;
+    name: string;
+    mimeType: string;
+    size?: number;
+    width?: number;
+    height?: number;
+    duration?: number; // for video, in milliseconds
+}
 
 export interface LinkPreview {
     url: string;
@@ -44,6 +60,15 @@ export interface Message {
     // image
     imageUri?: string;
     imageCaption?: string;
+    // video
+    videoUri?: string;
+    videoThumbnailUri?: string;
+    videoDuration?: number;
+    // file
+    fileUri?: string;
+    fileName?: string;
+    fileMimeType?: string;
+    fileSize?: number;
     // link preview
     linkPreview?: LinkPreview;
     // video preview

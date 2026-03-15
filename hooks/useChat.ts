@@ -1,4 +1,4 @@
-import { Message } from '@/types/chat';
+import { AttachmentAsset, Message, MessageType } from '@/types/chat';
 import { useCallback, useState } from 'react';
 
 // ── Mock generator ──────────────────────────────────────────
@@ -141,5 +141,70 @@ export function useChat(chatId: string) {
         [chatId],
     );
 
-    return { messages, inputText, setInputText, sendMessage, isSending };
+    const sendAttachment = useCallback(
+        (asset: AttachmentAsset) => {
+            const mimeType = asset.mimeType ?? '';
+            let type: MessageType = 'file';
+            if (mimeType.startsWith('image/')) type = 'image';
+            else if (mimeType.startsWith('video/')) type = 'video';
+
+            const baseMsg: Omit<
+                Message,
+                | 'imageUri'
+                | 'videoUri'
+                | 'fileUri'
+                | 'fileName'
+                | 'fileMimeType'
+                | 'fileSize'
+            > = {
+                id: Date.now().toString(),
+                chatId,
+                senderId: 'me',
+                type,
+                timestamp: new Date().toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                }),
+                status: 'sending',
+                isMine: true,
+            };
+
+            const newMsg: Message =
+                type === 'image'
+                    ? { ...baseMsg, imageUri: asset.uri }
+                    : type === 'video'
+                      ? {
+                            ...baseMsg,
+                            videoUri: asset.uri,
+                            videoDuration: asset.duration,
+                        }
+                      : {
+                            ...baseMsg,
+                            fileUri: asset.uri,
+                            fileName: asset.name,
+                            fileMimeType: asset.mimeType,
+                            fileSize: asset.size,
+                        };
+
+            setMessages((prev) => [...prev, newMsg]);
+
+            setTimeout(() => {
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m.id === newMsg.id ? { ...m, status: 'sent' } : m,
+                    ),
+                );
+            }, 800);
+        },
+        [chatId],
+    );
+
+    return {
+        messages,
+        inputText,
+        setInputText,
+        sendMessage,
+        sendAttachment,
+        isSending,
+    };
 }
