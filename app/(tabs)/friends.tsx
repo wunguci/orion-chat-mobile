@@ -1,11 +1,29 @@
-import { SectionHeader } from "@/components/common/SectionHeader";
-import { FriendRequestItem } from "@/components/friends/FriendRequestItem";
-import { RecentlyActiveItem } from "@/components/friends/RecentlyActiveItem";
-import { SuggestedFriendItem } from "@/components/friends/SuggestedFriendItem";
+import { Avatar } from "@/components/common/Avatar";
+import { FriendCategoryTabs } from "@/components/friends/FriendCategoryTabs";
+import { FriendRequestRow } from "@/components/friends/FriendRequestRow";
+import { FriendRow } from "@/components/friends/FriendRow";
+import { GroupInviteRow } from "@/components/friends/GroupInviteRow";
+import { GroupRow } from "@/components/friends/GroupRow";
+import { SearchUserRow } from "@/components/friends/SearchUserRow";
+import { friendApi } from "@/services/api/friend";
+import { presenceSocketService } from "@/services/websocket/presenceSocket";
+import type {
+  FriendCategory,
+  FriendItem,
+  FriendRequestItem,
+  GroupInviteItem,
+  GroupItem,
+  RecentlyActiveItem,
+  SearchUserItem,
+  SuggestedFriendItem,
+} from "@/types/friend";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   Text,
@@ -15,124 +33,302 @@ import {
 } from "react-native";
 
 export default function Friends() {
-  const router = useRouter();
+  const [activeCategory, setActiveCategory] =
+    useState<FriendCategory>("friends");
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Mock data - Pending Requests
-  const pendingRequests = [
-    {
-      id: "1",
-      name: "Con Zangg",
-      avatar:
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop",
-      mutualFriends: "Mutual friend with Sarah J.",
-    },
-    {
-      id: "2",
-      name: "Con Nhonn",
-      avatar:
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop",
-      mutualCount: 4,
-    },
-  ];
+  const [friends, setFriends] = useState<FriendItem[]>([]);
+  const [requests, setRequests] = useState<FriendRequestItem[]>([]);
+  const [groups, setGroups] = useState<GroupItem[]>([]);
+  const [groupInvites, setGroupInvites] = useState<GroupInviteItem[]>([]);
+  const [suggestions, setSuggestions] = useState<SuggestedFriendItem[]>([]);
+  const [recentlyActive, setRecentlyActive] = useState<RecentlyActiveItem[]>(
+    [],
+  );
+  const [searchResults, setSearchResults] = useState<SearchUserItem[]>([]);
 
-  // Mock data - Suggested Friends
-  const suggestedFriends = [
-    {
-      id: "3",
-      name: "Daniel Kim",
-      avatar:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop",
-      jobTitle: "Software Engineer at TechFlow",
-    },
-    {
-      id: "4",
-      name: "Elena Rodriguez",
-      avatar:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop",
-      jobTitle: "Product Designer",
-    },
-    {
-      id: "5",
-      name: "James Wilson",
-      avatar:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop",
-      jobTitle: "Creative Director",
-    },
-  ];
-
-  // Mock data - Recently Active
-  const recentlyActive = [
-    {
-      id: "6",
-      name: "Alex R.",
-      avatar:
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop",
-      timeAgo: "5m ago",
-      status: "online" as const,
-    },
-    {
-      id: "7",
-      name: "Maya T.",
-      avatar:
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop",
-      timeAgo: "12m ago",
-      status: "online" as const,
-    },
-    {
-      id: "8",
-      name: "Daniel K.",
-      avatar:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop",
-      timeAgo: "1h ago",
-      status: "online" as const,
-    },
-    {
-      id: "9",
-      name: "Elena R.",
-      avatar:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop",
-      timeAgo: "2h ago",
-      status: "online" as const,
-    },
-  ];
-
-  const handleAccept = (id: string) => {
-    console.log("Accepted friend request with id:", id);
+  const formatAgo = (iso: string) => {
+    const ms = Date.now() - new Date(iso).getTime();
+    const mins = Math.max(1, Math.floor(ms / 60000));
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
   };
 
-  const handleDecline = (id: string) => {
-    console.log("Declined friend request with id:", id);
+  useEffect(() => {
+    const bootstrap = async () => {
+      const candidates = [
+        await AsyncStorage.getItem("auth_user"),
+        await AsyncStorage.getItem("user"),
+        await AsyncStorage.getItem("current_user"),
+      ].filter(Boolean) as string[];
+
+      for (const raw of candidates) {
+        try {
+          const parsed = JSON.parse(raw);
+          const id = parsed?.id || parsed?.userId;
+          if (id) {
+            setCurrentUserId(String(id));
+            return;
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      const fallbackId = await AsyncStorage.getItem("userId");
+      if (fallbackId) {
+        setCurrentUserId(fallbackId);
+      }
+    };
+
+    void bootstrap();
+  }, []);
+
+  const loadData = useCallback(
+    async (isRefresh = false) => {
+      if (!currentUserId) return;
+
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      try {
+        setErrorMessage(null);
+        const [
+          friendsRes,
+          requestRes,
+          groupsRes,
+          groupInviteRes,
+          suggestionRes,
+          recentlyActiveRes,
+        ] = await Promise.all([
+          friendApi.getFriends(currentUserId),
+          friendApi.getIncomingFriendRequests(currentUserId),
+          friendApi.getMyGroups(currentUserId),
+          friendApi.getIncomingGroupInvites(currentUserId),
+          friendApi.getSuggestions(currentUserId),
+          friendApi.getRecentlyActive(currentUserId),
+        ]);
+
+        setFriends(
+          friendsRes.map((item) => ({
+            id: item.id,
+            name: item.fullName,
+            avatar: item.avatarUrl,
+            isOnline: item.isOnline,
+            subtext: item.isOnline ? "Online" : "Offline",
+          })),
+        );
+
+        setRequests(
+          requestRes.map((item) => ({
+            id: item.requestId,
+            senderId: item.sender.userId,
+            receiverId: item.receiver.userId,
+            name: item.sender.fullName,
+            avatar: item.sender.avatarUrl,
+            timeAgo: formatAgo(item.createdAt),
+            status: item.status,
+          })),
+        );
+
+        setGroups(groupsRes);
+        setGroupInvites(groupInviteRes);
+        setSuggestions(
+          suggestionRes.map((item) => ({
+            id: item.id,
+            name: item.fullName,
+            avatar: item.avatarUrl,
+            mutualGroupCount: item.mutualGroupCount,
+            mutualGroupNames: item.mutualGroupNames,
+          })),
+        );
+        setRecentlyActive(
+          recentlyActiveRes.map((item) => ({
+            id: item.id,
+            name: item.fullName,
+            avatar: item.avatarUrl,
+            isOnline: item.isOnline,
+          })),
+        );
+      } catch (error) {
+        console.error("Failed to load friend data", error);
+        setErrorMessage("Cannot load friend data. Pull to refresh to retry.");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [currentUserId],
+  );
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    void loadData(false);
+  }, [currentUserId, loadData]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const socket = presenceSocketService.connect(currentUserId);
+
+    const onOnline = ({ userId }: { userId: string }) => {
+      setFriends((prev) =>
+        prev.map((item) =>
+          item.id === userId
+            ? { ...item, isOnline: true, subtext: "Online" }
+            : item,
+        ),
+      );
+      setRecentlyActive((prev) =>
+        prev.map((item) =>
+          item.id === userId ? { ...item, isOnline: true } : item,
+        ),
+      );
+    };
+
+    const onOffline = ({ userId }: { userId: string }) => {
+      setFriends((prev) =>
+        prev.map((item) =>
+          item.id === userId
+            ? { ...item, isOnline: false, subtext: "Offline" }
+            : item,
+        ),
+      );
+      setRecentlyActive((prev) =>
+        prev.map((item) =>
+          item.id === userId ? { ...item, isOnline: false } : item,
+        ),
+      );
+    };
+
+    const onOnlineList = ({ users }: { users: string[] }) => {
+      const online = new Set(users);
+      setFriends((prev) =>
+        prev.map((item) => ({
+          ...item,
+          isOnline: online.has(item.id),
+          subtext: online.has(item.id) ? "Online" : "Offline",
+        })),
+      );
+    };
+
+    socket.on("presence:user-online", onOnline);
+    socket.on("presence:user-offline", onOffline);
+    socket.on("presence:online-list", onOnlineList);
+    socket.emit("presence:get-online");
+
+    return () => {
+      socket.off("presence:user-online", onOnline);
+      socket.off("presence:user-offline", onOffline);
+      socket.off("presence:online-list", onOnlineList);
+      presenceSocketService.disconnect();
+    };
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const rows = await friendApi.searchUsers(currentUserId, trimmed);
+        setSearchResults(rows);
+      } catch (error) {
+        console.error("Search users failed", error);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, currentUserId]);
+
+  const filteredFriends = useMemo(() => {
+    if (!searchQuery.trim()) return friends;
+    const keyword = searchQuery.toLowerCase();
+    return friends.filter((item) => item.name.toLowerCase().includes(keyword));
+  }, [friends, searchQuery]);
+
+  const handleAccept = async (id: string) => {
+    if (!currentUserId) return;
+    await friendApi.acceptFriendRequest(id, currentUserId);
+    setRequests((prev) => prev.filter((item) => item.id !== id));
+    const refreshed = await friendApi.getFriends(currentUserId);
+    setFriends(
+      refreshed.map((item) => ({
+        id: item.id,
+        name: item.fullName,
+        avatar: item.avatarUrl,
+        isOnline: item.isOnline,
+        subtext: item.isOnline ? "Online" : "Offline",
+      })),
+    );
   };
 
-  const handleAddFriend = (id: string) => {
-    console.log("Add friend with id:", id);
+  const handleDecline = async (id: string) => {
+    if (!currentUserId) return;
+    await friendApi.declineFriendRequest(id, currentUserId);
+    setRequests((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const handleRecentlyActivePress = (id: string) => {
-    console.log("View profile of:", id);
+  const handleAddFriend = async (receiverId: string) => {
+    if (!currentUserId) return;
+    await friendApi.sendFriendRequest(currentUserId, receiverId);
+    setSearchResults((prev) => prev.filter((item) => item.id !== receiverId));
+  };
+
+  const handleAcceptGroupInvite = async (inviteId: string) => {
+    if (!currentUserId) return;
+    await friendApi.acceptGroupInvite(inviteId, currentUserId);
+    setGroupInvites((prev) => prev.filter((item) => item.id !== inviteId));
+    const refreshedGroups = await friendApi.getMyGroups(currentUserId);
+    setGroups(refreshedGroups);
+  };
+
+  const handleDeclineGroupInvite = async (inviteId: string) => {
+    if (!currentUserId) return;
+    await friendApi.declineGroupInvite(inviteId, currentUserId);
+    setGroupInvites((prev) => prev.filter((item) => item.id !== inviteId));
   };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      {/* Header  */}
       <View className="border-b border-gray-200 bg-white px-4 pb-4 pt-12 flex-row items-center justify-between">
-        {/* <TouchableOpacity onPress={() => router.back()} >
-            <Ionicons name="arrow-back" size={24} color="#505050" />
-          </TouchableOpacity> */}
         <Text className="text-2xl font-bold text-gray-primary">Friends</Text>
         <TouchableOpacity>
           <Ionicons name="ellipsis-vertical" size={20} color="#505050" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView>
-        {/* Search bar  */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              void loadData(true);
+            }}
+            colors={["#00B14F"]}
+          />
+        }
+      >
         <View className="px-4 py-3">
           <View className="flex-row items-center bg-gray-light rounded-xl px-4 py-1">
             <Ionicons name="search" size={20} color="#94a3b8" />
             <TextInput
-              placeholder="Search friends or requests"
+              placeholder="Search friends, users..."
               value={searchQuery}
               onChangeText={setSearchQuery}
               className="flex-1 ml-2 text-base"
@@ -141,50 +337,190 @@ export default function Friends() {
           </View>
         </View>
 
-        {/* Pending requests  */}
-        <SectionHeader
-          title="Pending Requests"
-          badge={pendingRequests.length}
+        <FriendCategoryTabs
+          activeCategory={activeCategory}
+          onChange={setActiveCategory}
+          counts={{
+            friends: friends.length,
+            requests: requests.length,
+            groups: groups.length,
+            groupInvites: groupInvites.length,
+          }}
         />
-        {pendingRequests.map((request) => (
-          <FriendRequestItem
-            key={request.id}
-            request={request}
-            onAccept={handleAccept}
-            onDecline={handleDecline}
-          />
-        ))}
 
-        {/* Suggested for you  */}
-        <SectionHeader
-          title="Suggested for you"
-          actionText="See all"
-          onActionPress={() => console.log("See all")}
-        />
-        {suggestedFriends.map((friend) => (
-          <SuggestedFriendItem
-            key={friend.id}
-            friend={friend}
-            onAdd={handleAddFriend}
-          />
-        ))}
+        {loading && (
+          <View className="py-10 items-center">
+            <ActivityIndicator size="large" color="#00B14F" />
+          </View>
+        )}
 
-        {/* Recently Active */}
-        <SectionHeader title="Recently Active" />
+        {!loading && errorMessage && (
+          <View className="mx-4 mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+            <Text className="text-red-600">{errorMessage}</Text>
+          </View>
+        )}
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="px-2 py-2"
-        >
-          {recentlyActive.map((friend) => (
-            <RecentlyActiveItem
-              key={friend.id}
-              friend={friend}
-              onPress={handleRecentlyActivePress}
+        {!loading && searchResults.length > 0 && (
+          <View className="px-4 pb-4">
+            <Text className="text-base font-bold text-gray-primary mb-2">
+              Search users
+            </Text>
+            {searchResults.map((user) => (
+              <SearchUserRow
+                key={user.id}
+                user={user}
+                onAdd={(userId) => void handleAddFriend(userId)}
+              />
+            ))}
+          </View>
+        )}
+
+        {!loading && activeCategory === "friends" && (
+          <>
+            <View className="px-4 pb-2">
+              <Text className="text-lg font-bold text-gray-primary">
+                Friends
+              </Text>
+            </View>
+            {filteredFriends.map((friend) => (
+              <FriendRow key={friend.id} friend={friend} />
+            ))}
+
+            <View className="px-4 pt-5 pb-2">
+              <Text className="text-lg font-bold text-gray-primary">
+                Suggested by mutual groups
+              </Text>
+            </View>
+            {suggestions.map((friend) => (
+              <View
+                key={friend.id}
+                className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100"
+              >
+                <View className="flex-row items-center flex-1">
+                  <Avatar uri={friend.avatar} name={friend.name} size="md" />
+                  <View className="ml-3 flex-1">
+                    <Text className="text-base font-semibold text-gray-primary">
+                      {friend.name}
+                    </Text>
+                    <Text className="text-sm text-gray-text">
+                      {friend.mutualGroupCount} mutual groups
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => void handleAddFriend(friend.id)}
+                  className="bg-gray-light px-4 py-2 rounded-lg"
+                >
+                  <Text className="text-green-primary font-semibold">Add</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            <View className="px-4 pt-5 pb-2">
+              <Text className="text-lg font-bold text-gray-primary">
+                Recently Active
+              </Text>
+            </View>
+            <FlatList
+              data={recentlyActive}
+              keyExtractor={(item) => item.id}
+              horizontal
+              contentContainerStyle={{
+                paddingHorizontal: 12,
+                paddingBottom: 12,
+              }}
+              showsHorizontalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <View className="items-center mx-2">
+                  <Avatar
+                    uri={item.avatar}
+                    name={item.name}
+                    size="lg"
+                    showOnline={item.isOnline}
+                  />
+                  <Text
+                    className="text-sm font-medium text-gray-primary mt-2"
+                    numberOfLines={1}
+                  >
+                    {item.name}
+                  </Text>
+                </View>
+              )}
             />
-          ))}
-        </ScrollView>
+          </>
+        )}
+
+        {!loading && activeCategory === "requests" && (
+          <View>
+            {requests.map((request) => (
+              <FriendRequestRow
+                key={request.id}
+                request={request}
+                onAccept={(id) => void handleAccept(id)}
+                onDecline={(id) => void handleDecline(id)}
+              />
+            ))}
+          </View>
+        )}
+
+        {!loading && activeCategory === "groups" && (
+          <View>
+            {groups.map((group) => (
+              <GroupRow key={group.id} group={group} />
+            ))}
+          </View>
+        )}
+
+        {!loading && activeCategory === "group_invites" && (
+          <View>
+            {groupInvites.map((invite) => (
+              <GroupInviteRow
+                key={invite.id}
+                invite={invite}
+                onAccept={(inviteId) => void handleAcceptGroupInvite(inviteId)}
+                onDecline={(inviteId) =>
+                  void handleDeclineGroupInvite(inviteId)
+                }
+              />
+            ))}
+          </View>
+        )}
+
+        {!loading &&
+          !errorMessage &&
+          activeCategory === "friends" &&
+          filteredFriends.length === 0 && (
+            <View className="py-8 items-center">
+              <Text className="text-gray-text">No friends found.</Text>
+            </View>
+          )}
+
+        {!loading &&
+          !errorMessage &&
+          activeCategory === "requests" &&
+          requests.length === 0 && (
+            <View className="py-8 items-center">
+              <Text className="text-gray-text">No pending requests.</Text>
+            </View>
+          )}
+
+        {!loading &&
+          !errorMessage &&
+          activeCategory === "groups" &&
+          groups.length === 0 && (
+            <View className="py-8 items-center">
+              <Text className="text-gray-text">No groups yet.</Text>
+            </View>
+          )}
+
+        {!loading &&
+          !errorMessage &&
+          activeCategory === "group_invites" &&
+          groupInvites.length === 0 && (
+            <View className="py-8 items-center">
+              <Text className="text-gray-text">No group invites.</Text>
+            </View>
+          )}
       </ScrollView>
     </SafeAreaView>
   );
