@@ -115,6 +115,7 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen name="video-call" options={{ href: null }} />
     </Tabs>
   );
 }
