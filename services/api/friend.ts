@@ -4,10 +4,7 @@ import type {
   SearchUserItem,
 } from "@/types/friend";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const API_BASE_URL = (
-  process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000"
-).replace(/\/$/, "");
+import API_BASE_URL from "@/config/api";
 
 const buildUrl = (
   path: string,

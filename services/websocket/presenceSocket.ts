@@ -1,9 +1,9 @@
 import { io, Socket } from "socket.io-client";
+import API_BASE_URL from "@/config/api";
 
 const SOCKET_BASE_URL = (
   process.env.EXPO_PUBLIC_SOCKET_URL ||
-  process.env.EXPO_PUBLIC_API_URL ||
-  "http://localhost:3000"
+  API_BASE_URL
 )
   .replace(/\/$/, "")
   .replace(/\/presence$/, "");
