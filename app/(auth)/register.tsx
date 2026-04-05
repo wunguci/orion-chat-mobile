@@ -9,10 +9,15 @@ import {
     Text,
     TextInput,
     View,
+    Alert,
+    ActivityIndicator,
 } from 'react-native';
+import { sendOtp, verifyOtp, completeRegister } from '@/services/api/auth';
 
 export default function RegisterScreen() {
     const [step, setStep] = useState<1 | 2 | 3>(1);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     // Step 1
     const [phone, setPhone] = useState('');
@@ -37,6 +42,107 @@ export default function RegisterScreen() {
     const hasSpecial = /[!@#$%^&*(),.?"':{}|<>\[\]\\/~`_+=;-]/.test(password);
     const hasNumber = /\d/.test(password);
 
+    // Handler for step 1: Send OTP
+    const handleSendOtp = async () => {
+        setError(null);
+
+        if (!phone || phone.length < 10) {
+            setError('Phone number must be at least 10 digits');
+            return;
+        }
+
+        if (!password || password.length < 8) {
+            setError('Password must be at least 8 characters');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await sendOtp(phone);
+            setStep(2);
+            setError(null);
+        } catch (err: any) {
+            setError(err.message || 'Failed to send OTP');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handler for step 2: Verify OTP
+    const handleVerifyOtp = async () => {
+        setError(null);
+
+        const otpCode = otp.join('');
+        if (otpCode.length !== 6) {
+            setError('Please enter a 6-digit OTP');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await verifyOtp(phone, otpCode);
+            setStep(3);
+            setError(null);
+        } catch (err: any) {
+            setError(err.message || 'Invalid OTP');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handler for step 3: Complete registration
+    const handleCompleteRegister = async () => {
+        setError(null);
+
+        if (!fullName) {
+            setError('Please enter your full name');
+            return;
+        }
+
+        if (!dob) {
+            setError('Please select your date of birth');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            // Convert display date back to ISO format
+            const birthDate = date.toISOString().split('T')[0];
+
+            const registrationData = {
+                phoneNumber: phone,
+                password: password,
+                fullName: fullName,
+                birthDate: birthDate,
+                gender: gender.toLowerCase() as 'male' | 'female' | 'other',
+            };
+
+            console.log(
+                '[handleCompleteRegister] Sending data:',
+                registrationData,
+            );
+
+            await completeRegister(registrationData);
+
+            // Success - go to login
+            Alert.alert('Success', 'Registration completed! Please log in.', [
+                {
+                    text: 'OK',
+                    onPress: () => router.replace('/login'),
+                },
+            ]);
+        } catch (err: any) {
+            setError(err.message || 'Failed to complete registration');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleOtpChange = (value: string, index: number) => {
         const newOtp = [...otp];
         newOtp[index] = value;
@@ -57,6 +163,7 @@ export default function RegisterScreen() {
 
         if (selectedDate) {
             setDate(selectedDate);
+            // Format display text
             const formatted = selectedDate.toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
@@ -424,36 +531,58 @@ export default function RegisterScreen() {
 
             {/* Fixed Button at Bottom */}
             <View className="px-6 pb-8 pt-4 bg-white border-t border-gray-100">
+                {/* Error message */}
+                {error && (
+                    <View className="mb-4 p-3 bg-red-100 rounded-lg border border-red-300">
+                        <Text className="text-red-700 text-sm">{error}</Text>
+                    </View>
+                )}
+
                 {step === 1 && (
                     <Pressable
-                        onPress={() => setStep(2)}
-                        className="bg-[#2DB5B0] py-4 rounded-full items-center"
+                        onPress={handleSendOtp}
+                        disabled={loading}
+                        className={`py-4 rounded-full items-center ${loading ? 'bg-gray-300' : 'bg-[#2DB5B0]'}`}
                     >
-                        <Text className="text-white text-lg font-semibold">
-                            Send OTP
-                        </Text>
+                        {loading ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <Text className="text-white text-lg font-semibold">
+                                Send OTP
+                            </Text>
+                        )}
                     </Pressable>
                 )}
 
                 {step === 2 && (
                     <Pressable
-                        onPress={() => setStep(3)}
-                        className="bg-[#2DB5B0] py-4 rounded-full items-center"
+                        onPress={handleVerifyOtp}
+                        disabled={loading}
+                        className={`py-4 rounded-full items-center ${loading ? 'bg-gray-300' : 'bg-[#2DB5B0]'}`}
                     >
-                        <Text className="text-white text-lg font-semibold">
-                            Next
-                        </Text>
+                        {loading ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <Text className="text-white text-lg font-semibold">
+                                Verify OTP
+                            </Text>
+                        )}
                     </Pressable>
                 )}
 
                 {step === 3 && (
                     <Pressable
-                        onPress={() => router.replace('/login')}
-                        className="bg-[#2DB5B0] py-4 rounded-full items-center"
+                        onPress={handleCompleteRegister}
+                        disabled={loading}
+                        className={`py-4 rounded-full items-center ${loading ? 'bg-gray-300' : 'bg-[#2DB5B0]'}`}
                     >
-                        <Text className="text-white text-lg font-semibold">
-                            Complete
-                        </Text>
+                        {loading ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <Text className="text-white text-lg font-semibold">
+                                Complete
+                            </Text>
+                        )}
                     </Pressable>
                 )}
             </View>
