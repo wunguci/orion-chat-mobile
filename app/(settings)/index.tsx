@@ -20,9 +20,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import SettingsItem from "../../components/setting/SettingsItem";
-import SettingsSection from "../../components/setting/SettingsSection";
-import { useThemeColors } from "../../hooks/useThemeColors";
+import SettingsItem from "@/components/setting/SettingsItem";
+import SettingsSection from "@/components/setting/SettingsSection";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 export default function Setting() {
   const router = useRouter();
@@ -62,7 +62,7 @@ export default function Setting() {
   return (
     <View className="flex-1 bg-gray-50">
       {/* Header */}
-      <View className="border-b border-gray-200 bg-white px-4 pb-4 pt-12">
+      <View className="border-b border-gray-200 bg-white px-4 pb-4 pt-4">
         <Text className="text-2xl font-bold text-orange-primary">Cài đặt</Text>
       </View>
 
