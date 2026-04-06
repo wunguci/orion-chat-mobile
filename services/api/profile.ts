@@ -1,19 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform } from "react-native";
-
-const resolveBaseUrl = (baseUrl: string) => {
-  if (Platform.OS === "android" && baseUrl.includes("localhost")) {
-    return baseUrl.replace("localhost", "10.0.2.2");
-  }
-  return baseUrl;
-};
-
-export const API_BASE_URL = resolveBaseUrl(
-  (process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000").replace(
-    /\/$/,
-    "",
-  ),
-);
+import API_BASE_URL from "../../config/api";
 
 // Get auth token from storage keys used across the app.
 const getAuthToken = async () => {
@@ -83,6 +69,32 @@ export interface UpdateProfileFiles {
   };
 }
 
+const buildNetworkErrorMessage = (url: string) =>
+  [
+    "Network request failed khi gọi API update profile.",
+    `Backend URL hiện tại: ${url}`,
+    "Nếu bạn đang dùng iPhone thật (không cùng Wi-Fi với máy dev), hãy cấu hình EXPO_PUBLIC_API_URL trỏ tới URL public (ví dụ ngrok) hoặc IP LAN của máy chạy backend.",
+  ].join(" ");
+
+const toApiError = async (response: Response) => {
+  let message = `HTTP ${response.status}`;
+  try {
+    const data = await response.json();
+    if (data && typeof data === "object" && "message" in data) {
+      if (typeof data.message === "string") {
+        message = data.message;
+      } else if (Array.isArray(data.message)) {
+        message = data.message.join(". ");
+      }
+    }
+  } catch {
+    const text = await response.text().catch(() => "");
+    if (text) message = text;
+  }
+
+  throw new Error(message);
+};
+
 export const profileApi = {
   async getProfile() {
     const token = await getAuthToken();
@@ -97,12 +109,17 @@ export const profileApi = {
       });
 
       if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `HTTP ${response.status}`);
+        await toApiError(response);
       }
 
       return await response.json();
     } catch (error) {
+      if (
+        error instanceof TypeError &&
+        /network request failed/i.test(error.message)
+      ) {
+        throw new Error(buildNetworkErrorMessage(url));
+      }
       throw error;
     }
   },
@@ -178,12 +195,17 @@ export const profileApi = {
       });
 
       if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `HTTP ${response.status}`);
+        await toApiError(response);
       }
 
       return await response.json();
     } catch (error) {
+      if (
+        error instanceof TypeError &&
+        /network request failed/i.test(error.message)
+      ) {
+        throw new Error(buildNetworkErrorMessage(url));
+      }
       throw error;
     }
   },
