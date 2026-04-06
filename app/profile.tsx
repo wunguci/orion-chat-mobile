@@ -1,5 +1,6 @@
 import SettingsHeader from "@/components/setting/SettingsHeader";
 import { useAuthUser } from "@/hooks/useAuth";
+import { API_BASE_URL } from "@/services/api/profile";
 import React, { useMemo } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -9,29 +10,52 @@ import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 const DEFAULT_COVER = "https://via.placeholder.com/1200x480?text=Cover+Image";
 const DEFAULT_AVATAR = "https://via.placeholder.com/256x256?text=Avatar";
 
+const resolveImageUrl = (value: string | undefined, fallback: string) => {
+  if (!value) return fallback;
+  if (/^https?:\/\//i.test(value)) return value;
+
+  const normalizedPath = value.startsWith("/") ? value : `/${value}`;
+  return `${API_BASE_URL}${normalizedPath}`;
+};
+
 const SkeletonBlock = ({ className }: { className: string }) => (
   <View className={`bg-gray-200 ${className}`} />
 );
 
+type ProfileViewModel = {
+  name: string;
+  bio: string;
+  coverImage: string;
+  avatar: string;
+  birthdate?: string;
+  birthdayLabel: string;
+  joined?: string;
+  memberStatus: string;
+  interests: string[];
+  stats?: {
+    friends?: number;
+    photos?: number;
+    videos?: number;
+  };
+};
+
 export default function ProfileScreen() {
   const { user, loading, error, reload } = useAuthUser();
 
-  const profile = useMemo(() => {
+  const profile = useMemo<ProfileViewModel | null>(() => {
     if (!user) return null;
 
     return {
-      name: user.fullName || user.username || "Unknown User",
-      bio: user.bio || "No bio yet",
-      coverImage: user.coverUrl || DEFAULT_COVER,
-      avatar: user.avatarUrl || DEFAULT_AVATAR,
-      address: user.address,
-      currentLocation: user.currentLocation,
-      birthdate: user.birthdate,
-      birthdayLabel: user.birthdayLabel || "Birthday",
-      joined: user.joinedAt,
-      memberStatus: user.memberStatus || "Member",
-      interests: user.interests || [],
-      stats: user.stats || {},
+      name: user.fullName || user.phoneNumber || "Unknown User",
+      bio: user.email || "No bio yet",
+      coverImage: resolveImageUrl(user.coverImage, DEFAULT_COVER),
+      avatar: resolveImageUrl(user.avatarUrl, DEFAULT_AVATAR),
+      birthdate: user.birthDate,
+      birthdayLabel: "Birthday",
+      joined: user.createdAt,
+      memberStatus: user.isActive ? "Active member" : "Member",
+      interests: [] as string[],
+      stats: undefined,
     };
   }, [user]);
 
@@ -48,14 +72,6 @@ export default function ProfileScreen() {
       value: string;
       label?: string;
     }> = [];
-
-    if (profile.address) {
-      rows.push({
-        icon: "location-on",
-        value: profile.address,
-        label: profile.currentLocation,
-      });
-    }
 
     if (profile.birthdate) {
       rows.push({
@@ -208,7 +224,7 @@ export default function ProfileScreen() {
                 </Text>
 
                 <View className="flex-row flex-wrap gap-2">
-                  {profile.interests.map((item, index) => (
+                  {profile.interests.map((item: string, index: number) => (
                     <View
                       key={index}
                       className="bg-cyan-50 px-4 py-2 rounded-full border border-cyan-200"
