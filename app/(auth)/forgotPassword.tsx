@@ -1,10 +1,25 @@
 import { Eye, EyeOff } from '@/components/common/Icons';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import {
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
+    Alert,
+    ActivityIndicator,
+} from 'react-native';
+import {
+    sendOtpForgetPassword,
+    verifyOtpForgetPassword,
+    resetPassword,
+} from '@/services/api/auth';
 
 export default function ForgotPasswordScreen() {
     const [step, setStep] = useState<1 | 2 | 3>(1);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     // Step 1
     const [phone, setPhone] = useState('');
@@ -53,6 +68,106 @@ export default function ForgotPasswordScreen() {
                 setOtp(newOtp);
                 otpInputs.current[index - 1]?.focus();
             }
+        }
+    };
+
+    // Handler for step 1: Send OTP
+    const handleSendOtp = async () => {
+        setError(null);
+
+        if (!phone || phone.length < 10) {
+            setError('Phone number must be at least 10 digits');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await sendOtpForgetPassword(phone);
+            setStep(2);
+            setError(null);
+            console.log('[handleSendOtp] OTP sent successfully');
+        } catch (err: any) {
+            setError(err.message || 'Failed to send OTP');
+            console.error('[handleSendOtp] Error:', err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handler for step 2: Verify OTP
+    const handleVerifyOtp = async () => {
+        setError(null);
+
+        const otpCode = otp.join('');
+        if (otpCode.length !== 6) {
+            setError('Please enter a 6-digit OTP');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await verifyOtpForgetPassword(phone, otpCode);
+            setStep(3);
+            setError(null);
+            console.log('[handleVerifyOtp] OTP verified successfully');
+        } catch (err: any) {
+            setError(err.message || 'Invalid OTP');
+            console.error('[handleVerifyOtp] Error:', err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handler for step 3: Reset Password
+    const handleResetPassword = async () => {
+        setError(null);
+
+        if (!newPassword) {
+            setError('Please enter your new password');
+            return;
+        }
+
+        if (!confirmPassword) {
+            setError('Please confirm your password');
+            return;
+        }
+
+        if (newPassword.length < 8) {
+            setError('Password must be at least 8 characters');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const otpCode = otp.join('');
+            await resetPassword({
+                phoneNumber: phone,
+                otp: otpCode,
+                newPassword: newPassword,
+                confirmPassword: confirmPassword,
+            });
+
+            console.log('[handleResetPassword] Password reset successfully');
+            Alert.alert(
+                'Success',
+                'Password reset successfully! Please log in.',
+                [
+                    {
+                        text: 'OK',
+                        onPress: () => router.replace('/login' as any),
+                    },
+                ],
+            );
+        } catch (err: any) {
+            setError(err.message || 'Failed to reset password');
+            console.error('[handleResetPassword] Error:', err.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -316,35 +431,50 @@ export default function ForgotPasswordScreen() {
 
             {/* Fixed Button at Bottom */}
             <View className="px-6 pb-8 pt-4 bg-white border-t border-gray-100">
+                {/* Error Message */}
+                {error && (
+                    <View className="bg-red-100 border border-red-300 rounded-lg p-3 mb-4">
+                        <Text className="text-red-700 text-sm font-semibold">
+                            {error}
+                        </Text>
+                    </View>
+                )}
+
                 {step === 1 && (
                     <Pressable
-                        onPress={() => setStep(2)}
-                        className="bg-[#2DB5B0] py-4 rounded-full items-center"
+                        onPress={handleSendOtp}
+                        disabled={loading}
+                        className={`${loading ? 'bg-gray-400' : 'bg-[#2DB5B0]'} py-4 rounded-full items-center flex-row justify-center gap-2`}
                     >
+                        {loading && <ActivityIndicator color="white" />}
                         <Text className="text-white text-lg font-semibold">
-                            Send OTP
+                            {loading ? 'Sending...' : 'Send OTP'}
                         </Text>
                     </Pressable>
                 )}
 
                 {step === 2 && (
                     <Pressable
-                        onPress={() => setStep(3)}
-                        className="bg-[#2DB5B0] py-4 rounded-full items-center"
+                        onPress={handleVerifyOtp}
+                        disabled={loading}
+                        className={`${loading ? 'bg-gray-400' : 'bg-[#2DB5B0]'} py-4 rounded-full items-center flex-row justify-center gap-2`}
                     >
+                        {loading && <ActivityIndicator color="white" />}
                         <Text className="text-white text-lg font-semibold">
-                            Verify
+                            {loading ? 'Verifying...' : 'Verify'}
                         </Text>
                     </Pressable>
                 )}
 
                 {step === 3 && (
                     <Pressable
-                        onPress={() => router.replace('/login' as any)}
-                        className="bg-[#2DB5B0] py-4 rounded-full items-center"
+                        onPress={handleResetPassword}
+                        disabled={loading}
+                        className={`${loading ? 'bg-gray-400' : 'bg-[#2DB5B0]'} py-4 rounded-full items-center flex-row justify-center gap-2`}
                     >
+                        {loading && <ActivityIndicator color="white" />}
                         <Text className="text-white text-lg font-semibold">
-                            Reset Password
+                            {loading ? 'Resetting...' : 'Reset Password'}
                         </Text>
                     </Pressable>
                 )}
