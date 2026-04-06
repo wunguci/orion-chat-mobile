@@ -29,12 +29,12 @@ function VisibilitySelector({ value, onChange }: VisibilitySelectorProps) {
           onPress={() => onChange(option.key)}
           className={`flex-1 items-center rounded-2xl border-2 py-4 ${
             value === option.key
-              ? "border-orange-primary bg-orange-50"
-              : "border-orange-border-light bg-white justify-center"
+              ? "border-green-primary bg-green-50"
+              : "border-green-border-light bg-white justify-center"
           }`}
         >
           {value === option.key && (
-            <View className="mb-2 h-6 w-6 items-center justify-center rounded-full bg-orange-primary">
+            <View className="mb-2 h-6 w-6 items-center justify-center rounded-full bg-green-primary">
               <Check size={16} color="white" strokeWidth={3} />
             </View>
           )}
@@ -121,7 +121,7 @@ export default function PrivacySecurity() {
           </Text>
 
           {/* Read Receipts */}
-          <View className="mb-4 rounded-2xl bg-white border border-orange-border-light p-4">
+          <View className="mb-4 rounded-2xl bg-white border border-green-border-light p-4">
             <View className="flex-row items-center justify-between">
               <View className="flex-1">
                 <Text className="text-base font-semibold text-gray-primary">
@@ -142,10 +142,10 @@ export default function PrivacySecurity() {
           </View>
 
           {/* Blocked Contacts */}
-          <TouchableOpacity className="mb-4 flex-row items-center justify-between rounded-2xl border border-orange-border-light bg-white p-4">
+          <TouchableOpacity className="mb-4 flex-row items-center justify-between rounded-2xl border border-green-border-light bg-white p-4">
             <View className="flex-row items-center">
-              <View className="mr-4 h-12 w-12 items-center justify-center rounded-full bg-orange-100">
-                <Ban size={20} color={colors.orangePrimary}></Ban>
+              <View className="mr-4 h-12 w-12 items-center justify-center rounded-full bg-green-100">
+                <Ban size={20} color={colors.greenPrimary}></Ban>
               </View>
               <View>
                 <Text className="text-base font-semibold text-gray-primary">
@@ -156,14 +156,14 @@ export default function PrivacySecurity() {
                 </Text>
               </View>
             </View>
-            <ChevronRight size={24} className="text-orange-primary" />
+            <ChevronRight size={24} className="text-green-primary" />
           </TouchableOpacity>
 
           {/* Two-step Verification */}
-          <View className="mb-6 flex-row items-center justify-between rounded-2xl border border-orange-border-light bg-white p-4">
+          <View className="mb-6 flex-row items-center justify-between rounded-2xl border border-green-border-light bg-white p-4">
             <View className="flex-row items-center shrink">
-              <View className="mr-4 h-12 w-12 items-center justify-center rounded-full bg-orange-100">
-                <Shield size={20} color={colors.orangePrimary} />
+              <View className="mr-4 h-12 w-12 items-center justify-center rounded-full bg-green-100">
+                <Shield size={20} color={colors.greenPrimary} />
               </View>
               <View className="flex-1">
                 <Text className="text-base font-semibold text-gray-primary">
@@ -174,7 +174,7 @@ export default function PrivacySecurity() {
                 </Text>
               </View>
             </View>
-            <TouchableOpacity className="ml-auto rounded-full bg-orange-primary px-6 py-3">
+            <TouchableOpacity className="ml-auto rounded-full bg-green-primary px-6 py-3">
               <Text className="text-base font-semibold text-white">Enable</Text>
             </TouchableOpacity>
           </View>

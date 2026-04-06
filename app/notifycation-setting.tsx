@@ -68,7 +68,7 @@ export default function NotificationsScreen() {
         <SettingsSection title="MESSAGE NOTIFICATIONS">
           <View className="overflow-hidden rounded-2xl bg-white border border-gray-border">
             <SettingsItem
-              icon={<Monitor size={20} color={colors.orangePrimary} />}
+              icon={<Monitor size={20} color={colors.greenPrimary} />}
               title="Show Desktop Notifications"
               subtitle="Receive a pop-up alert when you get a direct message"
               toggleValue={showDesktop}
@@ -76,7 +76,7 @@ export default function NotificationsScreen() {
             />
             <View className="h-px bg-gray-100" />
             <SettingsItem
-              icon={<Eye size={20} color={colors.orangePrimary} />}
+              icon={<Eye size={20} color={colors.greenPrimary} />}
               title="Show Message Preview"
               subtitle="Display the sender and message snippet in alerts"
               toggleValue={showPreview}
@@ -84,7 +84,7 @@ export default function NotificationsScreen() {
             />
             <View className="h-px bg-gray-100" />
             <SettingsItem
-              icon={<Volume2 size={20} color={colors.orangePrimary} />}
+              icon={<Volume2 size={20} color={colors.greenPrimary} />}
               title="Notification Sound"
               subtitle="Choose the sound for incoming direct messages"
               isRingtone={true}
@@ -100,7 +100,7 @@ export default function NotificationsScreen() {
         <SettingsSection title="GROUP NOTIFICATIONS">
           <View className="overflow-hidden rounded-2xl bg-white border border-gray-border">
             <SettingsItem
-              icon={<FolderOpen size={20} color={colors.orangePrimary} />}
+              icon={<FolderOpen size={20} color={colors.greenPrimary} />}
               title="Enable Group Notifications"
               subtitle="Receive notifications for activity in group chats"
               toggleValue={enableGroupNotif}
@@ -108,7 +108,7 @@ export default function NotificationsScreen() {
             />
             <View className="h-px bg-gray-100" />
             <SettingsItem
-              icon={<AtSign size={20} color={colors.orangePrimary} />}
+              icon={<AtSign size={20} color={colors.greenPrimary} />}
               title="Mentions Only"
               subtitle="Only notify me if someone @mentions me in a group"
               toggleValue={mentionsOnly}
@@ -121,7 +121,7 @@ export default function NotificationsScreen() {
         <SettingsSection title="CALL">
           <View className="overflow-hidden rounded-2xl bg-white border border-gray-border">
             <SettingsItem
-              icon={<Bell size={20} color={colors.orangePrimary} />}
+              icon={<Bell size={20} color={colors.greenPrimary} />}
               title="Ringtone"
               subtitle="Sound played during incoming voice and video call"
               isRingtone={true}
@@ -132,7 +132,7 @@ export default function NotificationsScreen() {
             />
             <View className="h-px bg-gray-100" />
             <SettingsItem
-              icon={<Minus size={20} color={colors.orangePrimary} />}
+              icon={<Minus size={20} color={colors.greenPrimary} />}
               title="Incoming Call Window"
               subtitle="Show call controls even when the app is in background"
               toggleValue={incomingCallWindow}

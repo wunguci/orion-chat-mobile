@@ -57,7 +57,7 @@ export default function AppearanceScreen() {
       <ScrollView className="flex-1 pb-4 bg-gray-50">
         {/* Theme Mode Section */}
         <SettingsSection title="THEME MODE">
-          <View className="overflow-hidden rounded-3xl bg-orange-bg-light border border-orange-border-light p-6">
+          <View className="overflow-hidden rounded-3xl bg-green-bg-light border border-green-border-light p-6">
             <View className="flex-row gap-4">
               {themeOptions.map((option) => (
                 <TouchableOpacity
@@ -65,7 +65,7 @@ export default function AppearanceScreen() {
                   onPress={() => setThemeMode(option.value)}
                   className={`flex-1 items-center rounded-3xl py-8 px-2 ${
                     themeMode === option.value
-                      ? "border border-orange-primary bg-white"
+                      ? "border border-green-primary bg-white"
                       : "border border-gray-border bg-white"
                   }`}
                 >
@@ -73,8 +73,8 @@ export default function AppearanceScreen() {
                     size={24}
                     color={
                       themeMode === option.value
-                        ? colors.orangePrimary
-                        : colors.orangeBgHeavy
+                        ? colors.greenPrimary
+                        : colors.greenBgHeavy
                     }
                   />
                   <Text
@@ -97,7 +97,7 @@ export default function AppearanceScreen() {
           <View className="mb-4 flex-row items-center justify-between px-4">
             <View />
             <TouchableOpacity>
-              <Text className="text-base font-semibold text-orange-primary">
+              <Text className="text-base font-semibold text-green-primary">
                 See all
               </Text>
             </TouchableOpacity>
@@ -112,7 +112,7 @@ export default function AppearanceScreen() {
                 <View
                   className={`h-56 w-full rounded-3xl ${
                     selectedWallpaper === wallpaper.id
-                      ? "border-2 border-orange-primary"
+                      ? "border-2 border-green-primary"
                       : "border-2 border-gray-secondary"
                   }`}
                   style={{ backgroundColor: wallpaper.color }}
@@ -155,14 +155,14 @@ export default function AppearanceScreen() {
         {/* Text Size Section */}
         <SettingsSection title="TEXT SIZE">
           <View className="overflow-hidden rounded-3xl p-2">
-            <View className="flex-row gap-3 border border-orange-border-light rounded-3xl px-3 py-3 bg-orange-bg-light">
+            <View className="flex-row gap-3 border border-green-border-light rounded-3xl px-3 py-3 bg-green-bg-light">
               {textSizeOptions.map((option) => (
                 <TouchableOpacity
                   key={option.value}
                   onPress={() => setTextSize(option.value)}
                   className={`flex-1 items-center rounded-full py-2 ${
                     textSize === option.value
-                      ? "border border-orange-border-light bg-white"
+                      ? "border border-green-border-light bg-white"
                       : ""
                   }`}
                   style={
@@ -199,8 +199,8 @@ export default function AppearanceScreen() {
         {/* Reset Button */}
         <View className="mt-8 px-4">
           <TouchableOpacity className="flex-row items-center gap-2">
-            <RotateCcw size={22} color={colors.orangePrimary} />
-            <Text className="text-base font-semibold text-orange-primary">
+            <RotateCcw size={22} color={colors.greenPrimary} />
+            <Text className="text-base font-semibold text-green-primary">
               Reset to default settings
             </Text>
           </TouchableOpacity>
@@ -213,7 +213,7 @@ export default function AppearanceScreen() {
               Cancel
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity className="rounded-full bg-orange-primary py-4">
+          <TouchableOpacity className="rounded-full bg-green-primary py-4">
             <Text className="text-center text-lg font-bold text-white">
               Save Changes
             </Text>

@@ -29,21 +29,21 @@ export default function DevicesScreen() {
       location: "San Francisco, USA",
       ip: "192.168.1.1",
       isCurrent: true,
-      icon: <Laptop size={24} color="#FF6B3D" />,
+      icon: <Laptop size={24} color="#226262" />,
     },
     {
       id: "2",
       name: "iPhone 15 Pro",
       location: "London, UK",
       lastActive: "2 hours ago",
-      icon: <Smartphone size={24} color="#FF6B3D" />,
+      icon: <Smartphone size={24} color="#226262" />,
     },
     {
       id: "3",
       name: "Window Desktop - Edge",
       location: "New York, USA",
       lastActive: "Oct 24, 2024",
-      icon: <Monitor size={24} color="#FF6B3D" />,
+      icon: <Monitor size={24} color="#226262" />,
     },
   ]);
 
@@ -61,7 +61,7 @@ export default function DevicesScreen() {
 
         {/* Logout from all devices */}
         <View className="px-4">
-          <TouchableOpacity className="rounded-3xl bg-orange-primary py-4">
+          <TouchableOpacity className="rounded-3xl bg-green-primary py-4">
             <Text className="text-center font-semibold text-white">
               Log out from all other devices
             </Text>
@@ -70,10 +70,10 @@ export default function DevicesScreen() {
 
         {/* Link New Device */}
         <SettingsSection title="">
-          <View className="bg-white py-5 px-6 flex flex-col gap-5 border border-orange-border-light rounded-2xl">
+          <View className="bg-white py-5 px-6 flex flex-col gap-5 border border-green-border-light rounded-2xl">
             <View className="flex-row items-center gap-3">
-              <View className="rounded-xl bg-orange-100 p-3">
-                <QrCode size={24} color="#FF6B3D" />
+              <View className="rounded-xl bg-green-100 p-3">
+                <QrCode size={24} color="#226262" />
               </View>
               <View className="flex-1">
                 <Text className="font-semibold text-gray-primary">
@@ -84,7 +84,7 @@ export default function DevicesScreen() {
                 </Text>
               </View>
             </View>
-            <TouchableOpacity className="bg-orange-primary py-3 rounded-lg">
+            <TouchableOpacity className="bg-green-primary py-3 rounded-lg">
               <Text className="text-center font-semibold text-white">
                 Link via QR Code
               </Text>
@@ -98,10 +98,10 @@ export default function DevicesScreen() {
             {devices.map((device, index) => (
               <TouchableOpacity
                 key={device.id}
-                className="flex-row items-center justify-between px-4 py-4 bg-orange-bg-light border border-orange-border-light rounded-2xl"
+                className="flex-row items-center justify-between px-4 py-4 bg-green-bg-light border border-green-border-light rounded-2xl"
               >
                 <View className="flex-1 flex-row items-center gap-1">
-                  <View className="rounded-lg bg-orange-100 p-2">
+                  <View className="rounded-lg bg-green-100 p-2">
                     {device.icon}
                   </View>
                   <View className="ml-3 flex-1">
@@ -125,14 +125,14 @@ export default function DevicesScreen() {
                 </View>
 
                 {device.isCurrent ? (
-                  <View className="ml-2 rounded-full bg-orange-primary px-3 py-1">
+                  <View className="ml-2 rounded-full bg-green-primary px-3 py-1">
                     <Text className="text-xs font-semibold text-white">
                       Current
                     </Text>
                   </View>
                 ) : (
                   <TouchableOpacity className="ml-2">
-                    <Text className="font-semibold text-orange-primary">
+                    <Text className="font-semibold text-green-primary">
                       Logout
                     </Text>
                   </TouchableOpacity>

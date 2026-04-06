@@ -77,7 +77,7 @@ export default function ProfileSettings() {
         {/* Avatar Section */}
         <View className="flex flex-col gap-4 items-center py-8">
           <View className="relative">
-            <View className="h-32 w-32 overflow-hidden rounded-full bg-orange-bg-heavy">
+            <View className="h-32 w-32 overflow-hidden rounded-full bg-green-bg-heavy">
               <Image
                 source={{ uri: avatar }}
                 className="h-full w-full"
@@ -86,7 +86,7 @@ export default function ProfileSettings() {
             </View>
             <TouchableOpacity
               onPress={handleUploadAvatar}
-              className="absolute bottom-0 right-0 h-10 w-10 items-center justify-center rounded-full bg-orange-primary"
+              className="absolute bottom-0 right-0 h-10 w-10 items-center justify-center rounded-full bg-green-primary"
             >
               <Camera size={20} color="#FFFFFF" />
             </TouchableOpacity>
@@ -104,7 +104,7 @@ export default function ProfileSettings() {
             <View className="flex-row justify-center items-center gap-3">
               <TouchableOpacity
                 onPress={handleUploadAvatar}
-                className="rounded-[12px] bg-orange-primary px-6 py-3"
+                className="rounded-[12px] bg-green-primary px-6 py-3"
               >
                 <Text className="text-sm font-semibold text-white">
                   Upload New
@@ -132,7 +132,7 @@ export default function ProfileSettings() {
             <TextInput
               value={displayName}
               onChangeText={setDisplayName}
-              className="rounded-lg border border-orange-border-light bg-orange-bg-light px-4 py-3 text-gray-primary"
+              className="rounded-lg border border-green-border-light bg-green-bg-light px-4 py-3 text-gray-primary"
               placeholder="Enter your display name"
               placeholderTextColor={colors.graySecondary}
             />
@@ -146,7 +146,7 @@ export default function ProfileSettings() {
             <TextInput
               value={username}
               onChangeText={setUsername}
-              className="rounded-lg border border-orange-border-light bg-orange-bg-light px-4 py-3 text-gray-primary"
+              className="rounded-lg border border-green-border-light bg-green-bg-light px-4 py-3 text-gray-primary"
               placeholder="Enter your username"
               placeholderTextColor={colors.graySecondary}
               autoCapitalize="none"
@@ -161,7 +161,7 @@ export default function ProfileSettings() {
             <TextInput
               value={statusMessage}
               onChangeText={setStatusMessage}
-              className="rounded-lg border border-orange-border-light bg-orange-bg-light px-4 py-3 text-gray-primary"
+              className="rounded-lg border border-green-border-light bg-green-bg-light px-4 py-3 text-gray-primary"
               placeholder="Enter your status message"
               placeholderTextColor={colors.graySecondary}
               multiline
@@ -174,10 +174,10 @@ export default function ProfileSettings() {
         {/* Preferences Section */}
         <SettingsSection title="Preferences">
           {/* Push Notifications */}
-          <View className="mb-3 flex-row items-center justify-between rounded-xl bg-orange-bg-light p-4 border border-orange-border-light">
+          <View className="mb-3 flex-row items-center justify-between rounded-xl bg-green-bg-light p-4 border border-green-border-light">
             <View className="flex-1 flex-row items-center">
-              <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-orange-bg-heavy">
-                <Bell size={20} color={colors.orangePrimary} />
+              <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-green-bg-heavy">
+                <Bell size={20} color={colors.greenPrimary} />
               </View>
               <View className="flex-1">
                 <Text className="text-base font-semibold text-gray-primary">
@@ -195,10 +195,10 @@ export default function ProfileSettings() {
           </View>
 
           {/* Read Receipts */}
-          <View className="mb-3 flex-row items-center justify-between rounded-xl bg-orange-bg-light p-4 border border-orange-border-light">
+          <View className="mb-3 flex-row items-center justify-between rounded-xl bg-green-bg-light p-4 border border-green-border-light">
             <View className="flex-1 flex-row items-center">
-              <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-orange-bg-heavy">
-                <Eye size={20} color={colors.orangePrimary} />
+              <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-green-bg-heavy">
+                <Eye size={20} color={colors.greenPrimary} />
               </View>
               <View className="flex-1">
                 <Text className="text-base font-semibold text-gray-primary">
@@ -216,10 +216,10 @@ export default function ProfileSettings() {
           </View>
 
           {/* Sound Effects */}
-          <View className="mb-6 flex-row items-center justify-between rounded-xl bg-orange-bg-light p-4 border border-orange-border-light">
+          <View className="mb-6 flex-row items-center justify-between rounded-xl bg-green-bg-light p-4 border border-green-border-light">
             <View className="flex-1 flex-row items-center">
-              <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-orange-bg-heavy">
-                <Volume2 size={20} color={colors.orangePrimary} />
+              <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-green-bg-heavy">
+                <Volume2 size={20} color={colors.greenPrimary} />
               </View>
               <View className="flex-1">
                 <Text className="text-base font-semibold text-gray-primary">
@@ -249,7 +249,7 @@ export default function ProfileSettings() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleSaveChanges}
-            className="flex-1 items-center justify-center rounded-lg bg-orange-primary py-4"
+            className="flex-1 items-center justify-center rounded-lg bg-green-primary py-4"
           >
             <Text className="text-base font-semibold text-white">
               Save Changes

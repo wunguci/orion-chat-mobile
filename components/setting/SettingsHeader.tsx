@@ -24,8 +24,8 @@ export default function SettingsHeader({
             onPress={() => router.back()}
             className="flex-row items-center"
           >
-            <ChevronLeft size={24} color={colors.orangePrimary} />
-            <Text className="ml-1 text-base font-medium text-orange-primary">
+            <ChevronLeft size={24} color={colors.greenPrimary} />
+            <Text className="ml-1 text-base font-medium text-green-primary">
               Settings
             </Text>
           </TouchableOpacity>
