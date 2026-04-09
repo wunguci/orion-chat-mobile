@@ -9,6 +9,7 @@ interface Props {
     requests: number;
     groups: number;
     groupInvites: number;
+    blocked: number;
   };
   onChange: (category: FriendCategory) => void;
 }
@@ -26,6 +27,11 @@ export const FriendCategoryTabs: React.FC<Props> = ({
       key: "group_invites",
       label: "Group Invites",
       count: counts.groupInvites,
+    },
+    {
+      key: "blocked",
+      label: "Blocked",
+      count: counts.blocked,
     },
   ];
 

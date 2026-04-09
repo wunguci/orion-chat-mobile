@@ -173,23 +173,26 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     callScreenOpenedRef.current = false;
   }, [cleanupWebRTC]);
 
-  const handleUnsupportedRuntime = useCallback((source: "accept" | "initiate") => {
-    const message =
-      "Audio/video call requires a development build. Expo Go does not include react-native-webrtc native module.";
+  const handleUnsupportedRuntime = useCallback(
+    (source: "accept" | "initiate") => {
+      const message =
+        "Audio/video call requires a development build. Expo Go does not include react-native-webrtc native module.";
 
-    setCallState((prev) => ({
-      ...prev,
-      status: "failed",
-      error: message,
-    }));
+      setCallState((prev) => ({
+        ...prev,
+        status: "failed",
+        error: message,
+      }));
 
-    Alert.alert(
-      "WebRTC Unavailable",
-      source === "accept"
-        ? "Cannot accept this call in Expo Go. Please use a dev build."
-        : "Cannot start this call in Expo Go. Please use a dev build.",
-    );
-  }, []);
+      Alert.alert(
+        "WebRTC Unavailable",
+        source === "accept"
+          ? "Cannot accept this call in Expo Go. Please use a dev build."
+          : "Cannot start this call in Expo Go. Please use a dev build.",
+      );
+    },
+    [],
+  );
 
   useEffect(() => {
     const userId = state.user?.userId;
@@ -250,7 +253,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         setCallState((prev) => ({
           ...prev,
           status: "failed",
-          error: error instanceof Error ? error.message : "Failed to create offer",
+          error:
+            error instanceof Error ? error.message : "Failed to create offer",
         }));
       }
     };
@@ -279,7 +283,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
     const onOffer = async (data: CallOfferData) => {
       // Offer for active call: renegotiation/ICE restart.
-      if (currentCallIdRef.current === data.callId && !incomingCallRef.current) {
+      if (
+        currentCallIdRef.current === data.callId &&
+        !incomingCallRef.current
+      ) {
         try {
           const answer = await handleOffer(data.offer);
           const socket = callSocketService.getSocket();
@@ -318,7 +325,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             ...prev,
             status: "failed",
             error:
-              error instanceof Error ? error.message : "Failed to process offer",
+              error instanceof Error
+                ? error.message
+                : "Failed to process offer",
           }));
         }
       }
@@ -331,7 +340,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         setCallState((prev) => ({
           ...prev,
           status: "failed",
-          error: error instanceof Error ? error.message : "Failed to handle answer",
+          error:
+            error instanceof Error ? error.message : "Failed to handle answer",
         }));
       }
     };
@@ -452,12 +462,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         callerAvatar: caller.avatarUrl,
       });
 
-      openCallScreen(
-        conversationId,
-        callType,
-        receiverId,
-        receiverInfo?.name,
-      );
+      openCallScreen(conversationId, callType, receiverId, receiverInfo?.name);
     },
     [
       state.user,
@@ -492,14 +497,20 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       setCallState((prev) => ({
         ...prev,
         status: "failed",
-        error: error instanceof Error ? error.message : "WebRTC initialization failed",
+        error:
+          error instanceof Error
+            ? error.message
+            : "WebRTC initialization failed",
       }));
       return;
     }
 
     const localSetup = async () => {
       try {
-        const stream = await getLocalStream(incomingCall.callType === "video", true);
+        const stream = await getLocalStream(
+          incomingCall.callType === "video",
+          true,
+        );
         setCallState((prev) => ({
           ...prev,
           localStream: stream,

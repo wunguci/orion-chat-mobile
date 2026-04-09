@@ -64,6 +64,10 @@ export default function RootLayout() {
                                 options={{ headerShown: false }}
                             />
                             <Stack.Screen
+                                name="friend-view"
+                                options={{ headerShown: false }}
+                            />
+                            <Stack.Screen
                                 name="modal"
                                 options={{ presentation: 'modal', title: 'Modal' }}
                             />
