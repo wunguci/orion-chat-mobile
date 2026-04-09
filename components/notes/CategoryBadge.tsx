@@ -1,40 +1,37 @@
-import { View, Text } from 'react-native';
-import { NoteCategory } from '@/types/note';
+import type { NoteCategory } from "@/types/note";
+import { Text, View } from "react-native";
 
 interface CategoryBadgeProps {
   category: NoteCategory;
 }
 
-const CATEGORY_CONFIG = {
-  finance: {
-    label: 'FINANCE',
-    bgColor: 'bg-teal-light',
-    textColor: 'text-teal-dark',
-  },
-  sport: {
-    label: 'SPORT',
-    bgColor: 'bg-orange-bg-heavy',
-    textColor: 'text-orange-primary',
-  },
-  personal: {
-    label: 'PERSONAL',
-    bgColor: 'bg-blue-50',
-    textColor: 'text-badge-blue',
-  },
-  work: {
-    label: 'WORK',
-    bgColor: 'bg-purple-100',
-    textColor: 'text-purple-600',
-  },
+const hexToRgba = (hex: string, alpha: number) => {
+  const sanitized = hex.replace("#", "");
+  const fullHex =
+    sanitized.length === 3
+      ? sanitized
+          .split("")
+          .map((char) => `${char}${char}`)
+          .join("")
+      : sanitized;
+
+  const value = parseInt(fullHex, 16);
+  const r = (value >> 16) & 255;
+  const g = (value >> 8) & 255;
+  const b = value & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
 export default function CategoryBadge({ category }: CategoryBadgeProps) {
-  const config = CATEGORY_CONFIG[category];
+  const color = category?.color || "#64748b";
 
   return (
-    <View className={`px-3 py-1 rounded ${config.bgColor}`}>
-      <Text className={`text-xs font-semibold ${config.textColor}`}>
-        {config.label}
+    <View
+      className="rounded px-3 py-1"
+      style={{ backgroundColor: hexToRgba(color, 0.16) }}
+    >
+      <Text className="text-xs font-semibold uppercase" style={{ color }}>
+        {category?.name || "UNCATEGORIZED"}
       </Text>
     </View>
   );

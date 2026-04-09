@@ -1,5 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import {
   RichEditor,
@@ -19,6 +19,12 @@ export default function RichTextEditor({
   placeholder = "Start writing your note...",
 }: RichTextEditorProps) {
   const richText = useRef<RichEditor>(null);
+
+  useEffect(() => {
+    if (richText.current && typeof initialContent === "string") {
+      richText.current.setContentHTML(initialContent);
+    }
+  }, [initialContent]);
 
   return (
     <View style={styles.container}>

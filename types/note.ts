@@ -1,20 +1,30 @@
-export type NoteCategory = 'finance' | 'sport' | 'personal' | 'work';
+export interface NoteCategory {
+  categoryId: string;
+  name: string;
+  color: string;
+  icon: string | null;
+  isDefault: boolean;
+  createdAt?: string;
+}
 
 export interface Note {
-    id: string;
-    title: string;
-    content: string;
-    category: NoteCategory;
-    isPinned: boolean;
-    createdAt: Date;
-    updatedAt: Date;
+  noteId: string;
+  title: string;
+  content: string;
+  categoryId: string;
+  category: NoteCategory;
+  isPinned: boolean;
+  folderId: string | null;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface NoteListItem {
-    id: string;
-    title: string;
-    preview: string;
-    category: NoteCategory;
-    timestamp: string;
-    isPinned: boolean;
+  noteId: string;
+  title: string;
+  preview: string;
+  category: NoteCategory;
+  timestamp: string;
+  isPinned: boolean;
 }
