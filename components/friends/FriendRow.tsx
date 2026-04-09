@@ -1,13 +1,20 @@
 import { Avatar } from "@/components/common/Avatar";
 import type { FriendItem } from "@/types/friend";
 import React from "react";
-import { Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Text, TouchableOpacity, View } from "react-native";
 
 interface Props {
   friend: FriendItem;
+  onAudioCall?: (friend: FriendItem) => void;
+  onVideoCall?: (friend: FriendItem) => void;
 }
 
-export const FriendRow: React.FC<Props> = ({ friend }) => {
+export const FriendRow: React.FC<Props> = ({
+  friend,
+  onAudioCall,
+  onVideoCall,
+}) => {
   return (
     <View className="px-4 py-3 flex-row items-center border-b border-gray-100">
       <Avatar uri={friend.avatar} name={friend.name} size="lg" />
@@ -28,6 +35,34 @@ export const FriendRow: React.FC<Props> = ({ friend }) => {
           friend.isOnline ? "bg-green-500" : "bg-gray-400"
         }`}
       />
+      <View className="flex-row items-center ml-3">
+        <TouchableOpacity
+          disabled={!friend.isOnline || !onAudioCall}
+          onPress={() => onAudioCall?.(friend)}
+          className={`h-9 w-9 rounded-full items-center justify-center mr-2 ${
+            friend.isOnline ? "bg-green-50" : "bg-gray-100"
+          }`}
+        >
+          <Ionicons
+            name="call"
+            size={17}
+            color={friend.isOnline ? "#00B14F" : "#9CA3AF"}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          disabled={!friend.isOnline || !onVideoCall}
+          onPress={() => onVideoCall?.(friend)}
+          className={`h-9 w-9 rounded-full items-center justify-center ${
+            friend.isOnline ? "bg-orange-50" : "bg-gray-100"
+          }`}
+        >
+          <Ionicons
+            name="videocam"
+            size={18}
+            color={friend.isOnline ? "#EE652B" : "#9CA3AF"}
+          />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };

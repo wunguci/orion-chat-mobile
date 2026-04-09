@@ -2,10 +2,12 @@ import { Avatar } from "@/components/common/Avatar";
 import { FriendCategoryTabs } from "@/components/friends/FriendCategoryTabs";
 import { FriendRequestRow } from "@/components/friends/FriendRequestRow";
 import { FriendRow } from "@/components/friends/FriendRow";
+import { CallContext } from "@/context/CallContext";
 import { GroupInviteRow } from "@/components/friends/GroupInviteRow";
 import { GroupRow } from "@/components/friends/GroupRow";
 import { SearchUserRow } from "@/components/friends/SearchUserRow";
 import { friendApi } from "@/services/api/friend";
+import type { CallType } from "@/types/call";
 import { presenceSocketService } from "@/services/websocket/presenceSocket";
 import type {
   FriendCategory,
@@ -19,20 +21,27 @@ import type {
 } from "@/types/friend";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Friends() {
+  const callContext = useContext(CallContext);
   const [activeCategory, setActiveCategory] =
     useState<FriendCategory>("friends");
   const [searchQuery, setSearchQuery] = useState("");
@@ -303,6 +312,51 @@ export default function Friends() {
     setGroupInvites((prev) => prev.filter((item) => item.id !== inviteId));
   };
 
+  const buildDirectConversationId = useCallback(
+    (userA: string, userB: string) => {
+      const [first, second] = [userA, userB].sort();
+      return `direct:${first}:${second}`;
+    },
+    [],
+  );
+
+  const handleCallFriend = useCallback(
+    async (friend: FriendItem, callType: CallType) => {
+      if (!callContext) {
+        return;
+      }
+
+      if (!currentUserId) {
+        setErrorMessage("Missing current user identity. Please re-login.");
+        return;
+      }
+
+      if (!friend.isOnline) {
+        setErrorMessage("Friend is offline.");
+        return;
+      }
+
+      if (callContext.status !== "idle") {
+        setErrorMessage("You are already in another call.");
+        return;
+      }
+
+      try {
+        setErrorMessage(null);
+        const conversationId = buildDirectConversationId(currentUserId, friend.id);
+        await callContext.initiateCall(conversationId, friend.id, callType, {
+          name: friend.name,
+          avatar: friend.avatar,
+        });
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error ? error.message : "Cannot start call",
+        );
+      }
+    },
+    [buildDirectConversationId, callContext, currentUserId],
+  );
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       <View className="border-b border-gray-200 bg-white px-4 pb-4 pt-12 flex-row items-center justify-between">
@@ -383,7 +437,12 @@ export default function Friends() {
               </Text>
             </View>
             {filteredFriends.map((friend) => (
-              <FriendRow key={friend.id} friend={friend} />
+              <FriendRow
+                key={friend.id}
+                friend={friend}
+                onAudioCall={(item) => void handleCallFriend(item, "audio")}
+                onVideoCall={(item) => void handleCallFriend(item, "video")}
+              />
             ))}
 
             <View className="px-4 pt-5 pb-2">

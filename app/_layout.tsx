@@ -14,6 +14,7 @@ import { Provider } from 'react-redux';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { store } from '@/store';
 import { AuthProvider } from '@/context/AuthContext';
+import { CallProvider } from '@/context/CallContext';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -33,43 +34,45 @@ export default function RootLayout() {
     return (
         <Provider store={store}>
             <AuthProvider>
-                <ThemeProvider
-                    value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}
-                >
-                    <Stack
-                        screenOptions={{
-                            headerShown: false,
-                            contentStyle: {
-                                backgroundColor:
-                                    colorScheme === 'dark' ? '#000' : '#fff',
-                            },
-                        }}
+                <CallProvider>
+                    <ThemeProvider
+                        value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}
                     >
-                        <Stack.Screen
-                            name="index"
-                            options={{ headerShown: false }}
+                        <Stack
+                            screenOptions={{
+                                headerShown: false,
+                                contentStyle: {
+                                    backgroundColor:
+                                        colorScheme === 'dark' ? '#000' : '#fff',
+                                },
+                            }}
+                        >
+                            <Stack.Screen
+                                name="index"
+                                options={{ headerShown: false }}
+                            />
+                            <Stack.Screen
+                                name="(auth)"
+                                options={{ headerShown: false }}
+                            />
+                            <Stack.Screen
+                                name="(tabs)"
+                                options={{ headerShown: false }}
+                            />
+                            <Stack.Screen
+                                name="chat/[id]"
+                                options={{ headerShown: false }}
+                            />
+                            <Stack.Screen
+                                name="modal"
+                                options={{ presentation: 'modal', title: 'Modal' }}
+                            />
+                        </Stack>
+                        <StatusBar
+                            style={colorScheme === 'dark' ? 'light' : 'dark'}
                         />
-                        <Stack.Screen
-                            name="(auth)"
-                            options={{ headerShown: false }}
-                        />
-                        <Stack.Screen
-                            name="(tabs)"
-                            options={{ headerShown: false }}
-                        />
-                        <Stack.Screen
-                            name="chat/[id]"
-                            options={{ headerShown: false }}
-                        />
-                        <Stack.Screen
-                            name="modal"
-                            options={{ presentation: 'modal', title: 'Modal' }}
-                        />
-                    </Stack>
-                    <StatusBar
-                        style={colorScheme === 'dark' ? 'light' : 'dark'}
-                    />
-                </ThemeProvider>
+                    </ThemeProvider>
+                </CallProvider>
             </AuthProvider>
         </Provider>
     );
