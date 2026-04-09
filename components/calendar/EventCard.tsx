@@ -8,34 +8,50 @@ interface EventCardProps {
   onPress: () => void;
 }
 
-export default function EventCard({ event, onPress }: EventCardProps) {
-  const backgroundColor =
-    event.color === "cyan"
-      ? "bg-cyan-100 dark:bg-cyan-900/30"
-      : event.color === "pink"
-        ? "bg-pink-100 dark:bg-pink-900/30"
-        : event.color === "purple"
-          ? "bg-purple-100 dark:bg-purple-900/30"
-          : event.color === "blue"
-            ? "bg-blue-100 dark:bg-blue-900/30"
-            : "bg-green-100 dark:bg-green-900/30";
+const namedColorToHex: Record<string, string> = {
+  cyan: "#06b6d4",
+  pink: "#ec4899",
+  purple: "#8b5cf6",
+  blue: "#3b82f6",
+  green: "#10b981",
+  orange: "#f97316",
+};
 
-  const borderColor =
-    event.color === "cyan"
-      ? "border-teal-500"
-      : event.color === "pink"
-        ? "border-pink-400"
-        : event.color === "purple"
-          ? "border-purple-500"
-          : event.color === "blue"
-            ? "border-blue-500"
-            : "border-green-500";
+const resolveEventColor = (color?: string) => {
+  if (!color) return "#06b6d4";
+  const normalized = color.trim().toLowerCase();
+  if (normalized.startsWith("#")) return normalized;
+  return namedColorToHex[normalized] || "#06b6d4";
+};
+
+const toRgba = (hex: string, alpha: number) => {
+  const safeHex = hex.replace("#", "");
+  const six =
+    safeHex.length === 3
+      ? safeHex
+          .split("")
+          .map((ch) => `${ch}${ch}`)
+          .join("")
+      : safeHex;
+  const value = Number.parseInt(six, 16);
+  const r = (value >> 16) & 255;
+  const g = (value >> 8) & 255;
+  const b = value & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+export default function EventCard({ event, onPress }: EventCardProps) {
+  const eventColor = resolveEventColor(event.color);
 
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.8}
-      className={`rounded-lg border-l-4 ${borderColor} ${backgroundColor} p-3 mb-2`}
+      className="rounded-lg border-l-4 p-3 mb-2"
+      style={{
+        borderLeftColor: eventColor,
+        backgroundColor: toRgba(eventColor, 0.16),
+      }}
     >
       {/* title */}
       <Text className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
@@ -44,8 +60,7 @@ export default function EventCard({ event, onPress }: EventCardProps) {
 
       {/* time */}
       <Text className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-        {formatTime(new Date(event.startTime))} -{" "}
-        {formatTime(new Date(event.endTime))}
+        {formatTime(new Date(event.start))} - {formatTime(new Date(event.end))}
       </Text>
 
       {/* location */}
@@ -65,7 +80,10 @@ export default function EventCard({ event, onPress }: EventCardProps) {
             {event.participants.slice(0, 3).map((p, index) => (
               <Image
                 key={p.id}
-                source={{ uri: p.avatar }}
+                source={{
+                  uri:
+                    p.avatar || "https://picsum.photos/seed/default-avatar/64",
+                }}
                 className="w-6 h-6 rounded-full border-2 border-white"
                 style={{ marginLeft: index > 0 ? -8 : 0 }}
               />
@@ -76,13 +94,6 @@ export default function EventCard({ event, onPress }: EventCardProps) {
               +{event.participants.length - 3} more
             </Text>
           )}
-        </View>
-      )}
-
-      {/* active badge */}
-      {event.isActive && (
-        <View className="absolute top-2 right-2 bg-green-primary px-2 py-1 rounded-full">
-          <Text className="text-xs font-semibold text-white">ACTIVE</Text>
         </View>
       )}
     </TouchableOpacity>
