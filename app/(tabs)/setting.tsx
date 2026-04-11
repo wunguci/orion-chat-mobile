@@ -19,23 +19,27 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from "react-native";
 import SettingsItem from "../../components/setting/SettingsItem";
 import SettingsSection from "../../components/setting/SettingsSection";
 import { useThemeColors } from "../../hooks/useThemeColors";
+import { useAuthUser } from "../../hooks/useAuth";
+import { API_BASE_URL } from "../../services/api/profile";
+
+const resolveImageUrl = (value: string | undefined, fallback: string) => {
+  if (!value) return fallback;
+  if (/^https?:\/\//i.test(value)) return value;
+
+  const normalizedPath = value.startsWith("/") ? value : `/${value}`;
+  return `${API_BASE_URL}${normalizedPath}`;
+};
 
 export default function Setting() {
   const router = useRouter();
   const colors = useThemeColors();
   const [darkMode, setDarkMode] = useState(false);
-
-  // Mock user data
-  const user = {
-    name: "Nguyễn Văn A",
-    email: "nguyenvana@example.com",
-    avatar: "https://via.placeholder.com/100",
-    phone: "+84 123 456 789",
-  };
+  const { user, loading } = useAuthUser();
 
   const handleLogout = () => {
     Alert.alert(
@@ -69,23 +73,39 @@ export default function Setting() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Profile Section */}
         <View className="mt-4 bg-white px-4 py-6">
-          <TouchableOpacity
-            className="flex-row items-center"
-            onPress={() => router.push("/profile-settings")}
-          >
-            <Image
-              source={{ uri: user.avatar }}
-              className="h-16 w-16 rounded-full"
-            />
-            <View className="ml-4 flex-1">
-              <Text className="text-lg font-semibold text-gray-800">
-                {user.name}
-              </Text>
-              <Text className="mt-1 text-sm text-gray-500">{user.email}</Text>
-              <Text className="mt-0.5 text-sm text-gray-500">{user.phone}</Text>
+          {loading ? (
+            <View className="flex-row items-center py-4">
+              <ActivityIndicator size="large" color={colors.orangePrimary} />
+              <Text className="ml-4 text-gray-600">Loading profile...</Text>
             </View>
-            <ChevronRight size={24} color={colors.graySecondary} />
-          </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              className="flex-row items-center"
+              onPress={() => router.push("/profile")}
+            >
+              <Image
+                source={{
+                  uri: resolveImageUrl(
+                    user?.avatarUrl,
+                    "https://via.placeholder.com/100",
+                  ),
+                }}
+                className="h-16 w-16 rounded-full bg-gray-300"
+              />
+              <View className="ml-4 flex-1">
+                <Text className="text-lg font-semibold text-gray-800">
+                  {user?.fullName || "User"}
+                </Text>
+                <Text className="mt-1 text-sm text-gray-500">
+                  {user?.email || "No email"}
+                </Text>
+                <Text className="mt-0.5 text-sm text-gray-500">
+                  {user?.phoneNumber || "No phone"}
+                </Text>
+              </View>
+              <ChevronRight size={24} color={colors.graySecondary} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Account Settings */}
