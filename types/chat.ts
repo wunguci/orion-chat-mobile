@@ -49,6 +49,12 @@ export interface VideoPreview {
   channel?: string;
 }
 
+export interface MessageReaction {
+  userId: string;
+  emoji: string;
+  reactedAt: string;
+}
+
 export interface Message {
   id: string;
   chatId: string;
@@ -72,6 +78,10 @@ export interface Message {
   linkPreview?: LinkPreview;
   // video preview
   videoPreview?: VideoPreview;
+  // reactions (emoji)
+  reactions?: MessageReaction[];
+  // message status
+  isRecalled?: boolean;
   timestamp: string; // display string e.g. "2:14 PM"
   status?: MessageStatus;
   isMine: boolean;

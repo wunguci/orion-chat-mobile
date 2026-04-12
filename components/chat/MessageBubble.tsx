@@ -2,8 +2,16 @@ import { formatTime } from "@/hooks/useChat";
 import { useTheme } from "@/hooks/useTheme";
 import { Message } from "@/types/chat";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import React from "react";
-import { Image, Linking, Text, TouchableOpacity, View } from "react-native";
+import React, { useState } from "react";
+import {
+  Image,
+  Linking,
+  Pressable,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import MessageReactions from "./MessageReactions";
 
 const AVATAR_SIZE = 32;
 
@@ -45,24 +53,51 @@ function TextBubble({
 }) {
   const { colors } = useTheme();
 
+  if (message.isRecalled) {
+    return (
+      <View style={{ maxWidth: "78%" }}>
+        <View
+          style={{
+            backgroundColor: colors.backgroundSecondary,
+            borderRadius: 18,
+            borderBottomRightRadius: message.isMine ? 4 : 18,
+            borderBottomLeftRadius: message.isMine ? 18 : 4,
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+          }}
+        >
+          <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+            {message.text}
+          </Text>
+          <Text style={{ fontSize: 11, color: colors.textSecondary }}>
+            {formatTime(message.timestamp)}
+          </Text>
+        </View>
+        <MessageReactions reactions={message.reactions} />
+      </View>
+    );
+  }
+
   return (
-    <View
-      style={{
-        backgroundColor: bubbleBg,
-        borderRadius: 18,
-        borderBottomRightRadius: message.isMine ? 4 : 18,
-        borderBottomLeftRadius: message.isMine ? 18 : 4,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        maxWidth: "78%",
-      }}
-    >
-      <Text style={{ color: textColor, fontSize: 15, lineHeight: 21 }}>
-        {message.text}
-      </Text>
-      <Text style={{ fontSize: 12, color: colors.textSecondary }}>
-        {formatTime(message.timestamp)}
-      </Text>
+    <View style={{ maxWidth: "78%" }}>
+      <View
+        style={{
+          backgroundColor: bubbleBg,
+          borderRadius: 18,
+          borderBottomRightRadius: message.isMine ? 4 : 18,
+          borderBottomLeftRadius: message.isMine ? 18 : 4,
+          paddingHorizontal: 14,
+          paddingVertical: 10,
+        }}
+      >
+        <Text style={{ color: textColor, fontSize: 15, lineHeight: 21 }}>
+          {message.text}
+        </Text>
+        <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+          {formatTime(message.timestamp)}
+        </Text>
+      </View>
+      <MessageReactions reactions={message.reactions} />
     </View>
   );
 }
@@ -72,58 +107,60 @@ function ImageBubble({ message }: { message: Message }) {
   const { colors } = useTheme();
 
   return (
-    <View
-      style={{
-        maxWidth: "78%",
-        borderRadius: 16,
-        overflow: "hidden",
-        backgroundColor: colors.card,
-      }}
-    >
-      <Image
-        source={{ uri: message.imageUri }}
-        style={{ width: 240, height: 180 }}
-        resizeMode="cover"
-      />
-      {message.imageCaption ? (
-        <View style={{ padding: 10 }}>
-          <Text
-            style={{
-              color: colors.text,
-              fontSize: 13,
-              lineHeight: 18,
-            }}
-          >
-            {message.imageCaption}
-          </Text>
-        </View>
-      ) : null}
-      {message.isMine && (
-        <View
-          style={{
-            position: "absolute",
-            bottom: message.imageCaption ? 8 : 6,
-            right: 10,
-          }}
-        >
-          <MessageStatus status={message.status} />
-        </View>
-      )}
-      <Text
+    <View style={{ maxWidth: "78%" }}>
+      <View
         style={{
-          fontSize: 12,
-          color: colors.textSecondary,
-          backgroundColor: colors.backgroundSecondary,
-          paddingVertical: 4,
-          paddingHorizontal: 6,
-          borderRadius: 8,
-          position: "absolute",
-          bottom: 6,
-          left: 8,
+          borderRadius: 16,
+          overflow: "hidden",
+          backgroundColor: colors.card,
         }}
       >
-        {formatTime(message.timestamp)}
-      </Text>
+        <Image
+          source={{ uri: message.imageUri }}
+          style={{ width: 240, height: 180 }}
+          resizeMode="cover"
+        />
+        {message.imageCaption ? (
+          <View style={{ padding: 10 }}>
+            <Text
+              style={{
+                color: colors.text,
+                fontSize: 13,
+                lineHeight: 18,
+              }}
+            >
+              {message.imageCaption}
+            </Text>
+          </View>
+        ) : null}
+        {message.isMine && (
+          <View
+            style={{
+              position: "absolute",
+              bottom: message.imageCaption ? 8 : 6,
+              right: 10,
+            }}
+          >
+            <MessageStatus status={message.status} />
+          </View>
+        )}
+        <Text
+          style={{
+            fontSize: 12,
+            color: colors.textSecondary,
+            backgroundColor: colors.backgroundSecondary,
+            paddingVertical: 4,
+            paddingHorizontal: 6,
+            borderRadius: 8,
+            position: "absolute",
+            bottom: 6,
+            left: 8,
+          }}
+        >
+          {formatTime(message.timestamp)}
+        </Text>
+      </View>
+      <MessageReactions reactions={message.reactions} />
     </View>
   );
 }
@@ -199,13 +236,21 @@ function LinkPreviewBubble({ message }: { message: Message }) {
       <Text style={{ fontSize: 12, color: colors.textSecondary }}>
         {formatTime(message.timestamp)}
       </Text>
+      <MessageReactions reactions={message.reactions} />
     </View>
   );
 }
 
 // ── File bubble ──────────────────────────────────────────────
-function FileBubble({ message }: { message: Message }) {
+function FileBubble({
+  message,
+  onLongPress,
+}: {
+  message: Message;
+  onLongPress?: (message: Message) => void;
+}) {
   const { colors } = useTheme();
+  const [isLongPressing, setIsLongPressing] = useState(false);
 
   const handleDownload = () => {
     if (message.fileUri) {
@@ -223,51 +268,60 @@ function FileBubble({ message }: { message: Message }) {
   };
 
   return (
-    <TouchableOpacity
-      onPress={handleDownload}
-      style={{
-        maxWidth: "78%",
-        backgroundColor: colors.backgroundSecondary,
-        borderRadius: 14,
-        padding: 12,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 10,
-      }}
-    >
-      <MaterialCommunityIcons
-        name="file-document-outline"
-        size={32}
-        color={colors.primary}
-      />
-      <View style={{ flex: 1 }}>
-        <Text
-          style={{
-            color: colors.text,
-            fontSize: 13,
-            fontWeight: "600",
-            lineHeight: 18,
-          }}
-          numberOfLines={1}
-        >
-          {message.fileName}
-        </Text>
-        <Text
-          style={{
-            color: colors.textSecondary,
-            fontSize: 12,
-            marginTop: 2,
-          }}
-        >
-          {formatFileSize(message.fileSize)}
-        </Text>
-      </View>
-      <MaterialCommunityIcons
-        name="download"
-        size={20}
-        color={colors.primary}
-      />
-    </TouchableOpacity>
+    <View style={{ maxWidth: "100%", gap: 6, width: "75%" }}>
+      <TouchableOpacity
+        onPress={() => {
+          if (!isLongPressing) handleDownload();
+        }}
+        onLongPress={() => {
+          setIsLongPressing(true);
+          onLongPress?.(message);
+        }}
+        onPressOut={() => setIsLongPressing(false)}
+        style={{
+          backgroundColor: colors.backgroundSecondary,
+          borderRadius: 14,
+          padding: 12,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
+        <MaterialCommunityIcons
+          name="file-document-outline"
+          size={28}
+          color={colors.primary}
+        />
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              color: colors.text,
+              fontSize: 13,
+              fontWeight: "600",
+              lineHeight: 18,
+            }}
+            numberOfLines={1}
+          >
+            {message.fileName || message.text || "Unknown File"}
+          </Text>
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: 12,
+              marginTop: 2,
+            }}
+          >
+            {formatFileSize(message.fileSize)}
+          </Text>
+        </View>
+        <MaterialCommunityIcons
+          name="download"
+          size={20}
+          color={colors.primary}
+        />
+      </TouchableOpacity>
+      <MessageReactions reactions={message.reactions} />
+    </View>
   );
 }
 
@@ -386,6 +440,7 @@ function VideoPreviewBubble({ message }: { message: Message }) {
       <Text style={{ fontSize: 12, color: colors.textSecondary }}>
         {formatTime(message.timestamp)}
       </Text>
+      <MessageReactions reactions={message.reactions} />
     </View>
   );
 }
@@ -463,6 +518,8 @@ interface MessageBubbleProps {
   avatarUri?: string;
   /** Sender display name (used for initials fallback) */
   senderName?: string;
+  /** Callback khi nhấn giữ message */
+  onLongPress?: (message: Message) => void;
 }
 
 const SENT_BG = "#00B14F";
@@ -473,6 +530,7 @@ export default function MessageBubble({
   showAvatar = false,
   avatarUri,
   senderName,
+  onLongPress,
 }: MessageBubbleProps) {
   const { colors } = useTheme();
 
@@ -484,7 +542,7 @@ export default function MessageBubble({
       case "IMAGE":
         return <ImageBubble message={message} />;
       case "FILE":
-        return <FileBubble message={message} />;
+        return <FileBubble message={message} onLongPress={onLongPress} />;
       case "LINK_PREVIEW":
         return <LinkPreviewBubble message={message} />;
       case "VIDEO_PREVIEW":
@@ -501,29 +559,35 @@ export default function MessageBubble({
   };
 
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        justifyContent: message.isMine ? "flex-end" : "flex-start",
-        alignItems: "flex-end",
-        paddingHorizontal: 12,
-        marginBottom: 4,
-      }}
+    <Pressable
+      onLongPress={() => onLongPress?.(message)}
+      delayLongPress={500}
+      hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
     >
-      {/* Avatar slot — only rendered for received messages */}
-      {!message.isMine && (
-        <SenderAvatar
-          avatarUri={avatarUri}
-          name={senderName}
-          visible={showAvatar}
-        />
-      )}
-      {renderContent()}
-      {message.isMine && (
-        <View style={{ alignItems: "flex-end", marginTop: 2, marginLeft: 4 }}>
-          <MessageStatus status={message.status} />
-        </View>
-      )}
-    </View>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: message.isMine ? "flex-end" : "flex-start",
+          alignItems: "flex-end",
+          paddingHorizontal: 12,
+          marginBottom: 4,
+        }}
+      >
+        {/* Avatar slot — only rendered for received messages */}
+        {!message.isMine && (
+          <SenderAvatar
+            avatarUri={avatarUri}
+            name={senderName}
+            visible={showAvatar}
+          />
+        )}
+        {renderContent()}
+        {message.isMine && (
+          <View style={{ alignItems: "flex-end", marginTop: 2, marginLeft: 4 }}>
+            <MessageStatus status={message.status} />
+          </View>
+        )}
+      </View>
+    </Pressable>
   );
 }

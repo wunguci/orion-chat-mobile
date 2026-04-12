@@ -69,12 +69,12 @@ const authFetch = async (url: string, init?: RequestInit) => {
  * Thông tin Conversation
  */
 export interface ConversationResponse {
-  conversationId: string; // ID da conversation - chính là cái ta cần
-  type: "PRIVATE" | "GROUP"; // Loại conversation
+  conversationId: string;
+  type: "PRIVATE" | "GROUP";
   autoDeleteDuration?: number; // Thời gian tự động xóa tin nhắn (nếu có)
-  createdAt?: string; //
-  myRole?: string; //
-  myJoinedAt?: string; //
+  createdAt?: string;
+  myRole?: string;
+  myJoinedAt?: string;
   myIsHidden?: boolean; // Có phải tôi đã ẩn cuộc trò chuyện này không?
   myIsBlocked?: boolean; // Có phải tôi đã chặn cuộc trò chuyện này không?
   myBlockedBy?: string[]; // Danh sách userId những người đã chặn tôi (dành cho group chat)
@@ -116,11 +116,23 @@ export interface MessageItem {
   senderAvatar: string;
   mediaUrl?: string;
 
-  // Dành cho file attachments
+  // File attachments
   fileName?: string;
   fileSize?: number;
   mimeType?: string;
   replyToMessageId?: string;
+
+  // Thu hồi (revoked)
+  isRevoked?: boolean;
+  revokedBy?: string;
+  revokedAt?: string;
+
+  // Emoji reactions
+  reactions?: Array<{
+    userId: string;
+    emoji: string;
+    reactedAt: string;
+  }>;
 }
 
 export interface MessageResponse {
@@ -256,5 +268,103 @@ export const chatApi = {
       },
     );
     return toJson<{ success: boolean }>(response);
+  },
+
+  /**
+   * Gửi emoji reaction cho tin nhắn
+   */
+  async addEmojiReaction(
+    messageId: string,
+    emoji: string,
+    conversationId: string,
+  ) {
+    const response = await authFetch(buildUrl("/messages/emoji"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messageId,
+        emoji,
+        conversationId,
+      }),
+    });
+    return toJson<any>(response);
+  },
+
+  /**
+   * Xóa emoji reaction khỏi tin nhắn
+   */
+  async removeEmojiReaction(messageId: string, conversationId: string) {
+    const response = await authFetch(buildUrl("/messages/emoji/remove"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messageId,
+        conversationId,
+      }),
+    });
+    return toJson<any>(response);
+  },
+
+  /**
+   * Thu hồi tin nhắn cho tất cả mọi người
+   */
+  async revokeMessage(messageId: string, conversationId: string) {
+    const response = await authFetch(
+      buildUrl("/messages/revoke-for-everyone"),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messageId,
+          conversationId,
+        }),
+      },
+    );
+    return toJson<any>(response);
+  },
+
+  /**
+   * Xóa tin nhắn cho mình
+   */
+  async deleteMessageForMe(messageId: string, conversationId: string) {
+    const response = await authFetch(buildUrl("/messages/delete-for-me"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messageId,
+        conversationId,
+      }),
+    });
+    return toJson<any>(response);
+  },
+
+  /**
+   * Chuyển tiếp tin nhắn
+   */
+  async forwardMessage(
+    sourceMessageId: string,
+    targetConversationId: string,
+    clientMessageId: string,
+  ) {
+    const response = await authFetch(buildUrl("/messages/forward"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        sourceMessageId,
+        targetConversationId,
+        clientMessageId,
+      }),
+    });
+    return toJson<any>(response);
   },
 };

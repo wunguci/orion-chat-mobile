@@ -1,6 +1,7 @@
 import { io, Socket } from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import API_BASE_URL from "@/config/api";
+import { is } from "date-fns/locale";
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
@@ -24,6 +25,13 @@ export interface SocketMessage {
     clientMessageId?: string;
     replyToMessageId?: string;
     messageStatus: "SENT" | "DELIVERED" | "READ";
+
+    mediaUrl?: string;
+    fileName?: string;
+    fileSize?: number;
+    mimeType?: string;
+
+    reactions?: [];
   };
 }
 
@@ -47,6 +55,8 @@ class ChatSocketService {
   private messageListeners: Map<string, (message: SocketMessage) => void> =
     new Map();
   private conversationListeners: Map<string, (data: any) => void> = new Map();
+  private reactionListeners: Map<string, (data: any) => void> = new Map();
+  private recallListeners: Map<string, (data: any) => void> = new Map();
 
   /**
    * Khởi tạo WebSocket connection
@@ -181,6 +191,9 @@ class ChatSocketService {
 
     this.socket.off("chat:message_new");
     this.socket.off("chat:message_ack");
+    this.socket.off("chat:message_reaction_updated");
+    this.socket.off("chat:message_recalled");
+    this.socket.off("chat:message_deleted");
 
     // Listen tin nhắn mới từ server
     this.socket.on("chat:message_new", (serverData: any) => {
@@ -250,6 +263,60 @@ class ChatSocketService {
       //   );
       // }
     });
+
+    // Listen emoji reactions
+    this.socket.on("chat:message_reaction_updated", (reactionData: any) => {
+      console.log("[ChatSocket] Received message_reaction_updated:", {
+        conversationId: reactionData.conversationId,
+        messageId: reactionData.messageId,
+        reactionsCount: reactionData.reactions?.length,
+      });
+
+      const callback = this.reactionListeners.get(reactionData.conversationId);
+      if (callback) {
+        callback({
+          conversationId: reactionData.conversationId,
+          messageId: reactionData.messageId,
+          reactions: reactionData.reactions,
+          actedBy: reactionData.actedBy,
+          action: reactionData.action,
+          emoji: reactionData.emoji,
+        });
+      }
+    });
+
+    // Listen message recalled events
+    this.socket.on("chat:message_recalled", (recallData: any) => {
+      console.log("[ChatSocket] Received message_recalled:", {
+        conversationId: recallData.conversationId,
+        messageId: recallData.messageId,
+        revokedBy: recallData.revokedBy,
+      });
+
+      const callback = this.recallListeners.get(recallData.conversationId);
+      if (callback) {
+        callback({
+          conversationId: recallData.conversationId,
+          messageId: recallData.messageId,
+          revokedBy: recallData.revokedBy,
+          revokedAt: recallData.revokedAt,
+          isRevoked: recallData.isRevoked,
+        });
+      }
+    });
+
+    // Listen message deleted events
+    this.socket.on("chat:message_deleted", (deleteData: any) => {
+      const callback = this.recallListeners.get(deleteData.conversationId);
+      if (callback) {
+        callback({
+          conversationId: deleteData.conversationId,
+          messageId: deleteData.messageId,
+          deletedBy: deleteData.deletedBy,
+          isDeleted: deleteData.isDeleted,
+        });
+      }
+    });
   }
 
   private joinedConversations: Set<string> = new Set();
@@ -293,6 +360,8 @@ class ChatSocketService {
     // Chỉ xóa callback khỏi Maps, không gọi socket.off() để tránh ảnh hưởng đến các conversation khác
     this.messageListeners.delete(conversationId);
     this.conversationListeners.delete(conversationId);
+    this.reactionListeners.delete(conversationId);
+    this.recallListeners.delete(conversationId);
 
     // console.log(
     //   "[ChatSocket] Cleared listeners for conversation:",
@@ -333,7 +402,7 @@ class ChatSocketService {
     // Add timeout để catch nếu server không respond
     const timeoutId = setTimeout(() => {
       console.error(
-        "[ChatSocket] ⏱️ TIMEOUT: No ACK response from server after 5s",
+        "[ChatSocket] TIMEOUT: No ACK response from server after 5s",
         {
           clientMessageId,
           conversationId,
@@ -495,6 +564,20 @@ class ChatSocketService {
     //   conversationId,
     // );
     this.conversationListeners.set(conversationId, callback);
+  }
+
+  /**
+   * Đăng ký callback để listen emoji reactions
+   */
+  onReaction(conversationId: string, callback: (data: any) => void): void {
+    this.reactionListeners.set(conversationId, callback);
+  }
+
+  /**
+   * Đăng ký callback để listen message recalled events
+   */
+  onRecall(conversationId: string, callback: (data: any) => void): void {
+    this.recallListeners.set(conversationId, callback);
   }
 
   /**

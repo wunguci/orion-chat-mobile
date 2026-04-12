@@ -197,6 +197,9 @@ export const useChat = (conversationId: string) => {
               return prev;
             }
 
+            const messageType =
+              (socketMsg.message.messageType as MessageType) || "TEXT";
+
             return {
               ...prev,
               messages: [
@@ -205,11 +208,17 @@ export const useChat = (conversationId: string) => {
                   id: socketMsg.message._id,
                   chatId: conversationId,
                   senderId: socketMsg.message.senderBy,
-                  type: "TEXT",
+                  type: messageType,
                   text: socketMsg.message.content,
                   timestamp: socketMsg.message.createdAt,
                   isMine: socketMsg.message.senderBy === currentUserId,
                   status: "read",
+
+                  fileName: socketMsg.message.fileName,
+                  fileSize: socketMsg.message.fileSize,
+                  fileMimeType: socketMsg.message.mimeType,
+                  mediaUrl: socketMsg.message.mediaUrl,
+                  reactions: socketMsg.message.reactions || [],
                 },
               ],
             };
@@ -220,10 +229,10 @@ export const useChat = (conversationId: string) => {
         const handleAck = (ackData: any) => {
           if (!isMounted) return;
 
-          console.log("[useChat] ACK received:", {
-            clientMessageId: ackData.clientMessageId,
-            messageId: ackData.messageId,
-          });
+          // console.log("[useChat] ACK received:", {
+          //   clientMessageId: ackData.clientMessageId,
+          //   messageId: ackData.messageId,
+          // });
 
           // Cập nhật message: thay client ID bằng server ID
           setState((prev) => ({
@@ -241,9 +250,76 @@ export const useChat = (conversationId: string) => {
           }));
         };
 
+        // Handler cho emoji reactions
+        const handleReaction = (reactionData: any) => {
+          if (!isMounted) return;
+
+          console.log("[useChat] Reaction received:", {
+            messageId: reactionData.messageId,
+            emoji: reactionData.emoji,
+            action: reactionData.action,
+          });
+
+          setState((prev) => ({
+            ...prev,
+            messages: prev.messages.map((msg) => {
+              if (msg.id === reactionData.messageId) {
+                return {
+                  ...msg,
+                  reactions: reactionData.reactions,
+                };
+              }
+              return msg;
+            }),
+          }));
+        };
+
+        // Handler cho message recalled
+        const handleRecall = (recallData: any) => {
+          if (!isMounted) return;
+
+          console.log("[useChat] Message recalled:", {
+            messageId: recallData.messageId,
+            revokedBy: recallData.revokedBy,
+          });
+
+          setState((prev) => ({
+            ...prev,
+            messages: prev.messages.map((msg) => {
+              if (msg.id === recallData.messageId) {
+                return {
+                  ...msg,
+                  isRecalled: recallData.isRevoked,
+                  text: "[Tin nhắn đã bị thu hồi]",
+                };
+              }
+              return msg;
+            }),
+          }));
+        };
+
+        // Handler cho message deleted
+        const handleDelete = (deleteData: any) => {
+          if (!isMounted) return;
+
+          console.log("[useChat] Message deleted:", {
+            messageId: deleteData.messageId,
+          });
+
+          setState((prev) => ({
+            ...prev,
+            messages: prev.messages.filter(
+              (msg) => msg.id !== deleteData.messageId,
+            ),
+          }));
+        };
+
         // Register listeners với socket service
         chatSocketService.onMessage(conversationId, handleNewMessage);
         chatSocketService.onAck(conversationId, handleAck);
+        chatSocketService.onReaction(conversationId, handleReaction);
+        chatSocketService.onRecall(conversationId, handleRecall);
+        chatSocketService.onRecall(conversationId, handleDelete);
 
         // console.log(
         //   "[useChat] Socket listeners registered for:",
@@ -509,7 +585,13 @@ function convertApiMessageToUIMessage(
     timestamp: apiMsg.createdAt || "",
     isMine: apiMsg.senderBy === currentUserId,
     status: "read",
+    isRecalled: apiMsg.isRevoked || false,
+    reactions: apiMsg.reactions || [],
   };
+
+  if (apiMsg.isRevoked) {
+    baseMessage.text = "[Tin nhắn đã bị thu hồi]";
+  }
 
   // Set properties dựa trên messageType
   if (messageType === "IMAGE" && apiMsg.mediaUrl) {
@@ -521,15 +603,16 @@ function convertApiMessageToUIMessage(
     return {
       ...baseMessage,
       fileUri: apiMsg.mediaUrl,
-      fileName: apiMsg.fileName,
+      fileName: apiMsg.fileName || "File",
       fileMimeType: apiMsg.mimeType,
       fileSize: apiMsg.fileSize,
+      text: apiMsg.fileName || "File", //UI sài field này để hiển thị msg
     };
   } else if (messageType === "VIDEO_PREVIEW" && apiMsg.mediaUrl) {
     return {
       ...baseMessage,
       videoUri: apiMsg.mediaUrl,
-      videoThumbnailUri: apiMsg.mediaUrl, // Use mediaUrl as thumbnail if no separate thumbnail
+      videoThumbnailUri: apiMsg.mediaUrl, // tạm thời dùng cùng 1 URL, sau này có thể tách riêng thumbnail
     };
   }
 

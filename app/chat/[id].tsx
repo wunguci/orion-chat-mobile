@@ -2,11 +2,12 @@ import ChatHeader from "@/components/chat/ChatHeader";
 import MessageBubble from "@/components/chat/MessageBubble";
 import MessageInput from "@/components/chat/MessageInput";
 import MessageTimestamp from "@/components/chat/MessageTimestamp";
+import MessageActionMenu from "@/components/chat/MessageActionMenu";
 import { formatTime, getDiffMinutes, useChat } from "@/hooks/useChat";
 import { useTheme } from "@/hooks/useTheme";
 import { Message } from "@/types/chat";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -38,6 +39,10 @@ export default function ChatScreen() {
     useChat(id || "");
   const listRef = useRef<FlatList>(null);
 
+  // Message action menu state
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [showActionMenu, setShowActionMenu] = useState(false);
+
   useEffect(() => {
     if (!id) {
       console.error("[ChatScreen] Missing required parameter: id");
@@ -50,6 +55,20 @@ export default function ChatScreen() {
     sendMessage(inputText);
     setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 100);
   }, [inputText, sendMessage]);
+
+  const handleMessageLongPress = useCallback((message: Message) => {
+    setSelectedMessage(message);
+    setShowActionMenu(true);
+  }, []);
+
+  const handleMessageDeleted = useCallback(() => {
+    // Remove message from list
+    // The useChat hook should handle this via socket event
+  }, []);
+
+  const handleMessageRecalled = useCallback(() => {
+    // The useChat hook should handle this via socket event
+  }, []);
 
   function shouldShowTimestamp(messages: Message[], index: number): boolean {
     if (index === 0) return true;
@@ -81,10 +100,11 @@ export default function ChatScreen() {
           showAvatar={shouldShowAvatar(messages, index)}
           avatarUri={avatarUri}
           senderName={name}
+          onLongPress={handleMessageLongPress}
         />
       </View>
     ),
-    [messages, avatarUri, name],
+    [messages, avatarUri, name, handleMessageLongPress],
   );
 
   return (
@@ -128,6 +148,21 @@ export default function ChatScreen() {
           onAttach={sendAttachment}
         />
       </KeyboardAvoidingView>
+
+      {/* Message Action Menu */}
+      {selectedMessage && (
+        <MessageActionMenu
+          visible={showActionMenu}
+          onClose={() => {
+            setShowActionMenu(false);
+            setSelectedMessage(null);
+          }}
+          message={selectedMessage}
+          conversationId={id || ""}
+          onMessageDeleted={handleMessageDeleted}
+          onMessageRecalled={handleMessageRecalled}
+        />
+      )}
     </SafeAreaView>
   );
 }
