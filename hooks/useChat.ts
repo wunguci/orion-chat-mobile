@@ -1,145 +1,451 @@
-import { Message } from '@/types/chat';
-import { useCallback, useState } from 'react';
+import { Message } from "@/types/chat";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useCallback, useEffect, useState } from "react";
+import { chatApi, MessageResponse } from "@/services/api/chat";
+import {
+  chatSocketService,
+  SocketMessage,
+} from "@/services/websocket/chatSocket";
 
-// ── Mock generator ──────────────────────────────────────────
-function buildMockMessages(chatId: string): Message[] {
-    return [
-        {
-            id: '1',
-            chatId,
-            senderId: 'other',
-            type: 'text',
-            text: 'Who was that philosopher you shared with me recently?',
-            timestamp: '2:14 PM',
-            isMine: false,
-        },
-        {
-            id: '2',
-            chatId,
-            senderId: 'me',
-            type: 'text',
-            text: 'Roland Barthes',
-            timestamp: '2:16 PM',
-            status: 'read',
-            isMine: true,
-        },
-        {
-            id: '3',
-            chatId,
-            senderId: 'other',
-            type: 'text',
-            text: "That's him!",
-            timestamp: '2:18 PM',
-            isMine: false,
-        },
-        {
-            id: '4',
-            chatId,
-            senderId: 'other',
-            type: 'text',
-            text: 'What was his vision statement?',
-            timestamp: '2:18 PM',
-            isMine: false,
-        },
-        {
-            id: '5',
-            chatId,
-            senderId: 'me',
-            type: 'text',
-            text: '"Ultimately in order to see a photograph well, it is best tolook away or close your eyes."',
-            timestamp: '2:20 PM',
-            status: 'read',
-            isMine: true,
-        },
-        {
-            id: '6',
-            chatId,
-            senderId: 'me',
-            type: 'image',
-            imageUri:
-                'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600',
-            imageCaption:
-                'Aerial photograph from the Helsinki urban environment division.',
-            timestamp: '2:20 PM',
-            status: 'read',
-            isMine: true,
-        },
-        {
-            id: '7',
-            chatId,
-            senderId: 'other',
-            type: 'link_preview',
-            text: 'Check this https://dribbble.com',
-            linkPreview: {
-                url: 'https://dribbble.com',
-                title: 'Aerial photograph from the Helsinki urban environment division',
-                siteName: 'dribbble.com',
-                thumbnailUri:
-                    'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=120',
-            },
-            timestamp: '2:22 PM',
-            isMine: false,
-        },
-        {
-            id: '8',
-            chatId,
-            senderId: 'other',
-            type: 'video_preview',
-            text: 'I wish I could be there\nhttps://www.youtube.com/watch?v=G3hPH_bc0Ww',
-            videoPreview: {
-                url: 'https://www.youtube.com/watch?v=G3hPH_bc0Ww',
-                title: 'The First 10,000 Days on Mars (Tim...',
-                description: 'The story begins in 2024 when Elon ...',
-                channel: 'Youtube',
-                thumbnailUri:
-                    'https://img.youtube.com/vi/G3hPH_bc0Ww/hqdefault.jpg',
-            },
-            timestamp: '2:24 PM',
-            isMine: false,
-        },
-    ];
+/**
+ * Generate unique ID cho client message
+ */
+function generateUniqueId(): string {
+  const timestamp = Date.now().toString(36);
+  const randomStr = Math.random().toString(36).substring(2, 15);
+  return `${timestamp}-${randomStr}`;
 }
 
-// ── Hook ────────────────────────────────────────────────────
-export function useChat(chatId: string) {
-    const [messages, setMessages] = useState<Message[]>(() =>
-        buildMockMessages(chatId),
-    );
-    const [inputText, setInputText] = useState('');
-    const [isSending, setIsSending] = useState(false);
+// ═══════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════
 
-    const sendMessage = useCallback(
-        (text: string) => {
-            if (!text.trim()) return;
-            const newMsg: Message = {
-                id: Date.now().toString(),
-                chatId,
-                senderId: 'me',
-                type: 'text',
-                text: text.trim(),
-                timestamp: new Date().toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                }),
-                status: 'sending',
-                isMine: true,
+/**
+ * Trạng thái của useChat hook
+ */
+interface UseChatState {
+  messages: Message[];
+  inputText: string;
+  isLoading: boolean;
+  error: string | null;
+}
+
+// ═══════════════════════════════════════════════════════════
+// HOOK - useChat
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Custom hook để quản lý chat với một conversation
+ *
+ * Luồng xử lý:
+ * 1. Khi component mount: kết nối WebSocket + tải lịch sử tin nhắn từ API
+ * 2. Lắng nghe socket events: 'message:new', 'message:ack' từ server
+ * 3. Khi user gửi message: emit qua WebSocket tới server
+ * 4. Server lưu MongoDB + emit 'message:new' cho users trong conversation
+ * 5. Cập nhật UI khi có tin nhắn mới
+ */
+export const useChat = (conversationId: string) => {
+  const [state, setState] = useState<UseChatState>({
+    messages: [],
+    inputText: "",
+    isLoading: false,
+    error: null,
+  });
+
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // ─────────────────────────────────────────────────────────
+  // INITIALIZERS
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Lấy ID user hiện tại từ AsyncStorage
+   */
+  useEffect(() => {
+    let isMounted = true;
+
+    const bootstrap = async () => {
+      const candidates = [
+        await AsyncStorage.getItem("auth_user"),
+        await AsyncStorage.getItem("user"),
+        await AsyncStorage.getItem("current_user"),
+        await AsyncStorage.getItem("userId"),
+      ];
+
+      for (const raw of candidates) {
+        if (!raw) continue;
+        try {
+          const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+          const id = parsed?.id || parsed?.userId;
+          if (id && isMounted) {
+            setCurrentUserId(String(id));
+            return;
+          }
+        } catch {
+          continue;
+        }
+      }
+    };
+
+    void bootstrap();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // ─────────────────────────────────────────────────────────
+  // CHAT INITIALIZATION & CLEANUP
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Khởi tạo chat - kết nối WebSocket + join conversation + tải lịch sử + setup listeners
+   * Chỉ chạy khi conversationId hoặc currentUserId thay đổi
+   */
+  useEffect(() => {
+    if (!conversationId || !currentUserId) {
+      console.log("[useChat] Waiting for conversationId and currentUserId", {
+        hasConversationId: !!conversationId,
+        hasCurrentUserId: !!currentUserId,
+      });
+      return;
+    }
+
+    let isMounted = true;
+
+    const initializeChat = async () => {
+      try {
+        setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+        // Connect socket nếu chưa connect
+        if (!chatSocketService.isConnected()) {
+          console.log("[useChat] Socket not connected, connecting...");
+          await chatSocketService.connect();
+        }
+
+        if (!isMounted) return;
+
+        console.log("[useChat] Joining conversation:", conversationId);
+        // Join conversation
+        chatSocketService.joinConversation(conversationId);
+
+        // Tải lịch sử tin nhắn từ API
+        console.log("[useChat] Loading messages from API...");
+        const messagesFromApi = await chatApi.getMessages(
+          conversationId,
+          50,
+          0,
+        );
+
+        if (!isMounted) return;
+
+        const formattedMessages = (messagesFromApi.items || []).map(
+          (msg: MessageResponse) =>
+            convertApiMessageToUIMessage(msg, currentUserId),
+        );
+
+        // Sắp xếp messages: cũ → mới
+        const sortedMessages = formattedMessages.sort((a, b) => {
+          const dateA =
+            new Date(a.timestamp.includes(":") ? a.timestamp : "").getTime() ||
+            0;
+          const dateB =
+            new Date(b.timestamp.includes(":") ? b.timestamp : "").getTime() ||
+            0;
+          return dateA - dateB;
+        });
+
+        setState((prev) => ({
+          ...prev,
+          messages: sortedMessages,
+          isLoading: false,
+        }));
+
+        console.log(
+          "[useChat] Initialized with",
+          sortedMessages.length,
+          "messages",
+        );
+
+        // Setup socket listeners
+        if (!isMounted) return;
+
+        console.log("[useChat] Setting up socket event listeners...");
+
+        // Handler cho tin nhắn mới từ WebSocket
+        const handleNewMessage = (socketMsg: SocketMessage) => {
+          if (!isMounted) return;
+
+          // Thêm vào danh sách tin nhắn (prepend vào đầu)
+          setState((prev) => {
+            if (socketMsg.message.clientMessageId) {
+              const index = prev.messages.findIndex(
+                (m) => m.id === socketMsg.message.clientMessageId,
+              );
+
+              if (index !== -1) {
+                const updateMsg = [...prev.messages];
+                updateMsg[index] = {
+                  ...updateMsg[index],
+                  id: socketMsg.message._id,
+                  status: "read",
+                };
+                return {
+                  ...prev,
+                  messages: updateMsg,
+                };
+              }
+            }
+
+            // Kiểm tra đã tồn tại chưa (tránh duplicate)
+            const exists = prev.messages.some(
+              (m) => m.id === socketMsg.message._id,
+            );
+            if (exists) {
+              return prev;
+            }
+
+            return {
+              ...prev,
+              messages: [
+                {
+                  id: socketMsg.message._id,
+                  chatId: conversationId,
+                  senderId: socketMsg.message.senderBy,
+                  type: "text",
+                  text: socketMsg.message.content,
+                  timestamp: formatTime(socketMsg.message.createdAt),
+                  isMine: socketMsg.message.senderBy === currentUserId,
+                  status: "read",
+                },
+                ...prev.messages,
+              ],
             };
-            setMessages((prev) => [...prev, newMsg]);
-            setInputText('');
+          });
+        };
 
-            // Simulate delivery
-            setIsSending(true);
-            setTimeout(() => {
-                setMessages((prev) =>
-                    prev.map((m) =>
-                        m.id === newMsg.id ? { ...m, status: 'sent' } : m,
-                    ),
-                );
-                setIsSending(false);
-            }, 800);
+        // Handler cho ACK từ server
+        const handleAck = (ackData: any) => {
+          if (!isMounted) return;
+
+          console.log("[useChat] ACK received:", {
+            clientMessageId: ackData.clientMessageId,
+            messageId: ackData.messageId,
+          });
+
+          // Cập nhật message: thay client ID bằng server ID
+          setState((prev) => ({
+            ...prev,
+            messages: prev.messages.map((msg) => {
+              if (msg.id === ackData.clientMessageId) {
+                return {
+                  ...msg,
+                  id: ackData.messageId,
+                  status: "read",
+                };
+              }
+              return msg;
+            }),
+          }));
+        };
+
+        // Register listeners với socket service
+        chatSocketService.onMessage(conversationId, handleNewMessage);
+        chatSocketService.onAck(conversationId, handleAck);
+
+        console.log(
+          "[useChat] Socket listeners registered for:",
+          conversationId,
+        );
+      } catch (error) {
+        if (!isMounted) return;
+        console.error("[useChat] Initialization failed:", error);
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : "Khong the tai chat",
+          isLoading: false,
+        }));
+      }
+    };
+
+    void initializeChat();
+
+    // Cleanup: leave conversation khi unmount hoặc dependencies thay đổi
+    return () => {
+      isMounted = false;
+      console.log("[useChat] Cleanup: leaving conversation");
+      chatSocketService.leaveConversation(conversationId);
+    };
+  }, [conversationId, currentUserId]);
+
+  // ─────────────────────────────────────────────────────────
+  // MESSAGE SENDING
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Gửi tin nhắn
+   *
+   * Luồng:
+   * 1. Tạo tin nhắn local ngay (Optimistic UI) - show ngay cho user
+   * 2. Emit qua WebSocket tới server
+   * 3. Server lưu vào MongoDB
+   * 4. Server emit ACK về client với messageId thật
+   * 5. Client cập nhật message ID từ client -> server
+   */
+  const sendMessage = useCallback(
+    (text: string) => {
+      if (!text.trim() || !currentUserId || !conversationId) {
+        console.warn("[useChat] Cannot send message:", {
+          hasText: !!text.trim(),
+          hasUserId: !!currentUserId,
+          hasConversationId: !!conversationId,
+        });
+        return;
+      }
+
+      // Tạo ID tạm thời cho client
+      const clientMessageId = generateUniqueId();
+      const timestamp = new Date().toISOString();
+
+      console.log("[useChat] Creating optimistic message:", {
+        clientMessageId,
+        content: text.trim(),
+      });
+
+      // Thêm message vào state ngay (Optimistic UI)
+      const optimisticMessage: Message = {
+        id: clientMessageId,
+        chatId: conversationId,
+        senderId: currentUserId,
+        type: "text",
+        text: text.trim(),
+        timestamp: formatTime(timestamp),
+        isMine: true,
+        status: "sending",
+      };
+
+      setState((prev) => ({
+        ...prev,
+        messages: [optimisticMessage, ...prev.messages],
+        inputText: "", // Clear input field
+      }));
+
+      console.log("[useChat] Sending message via WebSocket...");
+
+      // Gửi qua WebSocket với callback
+      chatSocketService.sendMessage(
+        conversationId,
+        text.trim(),
+        clientMessageId,
+        (ackData) => {
+          console.log("[useChat] sendMessage callback received ACK:", {
+            clientMessageId,
+            messageId: ackData.messageId,
+          });
+
+          // Cập nhật message ID từ client thành server ID
+          setState((prev) => ({
+            ...prev,
+            messages: prev.messages.map((msg) => {
+              if (msg.id === clientMessageId) {
+                return {
+                  ...msg,
+                  id: ackData.messageId,
+                  status: "read",
+                };
+              }
+              return msg;
+            }),
+          }));
         },
-        [chatId],
-    );
+      );
+    },
+    [currentUserId, conversationId],
+  );
 
-    return { messages, inputText, setInputText, sendMessage, isSending };
+  // ─────────────────────────────────────────────────────────
+  // SETTERS
+  // ─────────────────────────────────────────────────────────
+
+  const setInputText = useCallback((text: string) => {
+    setState((prev) => ({
+      ...prev,
+      inputText: text,
+    }));
+  }, []);
+
+  return {
+    messages: state.messages,
+    inputText: state.inputText,
+    setInputText,
+    sendMessage,
+    isLoading: state.isLoading,
+    error: state.error,
+  };
+};
+
+// ═══════════════════════════════════════════════════════════
+// HELPER FUNCTIONS
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Chuyển đổi format message từ API -> UI
+ *
+ * Server trả về `senderBy` (UUID của người gửi tin nhắn)
+ * Chúng ta cần so sánh `senderBy` với `currentUserId` để xác định nó là tin nhắn của mình hay không
+ */
+function convertApiMessageToUIMessage(
+  apiMsg: MessageResponse,
+  currentUserId: string,
+): Message {
+  // Lấy userId người gửi - server trả về senderBy, có fallback là senderId
+  const senderUserId = apiMsg.senderBy || apiMsg.senderId;
+
+  return {
+    id: apiMsg._id || apiMsg.messageId || "",
+    chatId: apiMsg.conversationId,
+    senderId: senderUserId || "",
+    type: (apiMsg.type as any) || "text",
+    text: apiMsg.content,
+    timestamp: formatTime(apiMsg.createdAt || apiMsg.timestamp || ""),
+    isMine: senderUserId === currentUserId,
+    status: "read",
+  };
+}
+
+/**
+ * Format timestamp thành chuoi hien thi
+ * Input: ISO string (2025-01-15T14:30:00Z)
+ * Output todays: "14:30" | other days: "1/15/25"
+ */
+function formatTime(timeString: string): string {
+  try {
+    const date = new Date(timeString);
+    if (Number.isNaN(date.getTime())) {
+      return "Invalid time";
+    }
+
+    const now = new Date();
+    const isToday =
+      date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear();
+
+    if (isToday) {
+      // Hom nay: hien thi HH:MM
+      return date.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } else {
+      // Ngay khac: hien thi M/D/YY
+      return date.toLocaleDateString("en-US", {
+        month: "numeric",
+        day: "numeric",
+        year: "2-digit",
+      });
+    }
+  } catch {
+    return "Invalid time";
+  }
 }

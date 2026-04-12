@@ -60,7 +60,7 @@ export default function RootLayout() {
                                 options={{ headerShown: false }}
                             />
                             <Stack.Screen
-                                name="chat/[id]"
+                                name="chat"
                                 options={{ headerShown: false }}
                             />
                             <Stack.Screen

@@ -99,11 +99,21 @@ export const friendApi = {
     return toJson<FriendRequestResponse[]>(response);
   },
 
+  /**
+   * Lấy danh sách lời mời kết bạn đi (mình gửi)
+   * Nếu endpoint không tồn tại (404), return empty array
+   */
   async getOutgoingFriendRequests(userId: string) {
-    const response = await authFetch(
-      buildUrl("/friend-requests/outgoing", { userId }),
-    );
-    return toJson<FriendRequestResponse[]>(response);
+    try {
+      const response = await authFetch(
+        buildUrl("/friend-requests/outgoing", { userId }),
+      );
+      return toJson<FriendRequestResponse[]>(response);
+    } catch (error) {
+      console.warn("[friendApi] getOutgoingFriendRequests failed, returning empty", error);
+      // Nếu 404 hoặc lỗi khác, trả về mảng rỗng
+      return [];
+    }
   },
 
   async acceptFriendRequest(requestId: string, userId: string) {
@@ -176,9 +186,19 @@ export const friendApi = {
     >(response);
   },
 
+  /**
+   * Lấy danh sách bạn bè bị chặn
+   * Nếu endpoint không tồn tại (404), return empty array
+   */
   async getBlockedFriends(userId: string) {
-    const response = await authFetch(buildUrl("/friends/blocked", { userId }));
-    return toJson<BlockedFriendResponse[]>(response);
+    try {
+      const response = await authFetch(buildUrl("/friends/blocked", { userId }));
+      return toJson<BlockedFriendResponse[]>(response);
+    } catch (error) {
+      console.warn("[friendApi] getBlockedFriends failed, returning empty", error);
+      // Nếu 404 hoặc lỗi khác, trả về mảng rỗng
+      return [];
+    }
   },
 
   async getFriendProfile(userId: string, friendId: string) {

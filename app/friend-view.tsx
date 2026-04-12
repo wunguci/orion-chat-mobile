@@ -1,5 +1,6 @@
 import { Avatar } from "@/components/common/Avatar";
 import { CallContext } from "@/context/CallContext";
+import { chatApi } from "@/services/api/chat";
 import { friendApi } from "@/services/api/friend";
 import type { CallType } from "@/types/call";
 import type { FriendProfileItem } from "@/types/friend";
@@ -82,7 +83,10 @@ export default function FriendViewScreen() {
 
     setLoading(true);
     try {
-      const data = await friendApi.getFriendProfile(currentUserId, targetUserId);
+      const data = await friendApi.getFriendProfile(
+        currentUserId,
+        targetUserId,
+      );
       setProfile(data);
     } catch {
       setProfile({
@@ -100,7 +104,13 @@ export default function FriendViewScreen() {
     } finally {
       setLoading(false);
     }
-  }, [currentUserId, fallbackAvatar, fallbackIsOnline, fallbackName, targetUserId]);
+  }, [
+    currentUserId,
+    fallbackAvatar,
+    fallbackIsOnline,
+    fallbackName,
+    targetUserId,
+  ]);
 
   useEffect(() => {
     void loadProfile();
@@ -125,23 +135,75 @@ export default function FriendViewScreen() {
     }
 
     try {
-      const conversationId = buildDirectConversationId(currentUserId, profile.id);
+      const conversationId = buildDirectConversationId(
+        currentUserId,
+        profile.id,
+      );
       await callContext.initiateCall(conversationId, profile.id, callType, {
         name: profile.fullName,
         avatar: profile.avatarUrl || undefined,
       });
     } catch (error) {
-      Alert.alert("Call", error instanceof Error ? error.message : "Cannot start call");
+      Alert.alert(
+        "Call",
+        error instanceof Error ? error.message : "Cannot start call",
+      );
     }
   };
 
-  const handleChat = () => {
-    if (!profile) return;
-    Alert.alert("Chat", `Chat with ${profile.fullName} will be supported in next step.`);
+  /**
+   * Xử lý khi nhấn nút Chat
+   *
+   * Luồng:
+   * 1. Gọi API POST /conversations/private tạo conversation
+   * 2. Nhận conversationId từ server
+   * 3. Điều hướng tới màn hình chat /chat/[id] với conversationId
+   */
+  const handleChat = async () => {
+    if (!profile || !currentUserId) return;
+
+    try {
+      console.log("[FriendView] Creating conversation with:", profile.id);
+
+      // Gọi API tạo conversation với friend
+      const conversation = await chatApi.createConversation({
+        receiverId: profile.id,
+      });
+
+      const conversationId = conversation.conversationId;
+
+      if (!conversationId) {
+        throw new Error(
+          `No conversation ID received from server. Response: ${JSON.stringify(conversation)}`,
+        );
+      }
+
+      console.log(
+        "[FriendView] Navigating to chat with conversationId:",
+        conversationId,
+      );
+
+      // Điều hướng tới chat screen với conversationId và friend info
+      router.push({
+        pathname: "/chat/[id]",
+        params: {
+          id: conversationId,
+          name: profile.fullName,
+          avatarUri: profile.avatarUrl || "",
+        },
+      });
+    } catch (error) {
+      console.error("[FriendView] Chat error:", error);
+      Alert.alert(
+        "Tao Conversation",
+        error instanceof Error ? error.message : "Khong the mo chat",
+      );
+    }
   };
 
   const handleAddFriend = async () => {
-    if (!currentUserId || !profile || hasPendingRequest || isSendingAddFriend) return;
+    if (!currentUserId || !profile || hasPendingRequest || isSendingAddFriend)
+      return;
 
     setIsSendingAddFriend(true);
     try {
@@ -187,28 +249,24 @@ export default function FriendViewScreen() {
   const handleBlockFriend = async () => {
     if (!currentUserId || !profile) return;
 
-    Alert.alert(
-      "Block Friend",
-      "Are you sure you want to block this user?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Block",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await friendApi.blockFriend(currentUserId, profile.id);
-              router.back();
-            } catch (error) {
-              Alert.alert(
-                "Block user",
-                error instanceof Error ? error.message : "Cannot block user",
-              );
-            }
-          },
+    Alert.alert("Block Friend", "Are you sure you want to block this user?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Block",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await friendApi.blockFriend(currentUserId, profile.id);
+            router.back();
+          } catch (error) {
+            Alert.alert(
+              "Block user",
+              error instanceof Error ? error.message : "Cannot block user",
+            );
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
   return (
@@ -220,7 +278,9 @@ export default function FriendViewScreen() {
         >
           <Ionicons name="chevron-back" size={20} color="#334155" />
         </TouchableOpacity>
-        <Text className="text-base font-bold text-gray-primary">Friend Info</Text>
+        <Text className="text-base font-bold text-gray-primary">
+          Friend Info
+        </Text>
         <View className="h-9 w-9" />
       </View>
 
@@ -229,7 +289,10 @@ export default function FriendViewScreen() {
           <ActivityIndicator size="large" color="#00B14F" />
         </View>
       ) : (
-        <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 24 }}>
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ paddingBottom: 24 }}
+        >
           <View className="h-32 bg-green-primary" />
 
           <View className="-mt-12 px-4">
