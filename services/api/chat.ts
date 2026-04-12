@@ -102,37 +102,23 @@ export interface ConversationResponse {
 /**
  * Thông tin Message
  */
+export interface MessageItem {
+  _id: string;
+  clientMessageId: string;
+  content: string;
+  conversationId: string;
+  createdAt: string;
+  senderBy: string;
+  messageType: string;
+  messageStatus: string;
+  senderName: string;
+  senderAvatar: string;
+  mediaUrl?: string;
+}
+
 export interface MessageResponse {
   conversationId: string;
-  items: [
-    {
-      __v: number;
-      _id: string;
-      clientMessageId: string;
-      content: string;
-      conversationId: string;
-      createdAt: string;
-      deletedForUsers: [];
-      fileName: string;
-      fileSize: number;
-      forwardedFromMessageId: string;
-      isDeleted: boolean;
-      isPinned: boolean;
-      isRevoked: boolean;
-      mediaUrl: string;
-      messageStatus: string;
-      messageType: string;
-      reactions: [];
-      replyToMessageId: string;
-      revokedAt: string;
-      revokedBy: string;
-      seenBy: [];
-      senderAvatar: string;
-      senderBy: string;
-      senderName: string;
-      updatedAt: string;
-    },
-  ];
+  items: MessageItem[];
 }
 
 /**
@@ -218,7 +204,7 @@ export const chatApi = {
         offset: offset.toString(),
       }),
     );
-    return toJson<MessageResponse[]>(response);
+    return toJson<MessageResponse>(response);
   },
 
   /**

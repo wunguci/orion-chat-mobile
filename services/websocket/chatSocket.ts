@@ -57,12 +57,12 @@ class ChatSocketService {
   async connect(): Promise<void> {
     // Nếu đã connecting hoặc connected, không cần kết nối lại
     if (this.socket?.connected) {
-      console.log("[ChatSocket] Already connected");
+      //console.log("[ChatSocket] Already connected");
       return;
     }
 
     if (this.isConnecting) {
-      console.log("[ChatSocket] Already connecting, waiting...");
+      //console.log("[ChatSocket] Already connecting, waiting...");
       // Chờ connection hoàn thành
       return new Promise((resolve) => {
         const checkConnected = () => {
@@ -102,7 +102,7 @@ class ChatSocketService {
       // Xử lý connection events
       this.setupConnectionHandlers();
 
-      console.log("[ChatSocket] Connecting to", socketUrl);
+      //console.log("[ChatSocket] Connecting to", socketUrl);
 
       // WAIT for socket to actually connect
       return new Promise((resolve, reject) => {
@@ -112,7 +112,7 @@ class ChatSocketService {
 
         this.socket!.once("connect", () => {
           clearTimeout(timeout);
-          console.log("[ChatSocket] Connected and ready");
+          //console.log("[ChatSocket] Connected and ready");
           this.isConnecting = false;
           resolve();
         });
@@ -139,14 +139,14 @@ class ChatSocketService {
 
     // Khi kết nối thành công
     this.socket.on("connect", () => {
-      console.log("[ChatSocket] Connected successfully");
+      //console.log("[ChatSocket] Connected successfully");
       this.isConnecting = false;
       this.rejoinConversations();
     });
 
     // Khi mất kết nối
     this.socket.on("disconnect", (reason) => {
-      console.log("[ChatSocket] Disconnected:", reason);
+      //console.log("[ChatSocket] Disconnected:", reason);
     });
 
     // Khi có lỗi
@@ -156,17 +156,17 @@ class ChatSocketService {
 
     // Khi reconnect
     this.socket.on("reconnect", () => {
-      console.log("[ChatSocket] Reconnected - re-registering listeners");
+      //console.log("[ChatSocket] Reconnected - re-registering listeners");
       this.setupMessageListeners();
     });
 
     // Setup listeners
     this.setupMessageListeners();
 
-    // 🔍 DEBUG: Log tất cả events từ server
+    // DEBUG: Log tất cả events từ server
     this.socket.onAny((eventName: string, ...args: any[]) => {
       if (!eventName.startsWith("ping") && !eventName.startsWith("pong")) {
-        console.log(`[ChatSocket] 📡 All events - ${eventName}:`, args?.[0]);
+        //console.log(`[ChatSocket] All events - ${eventName}:`, args?.[0]);
       }
     });
   }
@@ -177,7 +177,7 @@ class ChatSocketService {
   private setupMessageListeners(): void {
     if (!this.socket) return;
 
-    console.log("[ChatSocket] Setting up message listeners");
+    //console.log("[ChatSocket] Setting up message listeners");
 
     this.socket.off("chat:message_new");
     this.socket.off("chat:message_ack");
@@ -219,10 +219,10 @@ class ChatSocketService {
       // Gọi callback nếu có listener cho conversation này
       const callback = this.messageListeners.get(data.conversationId);
       if (callback) {
-        console.log(
-          "[ChatSocket] Calling message callback for:",
-          data.conversationId,
-        );
+        // console.log(
+        //   "[ChatSocket] Calling message callback for:",
+        //   data.conversationId,
+        // );
         callback(data);
       } else {
         console.warn(
@@ -234,18 +234,18 @@ class ChatSocketService {
 
     // Listen ACK từ server (xác nhận tin nhắn được lưu)
     this.socket.on("chat:message_ack", (ackData: any) => {
-      console.log("[ChatSocket] Received message_ack:", {
-        conversationId: ackData.conversationId,
-        clientMessageId: ackData.clientMessageId,
-        messageId: ackData.messageId || ackData._id,
-      });
+      // console.log("[ChatSocket] Received message_ack:", {
+      //   conversationId: ackData.conversationId,
+      //   clientMessageId: ackData.clientMessageId,
+      //   messageId: ackData.messageId || ackData._id,
+      // });
 
       const callback = this.conversationListeners.get(ackData.conversationId);
       if (callback) {
-        console.log(
-          "[ChatSocket] Calling ACK callback for:",
-          ackData.conversationId,
-        );
+        // console.log(
+        //   "[ChatSocket] Calling ACK callback for:",
+        //   ackData.conversationId,
+        // );
         callback({
           clientMessageId: ackData.clientMessageId,
           messageId: ackData.messageId || ackData._id,
@@ -272,30 +272,29 @@ class ChatSocketService {
     this.joinedConversations.add(conversationId);
 
     if (!this.socket?.connected) {
-      console.warn("[ChatSocket] Socket not connected, cannot join");
+      //console.warn("[ChatSocket] Socket not connected, cannot join");
       return;
     }
 
-    console.log("[ChatSocket] Joining conversation:", conversationId);
+    //console.log("[ChatSocket] Joining conversation:", conversationId);
     // Emit event chat:join_conversation tới server
     this.socket.emit("chat:join_conversation", { conversationId });
   }
 
   private rejoinConversations() {
     this.joinedConversations.forEach((conversationId) => {
-      console.log("[ChatSocket] Rejoining:", conversationId);
+      //console.log("[ChatSocket] Rejoining:", conversationId);
       this.socket?.emit("chat:join_conversation", { conversationId });
     });
   }
 
   /**
    * Leave một Conversation (ngừng listen)
-   *
    */
   leaveConversation(conversationId: string): void {
     if (!this.socket?.connected) return;
 
-    console.log("[ChatSocket] Leaving conversation:", conversationId);
+    //console.log("[ChatSocket] Leaving conversation:", conversationId);
     this.socket.emit("chat:leave_conversation", {
       conversationId,
     });
@@ -304,10 +303,10 @@ class ChatSocketService {
     this.messageListeners.delete(conversationId);
     this.conversationListeners.delete(conversationId);
 
-    console.log(
-      "[ChatSocket] Cleared listeners for conversation:",
-      conversationId,
-    );
+    // console.log(
+    //   "[ChatSocket] Cleared listeners for conversation:",
+    //   conversationId,
+    // );
   }
 
   /**
@@ -329,7 +328,7 @@ class ChatSocketService {
       return;
     }
 
-    const requestId = clientMessageId; // Use clientMessageId as requestId
+    const requestId = clientMessageId;
 
     console.log("[ChatSocket] Sending message:", {
       conversationId,
@@ -352,11 +351,10 @@ class ChatSocketService {
       );
     }, 5000);
 
-    // Gửi message với format ĐÚNG theo server expect
     this.socket.emit(
       "chat:send_message",
       {
-        requestId, // Server expect requestId
+        requestId,
         conversationId,
         content,
         clientMessageId,
@@ -365,12 +363,12 @@ class ChatSocketService {
       },
       (ackData: any, error: any) => {
         clearTimeout(timeoutId);
-        console.log("[ChatSocket] Message emit callback received:", {
-          ackData,
-          error,
-          hasAckData: !!ackData,
-          hasError: !!error,
-        });
+        // console.log("[ChatSocket] Message emit callback received:", {
+        //   ackData,
+        //   error,
+        //   hasAckData: !!ackData,
+        //   hasError: !!error,
+        // });
 
         if (error) {
           console.error("[ChatSocket] Server error on message emit:", error);
@@ -385,10 +383,10 @@ class ChatSocketService {
         // Handle response format - server return { ok, data: { ... } }
         const responseData = ackData.data || ackData;
 
-        console.log("[ChatSocket] Message ACK received successfully:", {
-          messageId: responseData.messageId,
-          timestamp: responseData.timestamp,
-        });
+        // console.log("[ChatSocket] Message ACK received successfully:", {
+        //   messageId: responseData.messageId,
+        //   timestamp: responseData.timestamp,
+        // });
 
         // Gọi callback khi nhận được ACK từ server
         onAck({
@@ -413,10 +411,10 @@ class ChatSocketService {
     conversationId: string,
     callback: (message: SocketMessage) => void,
   ): void {
-    console.log(
-      "[ChatSocket] Registering message listener for conversation:",
-      conversationId,
-    );
+    // console.log(
+    //   "[ChatSocket] Registering message listener for conversation:",
+    //   conversationId,
+    // );
     this.messageListeners.set(conversationId, callback);
   }
 
@@ -424,10 +422,10 @@ class ChatSocketService {
    * Đăng ký callback để listen ACK
    */
   onAck(conversationId: string, callback: (data: any) => void): void {
-    console.log(
-      "[ChatSocket] Registering ACK listener for conversation:",
-      conversationId,
-    );
+    // console.log(
+    //   "[ChatSocket] Registering ACK listener for conversation:",
+    //   conversationId,
+    // );
     this.conversationListeners.set(conversationId, callback);
   }
 
@@ -436,7 +434,7 @@ class ChatSocketService {
    */
   disconnect(): void {
     if (this.socket) {
-      console.log("[ChatSocket] Disconnecting");
+      //console.log("[ChatSocket] Disconnecting");
       this.socket.disconnect();
       this.socket = null;
       this.messageListeners.clear();
@@ -464,9 +462,5 @@ class ChatSocketService {
     return tokenCandidates.find((item) => !!item) || null;
   }
 }
-
-// ═══════════════════════════════════════════════════════════
-// SINGLETON INSTANCE
-// ═══════════════════════════════════════════════════════════
 
 export const chatSocketService = new ChatSocketService();

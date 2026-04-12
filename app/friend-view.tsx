@@ -163,7 +163,7 @@ export default function FriendViewScreen() {
     if (!profile || !currentUserId) return;
 
     try {
-      console.log("[FriendView] Creating conversation with:", profile.id);
+      //console.log("[FriendView] Creating conversation with:", profile.id);
 
       // Gọi API tạo conversation với friend
       const conversation = await chatApi.createConversation({
@@ -178,10 +178,10 @@ export default function FriendViewScreen() {
         );
       }
 
-      console.log(
-        "[FriendView] Navigating to chat with conversationId:",
-        conversationId,
-      );
+      // console.log(
+      //   "[FriendView] Navigating to chat with conversationId:",
+      //   conversationId,
+      // );
 
       // Điều hướng tới chat screen với conversationId và friend info
       router.push({

@@ -1,7 +1,7 @@
-import { Message } from "@/types/chat";
+import { Message, MessageType } from "@/types/chat";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useState } from "react";
-import { chatApi, MessageResponse } from "@/services/api/chat";
+import { chatApi, MessageItem, MessageResponse } from "@/services/api/chat";
 import {
   chatSocketService,
   SocketMessage,
@@ -103,10 +103,10 @@ export const useChat = (conversationId: string) => {
    */
   useEffect(() => {
     if (!conversationId || !currentUserId) {
-      console.log("[useChat] Waiting for conversationId and currentUserId", {
-        hasConversationId: !!conversationId,
-        hasCurrentUserId: !!currentUserId,
-      });
+      // console.log("[useChat] Waiting for conversationId and currentUserId", {
+      //   hasConversationId: !!conversationId,
+      //   hasCurrentUserId: !!currentUserId,
+      // });
       return;
     }
 
@@ -118,18 +118,18 @@ export const useChat = (conversationId: string) => {
 
         // Connect socket nếu chưa connect
         if (!chatSocketService.isConnected()) {
-          console.log("[useChat] Socket not connected, connecting...");
+          //console.log("[useChat] Socket not connected, connecting...");
           await chatSocketService.connect();
         }
 
         if (!isMounted) return;
 
-        console.log("[useChat] Joining conversation:", conversationId);
+        //console.log("[useChat] Joining conversation:", conversationId);
         // Join conversation
         chatSocketService.joinConversation(conversationId);
 
         // Tải lịch sử tin nhắn từ API
-        console.log("[useChat] Loading messages from API...");
+        //console.log("[useChat] Loading messages from API...");
         const messagesFromApi = await chatApi.getMessages(
           conversationId,
           50,
@@ -138,9 +138,10 @@ export const useChat = (conversationId: string) => {
 
         if (!isMounted) return;
 
-        const formattedMessages = (messagesFromApi.items || []).map(
-          (msg: MessageResponse) =>
-            convertApiMessageToUIMessage(msg, currentUserId),
+        console.log("Msg from api ", messagesFromApi);
+
+        const formattedMessages = (messagesFromApi.items || []).map((msg) =>
+          convertApiMessageToUIMessage(msg, currentUserId),
         );
 
         // Sắp xếp messages: cũ → mới
@@ -160,22 +161,16 @@ export const useChat = (conversationId: string) => {
           isLoading: false,
         }));
 
-        console.log(
-          "[useChat] Initialized with",
-          sortedMessages.length,
-          "messages",
-        );
-
         // Setup socket listeners
         if (!isMounted) return;
 
-        console.log("[useChat] Setting up socket event listeners...");
+        //console.log("[useChat] Setting up socket event listeners...");
 
         // Handler cho tin nhắn mới từ WebSocket
         const handleNewMessage = (socketMsg: SocketMessage) => {
           if (!isMounted) return;
 
-          // Thêm vào danh sách tin nhắn (prepend vào đầu)
+          // Thêm vào danh sách tin nhắn
           setState((prev) => {
             if (socketMsg.message.clientMessageId) {
               const index = prev.messages.findIndex(
@@ -207,17 +202,17 @@ export const useChat = (conversationId: string) => {
             return {
               ...prev,
               messages: [
+                ...prev.messages,
                 {
                   id: socketMsg.message._id,
                   chatId: conversationId,
                   senderId: socketMsg.message.senderBy,
-                  type: "text",
+                  type: "TEXT",
                   text: socketMsg.message.content,
                   timestamp: formatTime(socketMsg.message.createdAt),
                   isMine: socketMsg.message.senderBy === currentUserId,
                   status: "read",
                 },
-                ...prev.messages,
               ],
             };
           });
@@ -252,10 +247,10 @@ export const useChat = (conversationId: string) => {
         chatSocketService.onMessage(conversationId, handleNewMessage);
         chatSocketService.onAck(conversationId, handleAck);
 
-        console.log(
-          "[useChat] Socket listeners registered for:",
-          conversationId,
-        );
+        // console.log(
+        //   "[useChat] Socket listeners registered for:",
+        //   conversationId,
+        // );
       } catch (error) {
         if (!isMounted) return;
         console.error("[useChat] Initialization failed:", error);
@@ -306,17 +301,17 @@ export const useChat = (conversationId: string) => {
       const clientMessageId = generateUniqueId();
       const timestamp = new Date().toISOString();
 
-      console.log("[useChat] Creating optimistic message:", {
-        clientMessageId,
-        content: text.trim(),
-      });
+      // console.log("[useChat] Creating optimistic message:", {
+      //   clientMessageId,
+      //   content: text.trim(),
+      // });
 
       // Thêm message vào state ngay (Optimistic UI)
       const optimisticMessage: Message = {
         id: clientMessageId,
         chatId: conversationId,
         senderId: currentUserId,
-        type: "text",
+        type: "TEXT",
         text: text.trim(),
         timestamp: formatTime(timestamp),
         isMine: true,
@@ -325,11 +320,11 @@ export const useChat = (conversationId: string) => {
 
       setState((prev) => ({
         ...prev,
-        messages: [optimisticMessage, ...prev.messages],
-        inputText: "", // Clear input field
+        messages: [...prev.messages, optimisticMessage],
+        inputText: "",
       }));
 
-      console.log("[useChat] Sending message via WebSocket...");
+      //console.log("[useChat] Sending message via WebSocket...");
 
       // Gửi qua WebSocket với callback
       chatSocketService.sendMessage(
@@ -337,10 +332,10 @@ export const useChat = (conversationId: string) => {
         text.trim(),
         clientMessageId,
         (ackData) => {
-          console.log("[useChat] sendMessage callback received ACK:", {
-            clientMessageId,
-            messageId: ackData.messageId,
-          });
+          // console.log("[useChat] sendMessage callback received ACK:", {
+          //   clientMessageId,
+          //   messageId: ackData.messageId,
+          // });
 
           // Cập nhật message ID từ client thành server ID
           setState((prev) => ({
@@ -394,21 +389,19 @@ export const useChat = (conversationId: string) => {
  * Chúng ta cần so sánh `senderBy` với `currentUserId` để xác định nó là tin nhắn của mình hay không
  */
 function convertApiMessageToUIMessage(
-  apiMsg: MessageResponse,
+  apiMsg: MessageItem,
   currentUserId: string,
 ): Message {
-  // Lấy userId người gửi - server trả về senderBy, có fallback là senderId
-  const senderUserId = apiMsg.senderBy || apiMsg.senderId;
-
   return {
-    id: apiMsg._id || apiMsg.messageId || "",
+    id: apiMsg._id,
     chatId: apiMsg.conversationId,
-    senderId: senderUserId || "",
-    type: (apiMsg.type as any) || "text",
+    senderId: apiMsg.senderBy || "",
+    type: (apiMsg.messageType as MessageType) || "TEXT",
     text: apiMsg.content,
-    timestamp: formatTime(apiMsg.createdAt || apiMsg.timestamp || ""),
-    isMine: senderUserId === currentUserId,
+    timestamp: apiMsg.createdAt,
+    isMine: apiMsg.senderBy === currentUserId,
     status: "read",
+    imageUri: apiMsg.mediaUrl,
   };
 }
 
@@ -417,7 +410,7 @@ function convertApiMessageToUIMessage(
  * Input: ISO string (2025-01-15T14:30:00Z)
  * Output todays: "14:30" | other days: "1/15/25"
  */
-function formatTime(timeString: string): string {
+export function formatTime(timeString: string): string {
   try {
     const date = new Date(timeString);
     if (Number.isNaN(date.getTime())) {
@@ -448,4 +441,11 @@ function formatTime(timeString: string): string {
   } catch {
     return "Invalid time";
   }
+}
+
+export function getDiffMinutes(date1: string, date2: string): number {
+  const t1 = new Date(date1).getTime();
+  const t2 = new Date(date2).getTime();
+
+  return Math.abs(t2 - t1) / (1000 * 60); // ms → phút
 }

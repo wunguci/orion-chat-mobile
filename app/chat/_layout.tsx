@@ -1,11 +1,11 @@
-import { Stack } from 'expo-router';
+import { Stack } from "expo-router";
 
 export default function ChatLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        animationEnabled: true,
+        // animationEnabled: true,
       }}
     >
       <Stack.Screen name="[id]" />

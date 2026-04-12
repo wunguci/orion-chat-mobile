@@ -2,7 +2,7 @@ import ChatHeader from "@/components/chat/ChatHeader";
 import MessageBubble from "@/components/chat/MessageBubble";
 import MessageInput from "@/components/chat/MessageInput";
 import MessageTimestamp from "@/components/chat/MessageTimestamp";
-import { useChat } from "@/hooks/useChat";
+import { formatTime, getDiffMinutes, useChat } from "@/hooks/useChat";
 import { useTheme } from "@/hooks/useTheme";
 import { Message } from "@/types/chat";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -16,14 +16,6 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-// Show timestamp between messages if gap is large or first in group
-function shouldShowTimestamp(messages: Message[], index: number): boolean {
-  if (index === 0) return true;
-  const prev = messages[index - 1];
-  const curr = messages[index];
-  return prev.timestamp !== curr.timestamp;
-}
 
 function shouldShowAvatar(messages: Message[], index: number): boolean {
   const curr = messages[index];
@@ -58,11 +50,32 @@ export default function ChatScreen() {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 100);
   }, [inputText, sendMessage]);
 
+  const lastMessage = messages[0];
+
+  function shouldShowTimestamp(messages: Message[], index: number): boolean {
+    if (index === 0) return true;
+
+    const prev = messages[index - 1];
+    const curr = messages[index];
+
+    const diffMinutes = getDiffMinutes(prev.timestamp, curr.timestamp);
+
+    return diffMinutes > 30 || index === messages.length - 1;
+  }
+
+  console.log("LAST MSG ", messages[messages.length - 1]);
+
+  const lastMessageTimeAgo = lastMessage
+    ? getDiffMinutes(lastMessage.timestamp, new Date().toISOString())
+    : "";
+
+  console.log("LAST MSG TIME AGO ", lastMessageTimeAgo);
+
   const renderItem = useCallback(
     ({ item, index }: { item: Message; index: number }) => (
       <View>
         {shouldShowTimestamp(messages, index) && (
-          <MessageTimestamp time={item.timestamp} />
+          <MessageTimestamp time={formatTime(item.timestamp)} />
         )}
         <MessageBubble
           message={item}
@@ -99,7 +112,6 @@ export default function ChatScreen() {
           data={messages}
           keyExtractor={(m) => m.id}
           renderItem={renderItem}
-          inverted={true}
           contentContainerStyle={{
             paddingVertical: 12,
           }}
