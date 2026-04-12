@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import API_BASE_URL from "@/config/api";
+import { Message } from "@/types/chat";
 
 /**
  * Xây dựng URL với query parameters
@@ -114,6 +115,12 @@ export interface MessageItem {
   senderName: string;
   senderAvatar: string;
   mediaUrl?: string;
+
+  // Dành cho file attachments
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
+  replyToMessageId?: string;
 }
 
 export interface MessageResponse {
@@ -228,6 +235,14 @@ export const chatApi = {
       },
     );
     return toJson<MessageResponse>(response);
+  },
+
+  async sendAttachment(formData: FormData) {
+    const res = await authFetch(`${API_BASE_URL}/messages/upload`, {
+      method: "POST",
+      body: formData,
+    });
+    return toJson<MessageItem>(res);
   },
 
   /**

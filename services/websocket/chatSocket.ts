@@ -197,24 +197,19 @@ class ChatSocketService {
           createdAt: serverData.message.createdAt,
           clientMessageId: serverData.message.clientMessageId,
           replyToMessageId: serverData.message.replyToMessageId,
-          messageStatus: (serverData.message.messageType === "TEXT"
-            ? "text"
-            : serverData.messageType === "IMAGE"
-              ? "image"
-              : serverData.messageType === "AUDIO"
-                ? "audio"
-                : serverData.messageType === "FILE"
-                  ? "file"
-                  : "text") as any,
+          messageStatus: "SENT",
         },
       };
 
-      console.log("[ChatSocket] Received message_new:", {
-        conversationId: data.conversationId,
-        messageId: data.message._id,
-        senderId: data.message.senderName,
-        content: data.message.content.substring(0, 30),
-      });
+      // console.log("[ChatSocket] Received message_new:", {
+      //   conversationId: data.conversationId,
+      //   messageId: data.message._id,
+      //   senderId: data.message.senderName,
+      //   messageType: data.message.messageType,
+      //   content: data.message.content
+      //     ? data.message.content.substring(0, 30)
+      //     : "Attachment",
+      // });
 
       // Gọi callback nếu có listener cho conversation này
       const callback = this.messageListeners.get(data.conversationId);
@@ -224,11 +219,6 @@ class ChatSocketService {
         //   data.conversationId,
         // );
         callback(data);
-      } else {
-        console.warn(
-          "[ChatSocket] No listener for conversation:",
-          data.conversationId,
-        );
       }
     });
 
@@ -252,12 +242,13 @@ class ChatSocketService {
           messageStatus: ackData.messageStatus || "SENT",
           timestamp: ackData.createdAt || ackData.timestamp,
         });
-      } else {
-        console.warn(
-          "[ChatSocket] No ACK listener for conversation:",
-          ackData.conversationId,
-        );
       }
+      // else {
+      //   console.warn(
+      //     "[ChatSocket] No ACK listener for conversation:",
+      //     ackData.conversationId,
+      //   );
+      // }
     });
   }
 
@@ -402,6 +393,83 @@ class ChatSocketService {
     this.socket.once("error", (error) => {
       console.error("[ChatSocket] Socket error after emit:", error);
     });
+  }
+
+  sendAttachmentMessage(
+    conversationId: string,
+    mediaUrl: string,
+    messageType: "IMAGE" | "FILE" | "VIDEO_PREVIEW",
+    clientMessageId: string,
+    onAck: SendAckCallback,
+    attachmentData?: {
+      fileName?: string;
+      fileSize?: number;
+      videoDuration?: number;
+    },
+  ): void {
+    if (!this.socket?.connected) {
+      //console.error("[ChatSocket] Socket not connected");
+      return;
+    }
+
+    const payload = {
+      requestId: clientMessageId,
+      conversationId,
+      clientMessageId,
+      mediaUrl,
+      type: messageType.toLocaleUpperCase(),
+      messageType,
+      fileName: attachmentData?.fileName,
+      fileSize: attachmentData?.fileSize,
+      videoDuration: attachmentData?.videoDuration,
+      receiverId: "",
+    };
+
+    // console.log("[ChatSocket] Sending attachment message:", {
+    //   conversationId,
+    //   messageType,
+    //   clientMessageId,
+    // });
+
+    const timeoutId = setTimeout(() => {
+      console.error(
+        "[ChatSocket] TIMEOUT: No ACK response from server after 5s",
+        {
+          clientMessageId,
+          conversationId,
+        },
+      );
+    }, 5000);
+
+    this.socket.emit(
+      "chat:send_message",
+      payload,
+      (ackData: any, error: any) => {
+        clearTimeout(timeoutId);
+
+        if (error) {
+          // console.error(
+          //   "[ChatSocket] Server error on attachment message emit:",
+          //   error,
+          // );
+          return;
+        }
+
+        const responseData = ackData.data || ackData;
+
+        // console.log("[ChatSocket] Attachment message ACK received:", {
+        //   messageId: responseData.messageId,
+        //   timestamp: responseData.timestamp,
+        // });
+
+        onAck({
+          clientMessageId: responseData.clientMessageId,
+          messageId: responseData.messageId,
+          messageStatus: "SENT",
+          timestamp: responseData.timestamp || new Date().toISOString(),
+        });
+      },
+    );
   }
 
   /**

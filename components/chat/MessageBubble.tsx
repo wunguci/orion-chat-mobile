@@ -70,7 +70,6 @@ function TextBubble({
 // ── Image bubble ─────────────────────────────────────────────
 function ImageBubble({ message }: { message: Message }) {
   const { colors } = useTheme();
-  console.log("Image msg ", message);
 
   return (
     <View

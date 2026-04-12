@@ -1,7 +1,7 @@
 import { AttachmentAsset, Message, MessageType } from "@/types/chat";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useState } from "react";
-import { chatApi, MessageItem, MessageResponse } from "@/services/api/chat";
+import { chatApi, MessageItem } from "@/services/api/chat";
 import {
   chatSocketService,
   SocketMessage,
@@ -137,8 +137,6 @@ export const useChat = (conversationId: string) => {
         );
 
         if (!isMounted) return;
-
-        console.log("Msg from api ", messagesFromApi);
 
         const formattedMessages = (messagesFromApi.items || []).map((msg) =>
           convertApiMessageToUIMessage(msg, currentUserId),
@@ -299,7 +297,6 @@ export const useChat = (conversationId: string) => {
 
       // Tạo ID tạm thời cho client
       const clientMessageId = generateUniqueId();
-      const timestamp = new Date().toISOString();
 
       // console.log("[useChat] Creating optimistic message:", {
       //   clientMessageId,
@@ -313,7 +310,7 @@ export const useChat = (conversationId: string) => {
         senderId: currentUserId,
         type: "TEXT",
         text: text.trim(),
-        timestamp: formatTime(timestamp),
+        timestamp: new Date().toISOString(),
         isMine: true,
         status: "sending",
       };
@@ -358,59 +355,110 @@ export const useChat = (conversationId: string) => {
   );
 
   const sendAttachment = useCallback(
-    (asset: AttachmentAsset) => {
-      const mimeType = asset.mimeType ?? "";
-      let type: MessageType = "FILE";
-      if (mimeType.startsWith("image/")) type = "IMAGE";
-      else if (mimeType.startsWith("video/")) type = "VIDEO_PREVIEW";
+    async (asset: AttachmentAsset) => {
+      if (!currentUserId || !conversationId) {
+        console.warn("[useChat] Cannot send attachment");
+        return;
+      }
 
-      const baseMsg: Omit<
-        Message,
-        | "imageUri"
-        | "videoUri"
-        | "fileUri"
-        | "fileName"
-        | "fileMimeType"
-        | "fileSize"
-      > = {
-        id: Date.now().toString(),
-        chatId,
-        senderId: "me",
-        type,
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        status: "sending",
-        isMine: true,
-      };
+      try {
+        const mimeType = asset.mimeType ?? "";
+        let type: MessageType = "FILE";
+        if (mimeType.startsWith("image/")) type = "IMAGE";
+        else if (mimeType.startsWith("video/")) type = "VIDEO_PREVIEW";
 
-      const newMsg: Message =
-        type === "IMAGE"
-          ? { ...baseMsg, imageUri: asset.uri }
-          : type === "VIDEO_PREVIEW"
-            ? {
-                ...baseMsg,
-                videoUri: asset.uri,
-                videoDuration: asset.duration,
-              }
-            : {
-                ...baseMsg,
-                fileUri: asset.uri,
-                fileName: asset.name,
-                fileMimeType: asset.mimeType,
-                fileSize: asset.size,
-              };
+        const clientMessageId = generateUniqueId();
 
-      setMessages((prev) => [...prev, newMsg]);
+        const optimisticMessage: Message = {
+          id: clientMessageId,
+          chatId: conversationId,
+          senderId: currentUserId,
+          type: type,
+          text: asset.name,
+          timestamp: new Date().toISOString(),
+          isMine: true,
+          status: "sending",
+          ...(type === "IMAGE" && { imageUri: asset.uri }),
+          ...(type === "VIDEO_PREVIEW" && {
+            videoUri: asset.uri,
+            videoDuration: asset.duration,
+          }),
+          ...(type === "FILE" && {
+            fileUri: asset.uri,
+            fileName: asset.name,
+            fileMimeType: asset.mimeType,
+            fileSize: asset.size,
+          }),
+        };
 
-      setTimeout(() => {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === newMsg.id ? { ...m, status: "sent" } : m)),
+        setState((prev) => ({
+          ...prev,
+          messages: [...prev.messages, optimisticMessage],
+        }));
+
+        console.log("[useChat] Uploading attachment to S3");
+
+        const formData = new FormData();
+        formData.append("file", {
+          uri: asset.uri,
+          name: asset.name,
+          type: asset.mimeType,
+        } as any);
+        formData.append("conversationId", conversationId);
+
+        // TODO: Test xong thì tách thành API riêng, không upload trực tiếp qua WebSocket
+        const uploadData = await chatApi.sendAttachment(formData);
+        const mediaUrl = uploadData.mediaUrl || "";
+
+        console.log("[useChat] Upload successful:", { mediaUrl });
+
+        chatSocketService.sendAttachmentMessage(
+          conversationId,
+          mediaUrl,
+          type,
+          clientMessageId,
+          (ackData) => {
+            setState((prev) => ({
+              ...prev,
+              messages: prev.messages.map((msg) => {
+                if (msg.id === clientMessageId) {
+                  return {
+                    ...msg,
+                    id: ackData.messageId,
+                    status: "read",
+                  };
+                }
+                return msg;
+              }),
+            }));
+          },
+          {
+            fileName: asset.name,
+            fileSize: asset.size,
+            videoDuration: asset.duration,
+          },
         );
-      }, 800);
+      } catch (error) {
+        console.error("[useChat-sendAttach] Error send attachment ", error);
+
+        setState((prev) => ({
+          ...prev,
+          messages: prev.messages.filter((msg) => {
+            if (msg.status === "sending" && msg.text === asset.name) {
+              return { ...msg, status: "sent" };
+            }
+            return msg;
+          }),
+          error:
+            error instanceof Error
+              ? error.message
+              : typeof error === "string"
+                ? error
+                : "Failed to send attachment",
+        }));
+      }
     },
-    [chatId],
+    [conversationId, currentUserId],
   );
 
   // ─────────────────────────────────────────────────────────
@@ -429,6 +477,7 @@ export const useChat = (conversationId: string) => {
     inputText: state.inputText,
     setInputText,
     sendMessage,
+    sendAttachment,
     isLoading: state.isLoading,
     error: state.error,
   };
@@ -454,7 +503,7 @@ function convertApiMessageToUIMessage(
     senderId: apiMsg.senderBy || "",
     type: (apiMsg.messageType as MessageType) || "TEXT",
     text: apiMsg.content,
-    timestamp: apiMsg.createdAt,
+    timestamp: apiMsg.createdAt || "",
     isMine: apiMsg.senderBy === currentUserId,
     status: "read",
     imageUri: apiMsg.mediaUrl,

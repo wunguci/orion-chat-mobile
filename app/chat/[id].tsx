@@ -34,7 +34,8 @@ export default function ChatScreen() {
   const router = useRouter();
   const { id, name, avatarUri } = params;
   const { colors, colorScheme } = useTheme();
-  const { messages, inputText, setInputText, sendMessage, sendAttachment } = useChat(id || "");
+  const { messages, inputText, setInputText, sendMessage, sendAttachment } =
+    useChat(id || "");
   const listRef = useRef<FlatList>(null);
 
   useEffect(() => {
@@ -50,8 +51,6 @@ export default function ChatScreen() {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 100);
   }, [inputText, sendMessage]);
 
-  const lastMessage = messages[0];
-
   function shouldShowTimestamp(messages: Message[], index: number): boolean {
     if (index === 0) return true;
 
@@ -59,15 +58,15 @@ export default function ChatScreen() {
     const curr = messages[index];
 
     const diffMinutes = getDiffMinutes(prev.timestamp, curr.timestamp);
-
-    return diffMinutes > 30 || index === messages.length - 1;
+    return diffMinutes > 30;
   }
 
-  console.log("LAST MSG ", messages[messages.length - 1]);
-
+  const lastMessage = messages[messages.length - 1];
   const lastMessageTimeAgo = lastMessage
     ? getDiffMinutes(lastMessage.timestamp, new Date().toISOString())
     : "";
+
+  console.log("LAST MSG ", messages[messages.length - 1]);
 
   console.log("LAST MSG TIME AGO ", lastMessageTimeAgo);
 
@@ -116,7 +115,7 @@ export default function ChatScreen() {
             paddingVertical: 12,
           }}
           onContentSizeChange={() =>
-            listRef.current?.scrollToOffset({ offset: 0, animated: false })
+            listRef.current?.scrollToEnd({ animated: false })
           }
           showsVerticalScrollIndicator={false}
         />
@@ -126,6 +125,7 @@ export default function ChatScreen() {
           value={inputText}
           onChangeText={setInputText}
           onSend={handleSend}
+          onAttach={sendAttachment}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>
