@@ -34,7 +34,7 @@ export default function ChatScreen() {
   const router = useRouter();
   const { id, name, avatarUri } = params;
   const { colors, colorScheme } = useTheme();
-  const { messages, inputText, setInputText, sendMessage } = useChat(id || "");
+  const { messages, inputText, setInputText, sendMessage, sendAttachment } = useChat(id || "");
   const listRef = useRef<FlatList>(null);
 
   useEffect(() => {

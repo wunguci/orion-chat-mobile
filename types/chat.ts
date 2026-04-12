@@ -18,6 +18,16 @@ export type MessageStatus = "sending" | "sent" | "delivered" | "read";
 
 export type MessageType = "TEXT" | "IMAGE" | "LINK_PREVIEW" | "VIDEO_PREVIEW";
 
+export interface AttachmentAsset {
+    uri: string;
+    name: string;
+    mimeType: string;
+    size?: number;
+    width?: number;
+    height?: number;
+    duration?: number; // for video, in milliseconds
+}
+
 export interface LinkPreview {
   url: string;
   title: string;
@@ -35,20 +45,29 @@ export interface VideoPreview {
 }
 
 export interface Message {
-  id: string;
-  chatId: string;
-  senderId: string; // 'me' or user id
-  type: MessageType;
-  // text content (used for text, or caption for image/video)
-  text?: string;
-  // image
-  imageUri?: string;
-  imageCaption?: string;
-  // link preview
-  linkPreview?: LinkPreview;
-  // video preview
-  videoPreview?: VideoPreview;
-  timestamp: string; // display string e.g. "2:14 PM"
-  status?: MessageStatus;
-  isMine: boolean;
+    id: string;
+    chatId: string;
+    senderId: string; // 'me' or user id
+    type: MessageType;
+    // text content (used for text, or caption for image/video)
+    text?: string;
+    // image
+    imageUri?: string;
+    imageCaption?: string;
+    // video
+    videoUri?: string;
+    videoThumbnailUri?: string;
+    videoDuration?: number;
+    // file
+    fileUri?: string;
+    fileName?: string;
+    fileMimeType?: string;
+    fileSize?: number;
+    // link preview
+    linkPreview?: LinkPreview;
+    // video preview
+    videoPreview?: VideoPreview;
+    timestamp: string; // display string e.g. "2:14 PM"
+    status?: MessageStatus;
+    isMine: boolean;
 }

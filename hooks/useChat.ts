@@ -1,4 +1,4 @@
-import { Message, MessageType } from "@/types/chat";
+import { AttachmentAsset, Message, MessageType } from "@/types/chat";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useState } from "react";
 import { chatApi, MessageItem, MessageResponse } from "@/services/api/chat";
@@ -355,6 +355,62 @@ export const useChat = (conversationId: string) => {
       );
     },
     [currentUserId, conversationId],
+  );
+
+  const sendAttachment = useCallback(
+    (asset: AttachmentAsset) => {
+      const mimeType = asset.mimeType ?? "";
+      let type: MessageType = "FILE";
+      if (mimeType.startsWith("image/")) type = "IMAGE";
+      else if (mimeType.startsWith("video/")) type = "VIDEO_PREVIEW";
+
+      const baseMsg: Omit<
+        Message,
+        | "imageUri"
+        | "videoUri"
+        | "fileUri"
+        | "fileName"
+        | "fileMimeType"
+        | "fileSize"
+      > = {
+        id: Date.now().toString(),
+        chatId,
+        senderId: "me",
+        type,
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        status: "sending",
+        isMine: true,
+      };
+
+      const newMsg: Message =
+        type === "IMAGE"
+          ? { ...baseMsg, imageUri: asset.uri }
+          : type === "VIDEO_PREVIEW"
+            ? {
+                ...baseMsg,
+                videoUri: asset.uri,
+                videoDuration: asset.duration,
+              }
+            : {
+                ...baseMsg,
+                fileUri: asset.uri,
+                fileName: asset.name,
+                fileMimeType: asset.mimeType,
+                fileSize: asset.size,
+              };
+
+      setMessages((prev) => [...prev, newMsg]);
+
+      setTimeout(() => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === newMsg.id ? { ...m, status: "sent" } : m)),
+        );
+      }, 800);
+    },
+    [chatId],
   );
 
   // ─────────────────────────────────────────────────────────
