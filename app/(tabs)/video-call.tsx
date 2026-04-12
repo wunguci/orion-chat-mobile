@@ -2,12 +2,8 @@ import { CallContext } from "@/context/CallContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useContext, useEffect, useMemo } from "react";
-import {
-  SafeAreaView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 let RTCViewComponent: React.ComponentType<{
   streamURL: string;

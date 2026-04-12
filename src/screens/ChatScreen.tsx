@@ -11,7 +11,7 @@ const MOCK_CHATS: ChatItem[] = [
   {
     id: "1",
     name: "Athena",
-    lastMessage: "That's a good idea 🔥",
+    lastMessage: "That's a good idea",
     time: "9:41 AM",
     unread: 0,
     isGroup: false,

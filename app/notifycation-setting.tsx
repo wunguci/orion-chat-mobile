@@ -12,7 +12,8 @@ import {
   Volume2,
 } from "lucide-react-native";
 import React, { useState } from "react";
-import { SafeAreaView, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function NotificationsScreen() {
   const [muteAll, setMuteAll] = useState(false);

@@ -188,14 +188,14 @@ export default function CalendarScreen() {
     }
   };
 
-  const openDateMenu = () => {
+  const openDateMenu = useCallback(() => {
     Alert.alert("Calendar actions", "Choose one action", [
       { text: "Cancel", style: "cancel" },
       { text: "Refresh", onPress: () => void loadEvents() },
     ]);
-  };
+  }, [loadEvents]);
 
-  const getHeaderTitle = () => {
+  const getHeaderTitle = useCallback(() => {
     switch (viewMode) {
       case "day":
         return formatDate(currentDate, "full");
@@ -205,7 +205,7 @@ export default function CalendarScreen() {
       case "year":
         return currentDate.getFullYear().toString();
     }
-  };
+  }, [currentDate, viewMode]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -263,7 +263,14 @@ export default function CalendarScreen() {
         </View>
       ),
     });
-  }, [navigation, viewMode, currentDate, showSearch]);
+  }, [
+    navigation,
+    viewMode,
+    currentDate,
+    showSearch,
+    getHeaderTitle,
+    openDateMenu,
+  ]);
 
   return (
     <SafeAreaView

@@ -66,6 +66,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const currentOtherUserIdRef = useRef<string | null>(null);
   const incomingCallRef = useRef<IncomingCallData | null>(null);
   const acceptedCallIdRef = useRef<string | null>(null);
+  const acceptedIncomingCallRef = useRef<IncomingCallData | null>(null);
   const pendingOfferRef = useRef<CallOfferData | null>(null);
 
   useEffect(() => {
@@ -169,6 +170,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     setIncomingCall(null);
     pendingOfferRef.current = null;
     acceptedCallIdRef.current = null;
+    acceptedIncomingCallRef.current = null;
     incomingAlertShownRef.current = false;
     callScreenOpenedRef.current = false;
   }, [cleanupWebRTC]);
@@ -307,7 +309,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
       if (
         acceptedCallIdRef.current === data.callId &&
-        incomingCallRef.current &&
         callSocketService.getSocket()
       ) {
         try {
@@ -317,6 +318,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             callerId: data.callerId,
             answer,
           });
+
+          // Offer has been handled after user accepted the call.
+          acceptedIncomingCallRef.current = null;
           pendingOfferRef.current = null;
           setIncomingCall(null);
           incomingAlertShownRef.current = false;
@@ -490,6 +494,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     }
 
     acceptedCallIdRef.current = incomingCall.callId;
+    acceptedIncomingCallRef.current = incomingCall;
 
     try {
       initializePeerConnection();
@@ -524,7 +529,11 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             callerId: pendingOffer.callerId,
             answer,
           });
+
+          acceptedIncomingCallRef.current = null;
           pendingOfferRef.current = null;
+          setIncomingCall(null);
+          incomingAlertShownRef.current = false;
         }
       } catch (error) {
         setCallState((prev) => ({
@@ -558,9 +567,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       incomingCall.callerId,
       incomingCall.callerName,
     );
-
-    setIncomingCall(null);
-    incomingAlertShownRef.current = false;
   }, [
     incomingCall,
     openCallScreen,
