@@ -1,6 +1,10 @@
 import { Stack } from "expo-router";
 import React from "react";
 
+const WH_GREEN_PRIMARY = "#0d9488";
+const WH_GREEN_BG_LIGHT = "#f5f7fa";
+const WH_GREEN_TEXT_PRIMARY = "#1e293b";
+
 export default function SettingsLayout() {
   return (
     <Stack
@@ -8,15 +12,16 @@ export default function SettingsLayout() {
         headerShown: true,
         headerBackTitle: "Quay lại",
         headerStyle: {
-          backgroundColor: "#0a0a0a",
+          backgroundColor: WH_GREEN_BG_LIGHT,
         },
-        headerTintColor: "#ee652b",
+        headerTintColor: WH_GREEN_PRIMARY,
         headerTitleStyle: {
           fontWeight: "600",
-          fontSize: 18,
+          fontSize: 17,
+          color: WH_GREEN_TEXT_PRIMARY,
         },
         contentStyle: {
-          backgroundColor: "#0a0a0a",
+          backgroundColor: WH_GREEN_BG_LIGHT,
         },
       }}
     >

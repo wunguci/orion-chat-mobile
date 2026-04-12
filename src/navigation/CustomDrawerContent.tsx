@@ -6,6 +6,7 @@ import { router, usePathname } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { whColors } from "@/constants/tailwindColors";
 import {
   MessageCircle,
   Users,
@@ -80,9 +81,6 @@ const EXTRA_ITEMS: DrawerItem[] = [
   },
 ];
 
-const PRIMARY_ORANGE = "#ee652b";
-const PRIMARY_TEAL = "#14b8a6";
-
 function DrawerRow({
   label,
   icon,
@@ -102,7 +100,7 @@ function DrawerRow({
     >
       <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
         {React.cloneElement(icon as React.ReactElement, {
-          color: isActive ? PRIMARY_ORANGE : "#888",
+          color: isActive ? whColors.primary : whColors.textSecondary,
         })}
       </View>
       <Text style={[styles.itemLabel, isActive && styles.itemLabelActive]}>
@@ -119,7 +117,7 @@ export default function CustomDrawerContent(
   const pathname = usePathname();
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
+    <View style={[styles.root, { paddingTop: insets.top + 4 }]}>
       <TouchableOpacity
         style={styles.header}
         onPress={() => {
@@ -132,7 +130,7 @@ export default function CustomDrawerContent(
         </View>
         <View>
           <Text style={styles.userName}>Phan Phước Hiệp</Text>
-          <Text style={styles.userSub}>Xem profile →</Text>
+          <Text style={styles.userSub}>Xem profile</Text>
         </View>
       </TouchableOpacity>
 
@@ -179,89 +177,90 @@ export default function CustomDrawerContent(
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#0a0a0a",
+    backgroundColor: whColors.bgLight,
   },
   contentContainer: {
     paddingTop: 0,
+    paddingBottom: 12,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#1a1a1a",
-    borderWidth: 2,
-    borderColor: PRIMARY_ORANGE,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: whColors.bgMedium,
+    borderWidth: 1.5,
+    borderColor: whColors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
-    color: PRIMARY_ORANGE,
+    color: whColors.primary,
     fontWeight: "700",
-    fontSize: 16,
+    fontSize: 14,
   },
   userName: {
-    color: "#DDDDDD",
-    fontWeight: "500",
+    color: whColors.textPrimary,
+    fontWeight: "600",
     fontSize: 14,
   },
   userSub: {
-    color: "#666",
+    color: whColors.textSecondary,
     fontSize: 12,
     marginTop: 2,
   },
   divider: {
     height: 0.5,
-    backgroundColor: "#1a1a1a",
-    marginHorizontal: 16,
-    marginVertical: 8,
+    backgroundColor: whColors.borderLight,
+    marginHorizontal: 12,
+    marginVertical: 6,
   },
   sectionLabel: {
     fontSize: 11,
-    color: "#555",
-    letterSpacing: 1.2,
-    marginHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 8,
+    color: whColors.textSecondary,
+    letterSpacing: 0.8,
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 6,
     fontWeight: "700",
     textTransform: "uppercase",
   },
   item: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    marginHorizontal: 10,
-    borderRadius: 12,
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginHorizontal: 8,
+    borderRadius: 10,
     marginBottom: 2,
   },
   itemActive: {
-    backgroundColor: "rgba(238, 101, 43, 0.15)",
+    backgroundColor: whColors.bgHeavy,
   },
   iconWrap: {
-    width: 32,
-    height: 32,
+    width: 30,
+    height: 30,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
   iconWrapActive: {
-    backgroundColor: "rgba(238, 101, 43, 0.2)",
+    backgroundColor: whColors.bgMedium,
   },
   itemLabel: {
-    fontSize: 15,
-    color: "#888",
+    fontSize: 14,
+    color: whColors.textSecondary,
     fontWeight: "500",
   },
   itemLabelActive: {
-    color: PRIMARY_ORANGE,
+    color: whColors.primaryHover,
     fontWeight: "600",
   },
 });
