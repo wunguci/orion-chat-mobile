@@ -207,7 +207,7 @@ export const useChat = (conversationId: string) => {
                   senderId: socketMsg.message.senderBy,
                   type: "TEXT",
                   text: socketMsg.message.content,
-                  timestamp: formatTime(socketMsg.message.createdAt),
+                  timestamp: socketMsg.message.createdAt,
                   isMine: socketMsg.message.senderBy === currentUserId,
                   status: "read",
                 },
@@ -368,13 +368,14 @@ export const useChat = (conversationId: string) => {
         else if (mimeType.startsWith("video/")) type = "VIDEO_PREVIEW";
 
         const clientMessageId = generateUniqueId();
+        const safeFileName = asset.name.replace(/\s+/g, "_");
 
         const optimisticMessage: Message = {
           id: clientMessageId,
           chatId: conversationId,
           senderId: currentUserId,
           type: type,
-          text: asset.name,
+          text: safeFileName,
           timestamp: new Date().toISOString(),
           isMine: true,
           status: "sending",
@@ -385,7 +386,7 @@ export const useChat = (conversationId: string) => {
           }),
           ...(type === "FILE" && {
             fileUri: asset.uri,
-            fileName: asset.name,
+            fileName: safeFileName,
             fileMimeType: asset.mimeType,
             fileSize: asset.size,
           }),
@@ -497,17 +498,42 @@ function convertApiMessageToUIMessage(
   apiMsg: MessageItem,
   currentUserId: string,
 ): Message {
-  return {
+  const messageType = (apiMsg.messageType as MessageType) || "TEXT";
+
+  const baseMessage: Message = {
     id: apiMsg._id,
     chatId: apiMsg.conversationId,
     senderId: apiMsg.senderBy || "",
-    type: (apiMsg.messageType as MessageType) || "TEXT",
+    type: messageType,
     text: apiMsg.content,
     timestamp: apiMsg.createdAt || "",
     isMine: apiMsg.senderBy === currentUserId,
     status: "read",
-    imageUri: apiMsg.mediaUrl,
   };
+
+  // Set properties dựa trên messageType
+  if (messageType === "IMAGE" && apiMsg.mediaUrl) {
+    return {
+      ...baseMessage,
+      imageUri: apiMsg.mediaUrl,
+    };
+  } else if (messageType === "FILE" && apiMsg.mediaUrl) {
+    return {
+      ...baseMessage,
+      fileUri: apiMsg.mediaUrl,
+      fileName: apiMsg.fileName,
+      fileMimeType: apiMsg.mimeType,
+      fileSize: apiMsg.fileSize,
+    };
+  } else if (messageType === "VIDEO_PREVIEW" && apiMsg.mediaUrl) {
+    return {
+      ...baseMessage,
+      videoUri: apiMsg.mediaUrl,
+      videoThumbnailUri: apiMsg.mediaUrl, // Use mediaUrl as thumbnail if no separate thumbnail
+    };
+  }
+
+  return baseMessage;
 }
 
 /**

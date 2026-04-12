@@ -203,6 +203,74 @@ function LinkPreviewBubble({ message }: { message: Message }) {
   );
 }
 
+// ── File bubble ──────────────────────────────────────────────
+function FileBubble({ message }: { message: Message }) {
+  const { colors } = useTheme();
+
+  const handleDownload = () => {
+    if (message.fileUri) {
+      Linking.openURL(message.fileUri).catch(() => {
+        console.error("Failed to open file");
+      });
+    }
+  };
+
+  const formatFileSize = (bytes?: number): string => {
+    if (!bytes) return "Unknown";
+    if (bytes < 1024) return `${bytes}B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={handleDownload}
+      style={{
+        maxWidth: "78%",
+        backgroundColor: colors.backgroundSecondary,
+        borderRadius: 14,
+        padding: 12,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+      }}
+    >
+      <MaterialCommunityIcons
+        name="file-document-outline"
+        size={32}
+        color={colors.primary}
+      />
+      <View style={{ flex: 1 }}>
+        <Text
+          style={{
+            color: colors.text,
+            fontSize: 13,
+            fontWeight: "600",
+            lineHeight: 18,
+          }}
+          numberOfLines={1}
+        >
+          {message.fileName}
+        </Text>
+        <Text
+          style={{
+            color: colors.textSecondary,
+            fontSize: 12,
+            marginTop: 2,
+          }}
+        >
+          {formatFileSize(message.fileSize)}
+        </Text>
+      </View>
+      <MaterialCommunityIcons
+        name="download"
+        size={20}
+        color={colors.primary}
+      />
+    </TouchableOpacity>
+  );
+}
+
 // ── Video preview bubble ─────────────────────────────────────
 function VideoPreviewBubble({ message }: { message: Message }) {
   const { colors } = useTheme();
@@ -415,6 +483,8 @@ export default function MessageBubble({
     switch (message.type) {
       case "IMAGE":
         return <ImageBubble message={message} />;
+      case "FILE":
+        return <FileBubble message={message} />;
       case "LINK_PREVIEW":
         return <LinkPreviewBubble message={message} />;
       case "VIDEO_PREVIEW":
