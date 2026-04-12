@@ -106,7 +106,7 @@ export default function ChatListItem({ item, onPress }: ChatListItemProps) {
             />
 
             {/* Content */}
-            <View style={{ flex: 1, marginLeft: 12 }}>
+            <View style={{ flex: 1, marginLeft: 6 }}>
                 <View
                     style={{
                         flexDirection: 'row',
@@ -127,9 +127,29 @@ export default function ChatListItem({ item, onPress }: ChatListItemProps) {
                     >
                         {item.name}
                     </Text>
-                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>
-                        {item.time}
-                    </Text>
+                    <View
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 6,
+                        }}
+                    >
+                        {item.isPinned ? (
+                            <Ionicons
+                                name="pin"
+                                size={12}
+                                color={colors.textSecondary}
+                            />
+                        ) : null}
+                        <Text
+                            style={{
+                                fontSize: 12,
+                                color: colors.textSecondary,
+                            }}
+                        >
+                            {item.time}
+                        </Text>
+                    </View>
                 </View>
 
                 <View

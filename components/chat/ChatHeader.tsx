@@ -8,12 +8,16 @@ interface ChatHeaderProps {
     name: string;
     avatarUri?: string;
     isOnline?: boolean;
+    subtitle?: string;
+    onPressMenu?: () => void;
 }
 
 export default function ChatHeader({
     name,
     avatarUri,
     isOnline,
+    subtitle,
+    onPressMenu,
 }: ChatHeaderProps) {
     const { colors } = useTheme();
 
@@ -92,18 +96,30 @@ export default function ChatHeader({
                 )}
             </View>
 
-            {/* Name */}
-            <Text
-                style={{
-                    flex: 1,
-                    fontSize: 17,
-                    fontWeight: '700',
-                    color: colors.text,
-                }}
-                numberOfLines={1}
-            >
-                {name}
-            </Text>
+            <View style={{ flex: 1 }}>
+                <Text
+                    style={{
+                        fontSize: 17,
+                        fontWeight: '700',
+                        color: colors.text,
+                    }}
+                    numberOfLines={1}
+                >
+                    {name}
+                </Text>
+                {subtitle ? (
+                    <Text
+                        style={{
+                            fontSize: 12,
+                            color: colors.textSecondary,
+                            marginTop: 2,
+                        }}
+                        numberOfLines={1}
+                    >
+                        {subtitle}
+                    </Text>
+                ) : null}
+            </View>
 
             {/* Action icons */}
             <TouchableOpacity hitSlop={8}>
@@ -116,7 +132,11 @@ export default function ChatHeader({
                     color={colors.text}
                 />
             </TouchableOpacity>
-            <TouchableOpacity hitSlop={8} style={{ marginLeft: 4 }}>
+            <TouchableOpacity
+                hitSlop={8}
+                style={{ marginLeft: 4 }}
+                onPress={onPressMenu}
+            >
                 <MaterialIcons name="menu" size={24} color={colors.text} />
             </TouchableOpacity>
         </View>
