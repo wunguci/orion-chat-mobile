@@ -396,16 +396,33 @@ export const useChat = (conversationId: string) => {
                     },
                 );
 
-                chatSocketService.onMessage(conversationId, handleNewMessage);
-                chatSocketService.onAck(conversationId, handleAck);
-                chatSocketService.onTyping(conversationId, handleTyping);
-                chatSocketService.onMessageStatus(
+                const offMessage = chatSocketService.onMessage(
+                    conversationId,
+                    handleNewMessage,
+                );
+                const offAck = chatSocketService.onAck(
+                    conversationId,
+                    handleAck,
+                );
+                const offTyping = chatSocketService.onTyping(
+                    conversationId,
+                    handleTyping,
+                );
+                const offMessageStatus = chatSocketService.onMessageStatus(
                     conversationId,
                     handleMessageStatus,
                 );
-                chatSocketService.onReaction(conversationId, handleReaction);
+                const offReaction = chatSocketService.onReaction(
+                    conversationId,
+                    handleReaction,
+                );
 
                 return () => {
+                    offMessage();
+                    offAck();
+                    offTyping();
+                    offMessageStatus();
+                    offReaction();
                     offConnection();
                     offPresence();
                 };

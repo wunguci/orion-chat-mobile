@@ -230,15 +230,21 @@ export default function ConversationListScreen() {
             );
         };
 
+        const offConversationSubscriptions: Array<() => void> = [];
+
         conversations.forEach((conversation) => {
             chatSocketService.joinConversation(conversation.conversationId);
-            chatSocketService.onMessage(
-                conversation.conversationId,
-                onSocketMessage,
+            offConversationSubscriptions.push(
+                chatSocketService.onMessage(
+                    conversation.conversationId,
+                    onSocketMessage,
+                ),
             );
-            chatSocketService.onAck(conversation.conversationId, () => {
-                // ACK khong can refresh full list; list da duoc patch tu message_new.
-            });
+            offConversationSubscriptions.push(
+                chatSocketService.onAck(conversation.conversationId, () => {
+                    // ACK khong can refresh full list; list da duoc patch tu message_new.
+                }),
+            );
         });
 
         const offConnection = chatSocketService.onConnectionState((state) => {
@@ -255,6 +261,7 @@ export default function ConversationListScreen() {
         return () => {
             isMounted = false;
             offConnection();
+            offConversationSubscriptions.forEach((off) => off());
             conversations.forEach((conversation) => {
                 chatSocketService.leaveConversation(
                     conversation.conversationId,

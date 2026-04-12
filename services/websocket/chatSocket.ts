@@ -67,25 +67,31 @@ class ChatSocketService {
     private socket: Socket | null = null;
     private isConnecting = false;
 
-    private messageListeners: Map<string, (message: SocketMessage) => void> =
-        new Map();
-    private ackListeners: Map<string, (data: any) => void> = new Map();
-    private typingListeners: Map<string, (payload: TypingPayload) => void> =
-        new Map();
+    private messageListeners: Map<
+        string,
+        Set<(message: SocketMessage) => void>
+    > = new Map();
+    private ackListeners: Map<string, Set<(data: any) => void>> = new Map();
+    private typingListeners: Map<
+        string,
+        Set<(payload: TypingPayload) => void>
+    > = new Map();
     private messageStatusListeners: Map<
         string,
-        (payload: MessageStatusPayload) => void
+        Set<(payload: MessageStatusPayload) => void>
     > = new Map();
     private presenceListeners: Map<string, (payload: PresencePayload) => void> =
         new Map();
-    private reactionListeners: Map<string, (payload: ReactionPayload) => void> =
-        new Map();
+    private reactionListeners: Map<
+        string,
+        Set<(payload: ReactionPayload) => void>
+    > = new Map();
 
     private connectionListeners = new Set<
         (state: SocketConnectionState, attempts?: number) => void
     >();
 
-    private joinedConversations = new Set<string>();
+    private joinedConversationCounts = new Map<string, number>();
 
     async connect(): Promise<void> {
         if (this.socket?.connected) {
@@ -214,7 +220,9 @@ class ChatSocketService {
 
         this.socket.on('chat:message_new', (serverData: any) => {
             const data: SocketMessage = {
-                conversationId: serverData?.conversationId,
+                conversationId:
+                    serverData?.conversationId ||
+                    serverData?.message?.conversationId,
                 message: {
                     _id: serverData?.message?._id,
                     conversationId: serverData?.message?.conversationId,
@@ -230,19 +238,21 @@ class ChatSocketService {
                 },
             };
 
-            const callback = this.messageListeners.get(data.conversationId);
-            callback?.(data);
+            const callbacks = this.messageListeners.get(data.conversationId);
+            callbacks?.forEach((callback) => callback(data));
         });
 
         this.socket.on('chat:message_ack', (ackData: any) => {
-            const callback = this.ackListeners.get(ackData?.conversationId);
+            const callbacks = this.ackListeners.get(ackData?.conversationId);
 
-            callback?.({
-                clientMessageId: ackData?.clientMessageId,
-                messageId: ackData?.messageId || ackData?._id,
-                messageStatus: ackData?.messageStatus || 'SENT',
-                timestamp: ackData?.createdAt || ackData?.timestamp,
-            });
+            callbacks?.forEach((callback) =>
+                callback({
+                    clientMessageId: ackData?.clientMessageId,
+                    messageId: ackData?.messageId || ackData?._id,
+                    messageStatus: ackData?.messageStatus || 'SENT',
+                    timestamp: ackData?.createdAt || ackData?.timestamp,
+                }),
+            );
         });
 
         this.socket.on('chat:message_status', (payload: any) => {
@@ -289,16 +299,18 @@ class ChatSocketService {
         });
 
         this.socket.on('chat:message_reaction_updated', (payload: any) => {
-            const callback = this.reactionListeners.get(
+            const callbacks = this.reactionListeners.get(
                 payload?.conversationId,
             );
-            callback?.({
-                conversationId: payload?.conversationId,
-                messageId: payload?.messageId,
-                reactions: Array.isArray(payload?.reactions)
-                    ? payload.reactions
-                    : [],
-            });
+            callbacks?.forEach((callback) =>
+                callback({
+                    conversationId: payload?.conversationId,
+                    messageId: payload?.messageId,
+                    reactions: Array.isArray(payload?.reactions)
+                        ? payload.reactions
+                        : [],
+                }),
+            );
         });
 
         // Bắt thêm event custom từ backend nếu tên khác chuẩn hiện tại.
@@ -345,15 +357,15 @@ class ChatSocketService {
     }
 
     private emitTyping(payload: TypingPayload): void {
-        const callback = this.typingListeners.get(payload.conversationId);
-        callback?.(payload);
+        const callbacks = this.typingListeners.get(payload.conversationId);
+        callbacks?.forEach((callback) => callback(payload));
     }
 
     private emitMessageStatus(payload: MessageStatusPayload): void {
-        const callback = this.messageStatusListeners.get(
+        const callbacks = this.messageStatusListeners.get(
             payload.conversationId,
         );
-        callback?.(payload);
+        callbacks?.forEach((callback) => callback(payload));
     }
 
     private emitPresence(payload: PresencePayload): void {
@@ -361,13 +373,24 @@ class ChatSocketService {
     }
 
     private rejoinConversations(): void {
-        this.joinedConversations.forEach((conversationId) => {
+        this.joinedConversationCounts.forEach((count, conversationId) => {
+            if (count <= 0) {
+                return;
+            }
+
             this.socket?.emit('chat:join_conversation', { conversationId });
         });
     }
 
     joinConversation(conversationId: string): void {
-        this.joinedConversations.add(conversationId);
+        const currentCount =
+            this.joinedConversationCounts.get(conversationId) || 0;
+        const nextCount = currentCount + 1;
+        this.joinedConversationCounts.set(conversationId, nextCount);
+
+        if (nextCount > 1) {
+            return;
+        }
 
         if (!this.socket?.connected) {
             return;
@@ -377,17 +400,19 @@ class ChatSocketService {
     }
 
     leaveConversation(conversationId: string): void {
-        this.joinedConversations.delete(conversationId);
+        const currentCount =
+            this.joinedConversationCounts.get(conversationId) || 0;
+        if (currentCount <= 1) {
+            this.joinedConversationCounts.delete(conversationId);
 
-        if (this.socket?.connected) {
-            this.socket.emit('chat:leave_conversation', { conversationId });
+            if (this.socket?.connected) {
+                this.socket.emit('chat:leave_conversation', { conversationId });
+            }
+
+            return;
         }
 
-        this.messageListeners.delete(conversationId);
-        this.ackListeners.delete(conversationId);
-        this.typingListeners.delete(conversationId);
-        this.messageStatusListeners.delete(conversationId);
-        this.reactionListeners.delete(conversationId);
+        this.joinedConversationCounts.set(conversationId, currentCount - 1);
     }
 
     sendTyping(conversationId: string, isTyping: boolean): void {
@@ -506,36 +531,78 @@ class ChatSocketService {
         );
     }
 
+    private addConversationListener<T>(
+        registry: Map<string, Set<(payload: T) => void>>,
+        conversationId: string,
+        callback: (payload: T) => void,
+    ): () => void {
+        const listeners = registry.get(conversationId) || new Set();
+        listeners.add(callback);
+        registry.set(conversationId, listeners);
+
+        return () => {
+            const currentListeners = registry.get(conversationId);
+            if (!currentListeners) {
+                return;
+            }
+
+            currentListeners.delete(callback);
+            if (currentListeners.size === 0) {
+                registry.delete(conversationId);
+            }
+        };
+    }
+
     onMessage(
         conversationId: string,
         callback: (message: SocketMessage) => void,
-    ): void {
-        this.messageListeners.set(conversationId, callback);
+    ): () => void {
+        return this.addConversationListener(
+            this.messageListeners,
+            conversationId,
+            callback,
+        );
     }
 
-    onAck(conversationId: string, callback: (data: any) => void): void {
-        this.ackListeners.set(conversationId, callback);
+    onAck(conversationId: string, callback: (data: any) => void): () => void {
+        return this.addConversationListener(
+            this.ackListeners,
+            conversationId,
+            callback,
+        );
     }
 
     onTyping(
         conversationId: string,
         callback: (payload: TypingPayload) => void,
-    ): void {
-        this.typingListeners.set(conversationId, callback);
+    ): () => void {
+        return this.addConversationListener(
+            this.typingListeners,
+            conversationId,
+            callback,
+        );
     }
 
     onMessageStatus(
         conversationId: string,
         callback: (payload: MessageStatusPayload) => void,
-    ): void {
-        this.messageStatusListeners.set(conversationId, callback);
+    ): () => void {
+        return this.addConversationListener(
+            this.messageStatusListeners,
+            conversationId,
+            callback,
+        );
     }
 
     onReaction(
         conversationId: string,
         callback: (payload: ReactionPayload) => void,
-    ): void {
-        this.reactionListeners.set(conversationId, callback);
+    ): () => void {
+        return this.addConversationListener(
+            this.reactionListeners,
+            conversationId,
+            callback,
+        );
     }
 
     onPresence(callback: (payload: PresencePayload) => void): () => void {
@@ -578,6 +645,7 @@ class ChatSocketService {
         this.messageStatusListeners.clear();
         this.presenceListeners.clear();
         this.reactionListeners.clear();
+        this.joinedConversationCounts.clear();
         this.connectionListeners.clear();
     }
 
