@@ -1,23 +1,26 @@
-import { NoteCategory } from "@/types/note";
+import type { NoteCategory } from "@/types/note";
 import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 interface CategoryFilterProps {
-  selectedCategory: "all" | NoteCategory;
-  onSelectCategory: (category: "all" | NoteCategory) => void;
+  categories: NoteCategory[];
+  selectedCategoryId: string | "all";
+  onSelectCategoryId: (categoryId: string | "all") => void;
 }
 
-const CATEGORIES = [
-  { key: "all" as const, label: "All" },
-  { key: "finance" as const, label: "Finance" },
-  { key: "sport" as const, label: "Sport" },
-  { key: "personal" as const, label: "Personal" },
-];
-
 export default function CategoryFilter({
-  selectedCategory,
-  onSelectCategory,
+  categories,
+  selectedCategoryId,
+  onSelectCategoryId,
 }: CategoryFilterProps) {
+  const items = [
+    { key: "all", label: "All" },
+    ...categories.map((category) => ({
+      key: category.categoryId,
+      label: category.name,
+    })),
+  ];
+
   return (
     <View className="mb-3">
       <ScrollView
@@ -27,12 +30,12 @@ export default function CategoryFilter({
         contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
         style={{ flexGrow: 0 }}
       >
-        {CATEGORIES.map((category) => {
-          const isSelected = selectedCategory === category.key;
+        {items.map((category) => {
+          const isSelected = selectedCategoryId === category.key;
           return (
             <TouchableOpacity
               key={category.key}
-              onPress={() => onSelectCategory(category.key)}
+              onPress={() => onSelectCategoryId(category.key)}
               className={`px-4 py-1.5 rounded-full ${
                 isSelected ? "bg-green-primary" : "bg-gray-light"
               }`}

@@ -1,19 +1,21 @@
 import { CalendarEvent } from "@/types/calendar";
 import { getWeekDates } from "@/utils/calendar";
 import { isSameDay } from "date-fns";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import EventCard from "./EventCard";
 
 interface WeekViewProps {
   date: Date;
   events: CalendarEvent[];
   onEventPress: (event: CalendarEvent) => void;
+  onCreateAtDate?: (date: Date) => void;
 }
 
 export default function WeekView({
   date,
   events,
   onEventPress,
+  onCreateAtDate,
 }: WeekViewProps) {
   const weekDates = getWeekDates(date);
   const dayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -28,12 +30,12 @@ export default function WeekView({
   );
 
   const getDayEvents = (date: Date) => {
-    return events.filter((event) => isSameDay(new Date(event.startTime), date));
+    return events.filter((event) => isSameDay(new Date(event.start), date));
   };
 
   const getEventPosition = (event: CalendarEvent) => {
-    const start = new Date(event.startTime);
-    const end = new Date(event.endTime);
+    const start = new Date(event.start);
+    const end = new Date(event.end);
 
     const top =
       (start.getHours() - START_HOUR) * HOUR_HEIGHT +
@@ -111,10 +113,17 @@ export default function WeekView({
                 >
                   {/* background grid */}
                   {hours.map((hour) => (
-                    <View
+                    <TouchableOpacity
                       key={hour}
                       style={{ height: HOUR_HEIGHT }}
                       className="border-b border-gray-200"
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        if (!onCreateAtDate) return;
+                        const slotDate = new Date(weekDate);
+                        slotDate.setHours(hour, 0, 0, 0);
+                        onCreateAtDate(slotDate);
+                      }}
                     />
                   ))}
 

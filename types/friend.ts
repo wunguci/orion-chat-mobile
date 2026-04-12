@@ -2,7 +2,8 @@ export type FriendCategory =
   | "friends"
   | "requests"
   | "groups"
-  | "group_invites";
+  | "group_invites"
+  | "blocked";
 
 export interface FriendItem {
   id: string;
@@ -35,6 +36,28 @@ export interface RecentlyActiveItem {
   name: string;
   avatar?: string;
   isOnline: boolean;
+}
+
+export interface BlockedFriendItem {
+  id: string;
+  name: string;
+  avatar?: string;
+  blockedAt?: string;
+  isOnline?: boolean;
+}
+
+export interface FriendProfileItem {
+  id: string;
+  fullName: string;
+  phoneNumber?: string;
+  email?: string | null;
+  avatarUrl?: string | null;
+  coverImage?: string | null;
+  gender?: string | null;
+  birthDate?: string | null;
+  createdAt?: string;
+  isOnline: boolean;
+  friendshipSince?: string;
 }
 
 export interface GroupItem {

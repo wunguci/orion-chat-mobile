@@ -5,9 +5,12 @@ import { FriendRow } from "@/components/friends/FriendRow";
 import { GroupInviteRow } from "@/components/friends/GroupInviteRow";
 import { GroupRow } from "@/components/friends/GroupRow";
 import { SearchUserRow } from "@/components/friends/SearchUserRow";
+import { CallContext } from "@/context/CallContext";
 import { friendApi } from "@/services/api/friend";
 import { presenceSocketService } from "@/services/websocket/presenceSocket";
+import type { CallType } from "@/types/call";
 import type {
+  BlockedFriendItem,
   FriendCategory,
   FriendItem,
   FriendRequestItem,
@@ -19,20 +22,31 @@ import type {
 } from "@/types/friend";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "expo-router";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function Friends() {
+  const router = useRouter();
+  const callContext = useContext(CallContext);
   const [activeCategory, setActiveCategory] =
     useState<FriendCategory>("friends");
   const [searchQuery, setSearchQuery] = useState("");
@@ -49,7 +63,11 @@ export default function Friends() {
   const [recentlyActive, setRecentlyActive] = useState<RecentlyActiveItem[]>(
     [],
   );
+  const [blockedFriends, setBlockedFriends] = useState<BlockedFriendItem[]>([]);
   const [searchResults, setSearchResults] = useState<SearchUserItem[]>([]);
+  const [pendingSentRequestIds, setPendingSentRequestIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   const formatAgo = (iso: string) => {
     const ms = Date.now() - new Date(iso).getTime();
@@ -60,6 +78,19 @@ export default function Friends() {
     const days = Math.floor(hours / 24);
     return `${days}d ago`;
   };
+
+  const mapFriend = (item: {
+    id: string;
+    fullName: string;
+    avatarUrl?: string | null;
+    isOnline: boolean;
+  }): FriendItem => ({
+    id: item.id,
+    name: item.fullName,
+    avatar: item.avatarUrl || undefined,
+    isOnline: item.isOnline,
+    subtext: item.isOnline ? "Online" : "Offline",
+  });
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -106,28 +137,24 @@ export default function Friends() {
         const [
           friendsRes,
           requestRes,
+          outgoingRequestRes,
           groupsRes,
           groupInviteRes,
           suggestionRes,
           recentlyActiveRes,
+          blockedRes,
         ] = await Promise.all([
           friendApi.getFriends(currentUserId),
           friendApi.getIncomingFriendRequests(currentUserId),
+          friendApi.getOutgoingFriendRequests(currentUserId),
           friendApi.getMyGroups(currentUserId),
           friendApi.getIncomingGroupInvites(currentUserId),
           friendApi.getSuggestions(currentUserId),
           friendApi.getRecentlyActive(currentUserId),
+          friendApi.getBlockedFriends(currentUserId),
         ]);
 
-        setFriends(
-          friendsRes.map((item) => ({
-            id: item.id,
-            name: item.fullName,
-            avatar: item.avatarUrl,
-            isOnline: item.isOnline,
-            subtext: item.isOnline ? "Online" : "Offline",
-          })),
-        );
+        setFriends(friendsRes.map(mapFriend));
 
         setRequests(
           requestRes.map((item) => ({
@@ -139,6 +166,10 @@ export default function Friends() {
             timeAgo: formatAgo(item.createdAt),
             status: item.status,
           })),
+        );
+
+        setPendingSentRequestIds(
+          new Set(outgoingRequestRes.map((item) => item.receiver.userId)),
         );
 
         setGroups(groupsRes);
@@ -160,6 +191,15 @@ export default function Friends() {
             isOnline: item.isOnline,
           })),
         );
+        setBlockedFriends(
+          blockedRes.map((item) => ({
+            id: item.id,
+            name: item.fullName,
+            avatar: item.avatarUrl,
+            blockedAt: item.blockedAt,
+            isOnline: item.isOnline,
+          })),
+        );
       } catch (error) {
         console.error("Failed to load friend data", error);
         setErrorMessage("Cannot load friend data. Pull to refresh to retry.");
@@ -175,6 +215,15 @@ export default function Friends() {
     if (!currentUserId) return;
     void loadData(false);
   }, [currentUserId, loadData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (currentUserId) {
+        void loadData(true);
+      }
+      return undefined;
+    }, [currentUserId, loadData]),
+  );
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -256,25 +305,26 @@ export default function Friends() {
   }, [searchQuery, currentUserId]);
 
   const filteredFriends = useMemo(() => {
-    if (!searchQuery.trim()) return friends;
-    const keyword = searchQuery.toLowerCase();
-    return friends.filter((item) => item.name.toLowerCase().includes(keyword));
+    const keyword = searchQuery.trim().toLowerCase();
+    const source = keyword
+      ? friends.filter((item) => item.name.toLowerCase().includes(keyword))
+      : friends;
+
+    return [...source].sort((a, b) => Number(b.isOnline) - Number(a.isOnline));
   }, [friends, searchQuery]);
+
+  const filteredSuggestions = useMemo(
+    () =>
+      suggestions.filter((item) => !pendingSentRequestIds.has(item.id)),
+    [suggestions, pendingSentRequestIds],
+  );
 
   const handleAccept = async (id: string) => {
     if (!currentUserId) return;
     await friendApi.acceptFriendRequest(id, currentUserId);
     setRequests((prev) => prev.filter((item) => item.id !== id));
     const refreshed = await friendApi.getFriends(currentUserId);
-    setFriends(
-      refreshed.map((item) => ({
-        id: item.id,
-        name: item.fullName,
-        avatar: item.avatarUrl,
-        isOnline: item.isOnline,
-        subtext: item.isOnline ? "Online" : "Offline",
-      })),
-    );
+    setFriends(refreshed.map(mapFriend));
   };
 
   const handleDecline = async (id: string) => {
@@ -284,10 +334,198 @@ export default function Friends() {
   };
 
   const handleAddFriend = async (receiverId: string) => {
-    if (!currentUserId) return;
-    await friendApi.sendFriendRequest(currentUserId, receiverId);
-    setSearchResults((prev) => prev.filter((item) => item.id !== receiverId));
+    if (!currentUserId || pendingSentRequestIds.has(receiverId)) return;
+    try {
+      await friendApi.sendFriendRequest(currentUserId, receiverId);
+      setPendingSentRequestIds((prev) => {
+        const next = new Set(prev);
+        next.add(receiverId);
+        return next;
+      });
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Cannot send friend request",
+      );
+    }
   };
+
+  const openFriendView = useCallback(
+    (
+      targetUserId: string,
+      mode: "friend" | "suggested",
+      fallback?: { name: string; avatar?: string; isOnline?: boolean },
+    ) => {
+      router.push({
+        pathname: "/friend-view",
+        params: {
+          userId: targetUserId,
+          mode,
+          name: fallback?.name || "Friend",
+          avatar: fallback?.avatar || "",
+          isOnline: fallback?.isOnline ? "1" : "0",
+          pending: pendingSentRequestIds.has(targetUserId) ? "1" : "0",
+        },
+      });
+    },
+    [pendingSentRequestIds, router],
+  );
+
+  const handleFriendRowMore = (friend: FriendItem) => {
+    Alert.alert("Friend actions", friend.name, [
+      {
+        text: "View info",
+        onPress: () => {
+          openFriendView(friend.id, "friend", {
+            name: friend.name,
+            avatar: friend.avatar,
+            isOnline: friend.isOnline,
+          });
+        },
+      },
+      {
+        text: "Delete friend",
+        style: "destructive",
+        onPress: () => {
+          handleRequestRemoveFriend(friend.id);
+        },
+      },
+      {
+        text: "Block",
+        style: "destructive",
+        onPress: () => {
+          handleRequestBlockFriend(friend.id);
+        },
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const handleRequestRemoveFriend = (friendId: string) => {
+    if (!currentUserId) return;
+    Alert.alert(
+      "Delete Friend",
+      "Are you sure you want to remove this friend from your friend list?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await friendApi.removeFriend(currentUserId, friendId);
+              setFriends((prev) => prev.filter((item) => item.id !== friendId));
+              setRecentlyActive((prev) =>
+                prev.filter((item) => item.id !== friendId),
+              );
+            } catch (error) {
+              setErrorMessage(
+                error instanceof Error ? error.message : "Cannot remove friend",
+              );
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleRequestBlockFriend = (friendId: string) => {
+    if (!currentUserId) return;
+    Alert.alert(
+      "Block Friend",
+      "Are you sure you want to block this friend? They won't be able to send you messages or calls.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await friendApi.blockFriend(currentUserId, friendId);
+              const target =
+                friends.find((item) => item.id === friendId) ||
+                recentlyActive.find((item) => item.id === friendId);
+
+              setFriends((prev) => prev.filter((item) => item.id !== friendId));
+              setRecentlyActive((prev) =>
+                prev.filter((item) => item.id !== friendId),
+              );
+
+              if (target) {
+                setBlockedFriends((prev) => [
+                  {
+                    id: target.id,
+                    name: target.name,
+                    avatar: target.avatar,
+                    blockedAt: new Date().toISOString(),
+                    isOnline: target.isOnline,
+                  },
+                  ...prev,
+                ]);
+              }
+            } catch (error) {
+              setErrorMessage(
+                error instanceof Error ? error.message : "Cannot block friend",
+              );
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleUnblockFriend = async (friendId: string) => {
+    if (!currentUserId) return;
+    try {
+      await friendApi.unblockFriend(currentUserId, friendId);
+      setBlockedFriends((prev) => prev.filter((item) => item.id !== friendId));
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Cannot unblock user",
+      );
+    }
+  };
+
+  const buildDirectConversationId = useCallback((userA: string, userB: string) => {
+    const [first, second] = [userA, userB].sort();
+    return `direct:${first}:${second}`;
+  }, []);
+
+  const handleCallFriend = useCallback(
+    async (friend: FriendItem, callType: CallType) => {
+      if (!callContext) {
+        return;
+      }
+
+      if (!currentUserId) {
+        setErrorMessage("Missing current user identity. Please re-login.");
+        return;
+      }
+
+      if (!friend.isOnline) {
+        setErrorMessage("Friend is offline.");
+        return;
+      }
+
+      if (callContext.status !== "idle") {
+        setErrorMessage("You are already in another call.");
+        return;
+      }
+
+      try {
+        setErrorMessage(null);
+        const conversationId = buildDirectConversationId(currentUserId, friend.id);
+        await callContext.initiateCall(conversationId, friend.id, callType, {
+          name: friend.name,
+          avatar: friend.avatar,
+        });
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error ? error.message : "Cannot start call",
+        );
+      }
+    },
+    [buildDirectConversationId, callContext, currentUserId],
+  );
 
   const handleAcceptGroupInvite = async (inviteId: string) => {
     if (!currentUserId) return;
@@ -345,6 +583,7 @@ export default function Friends() {
             requests: requests.length,
             groups: groups.length,
             groupInvites: groupInvites.length,
+            blocked: blockedFriends.length,
           }}
         />
 
@@ -369,6 +608,7 @@ export default function Friends() {
               <SearchUserRow
                 key={user.id}
                 user={user}
+                isPending={pendingSentRequestIds.has(user.id)}
                 onAdd={(userId) => void handleAddFriend(userId)}
               />
             ))}
@@ -378,12 +618,23 @@ export default function Friends() {
         {!loading && activeCategory === "friends" && (
           <>
             <View className="px-4 pb-2">
-              <Text className="text-lg font-bold text-gray-primary">
-                Friends
-              </Text>
+              <Text className="text-lg font-bold text-gray-primary">Friends</Text>
             </View>
             {filteredFriends.map((friend) => (
-              <FriendRow key={friend.id} friend={friend} />
+              <FriendRow
+                key={friend.id}
+                friend={friend}
+                onPress={(item) => {
+                  openFriendView(item.id, "friend", {
+                    name: item.name,
+                    avatar: item.avatar,
+                    isOnline: item.isOnline,
+                  });
+                }}
+                onMorePress={handleFriendRowMore}
+                onAudioCall={(item) => void handleCallFriend(item, "audio")}
+                onVideoCall={(item) => void handleCallFriend(item, "video")}
+              />
             ))}
 
             <View className="px-4 pt-5 pb-2">
@@ -391,9 +642,17 @@ export default function Friends() {
                 Suggested by mutual groups
               </Text>
             </View>
-            {suggestions.map((friend) => (
-              <View
+            {filteredSuggestions.map((friend) => (
+              <TouchableOpacity
                 key={friend.id}
+                activeOpacity={0.85}
+                onPress={() => {
+                  openFriendView(friend.id, "suggested", {
+                    name: friend.name,
+                    avatar: friend.avatar,
+                    isOnline: false,
+                  });
+                }}
                 className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100"
               >
                 <View className="flex-row items-center flex-1">
@@ -408,12 +667,17 @@ export default function Friends() {
                   </View>
                 </View>
                 <TouchableOpacity
+                  disabled={pendingSentRequestIds.has(friend.id)}
                   onPress={() => void handleAddFriend(friend.id)}
-                  className="bg-gray-light px-4 py-2 rounded-lg"
+                  className="bg-gray-light px-4 py-2 rounded-lg disabled:opacity-70"
                 >
-                  <Text className="text-green-primary font-semibold">Add</Text>
+                  <Text className="text-green-primary font-semibold">
+                    {pendingSentRequestIds.has(friend.id)
+                      ? "Da gui loi moi"
+                      : "Add"}
+                  </Text>
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             ))}
 
             <View className="px-4 pt-5 pb-2">
@@ -431,7 +695,17 @@ export default function Friends() {
               }}
               showsHorizontalScrollIndicator={false}
               renderItem={({ item }) => (
-                <View className="items-center mx-2">
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    openFriendView(item.id, "friend", {
+                      name: item.name,
+                      avatar: item.avatar,
+                      isOnline: item.isOnline,
+                    });
+                  }}
+                  className="items-center mx-2"
+                >
                   <Avatar
                     uri={item.avatar}
                     name={item.name}
@@ -444,7 +718,7 @@ export default function Friends() {
                   >
                     {item.name}
                   </Text>
-                </View>
+                </TouchableOpacity>
               )}
             />
           </>
@@ -486,6 +760,33 @@ export default function Friends() {
           </View>
         )}
 
+        {!loading && activeCategory === "blocked" && (
+          <View>
+            {blockedFriends.map((item) => (
+              <View
+                key={item.id}
+                className="flex-row items-center border-b border-gray-100 px-4 py-3"
+              >
+                <Avatar uri={item.avatar} name={item.name} size="md" />
+                <View className="ml-3 flex-1">
+                  <Text className="text-base font-semibold text-gray-primary">
+                    {item.name}
+                  </Text>
+                  <Text className="text-sm text-gray-text">Blocked</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => void handleUnblockFriend(item.id)}
+                  className="rounded-lg border border-gray-300 px-3 py-1.5"
+                >
+                  <Text className="text-sm font-semibold text-gray-primary">
+                    Unblock
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
         {!loading &&
           !errorMessage &&
           activeCategory === "friends" &&
@@ -521,7 +822,17 @@ export default function Friends() {
               <Text className="text-gray-text">No group invites.</Text>
             </View>
           )}
+
+        {!loading &&
+          !errorMessage &&
+          activeCategory === "blocked" &&
+          blockedFriends.length === 0 && (
+            <View className="py-8 items-center">
+              <Text className="text-gray-text">No blocked users.</Text>
+            </View>
+          )}
       </ScrollView>
+
     </SafeAreaView>
   );
 }

@@ -1,4 +1,5 @@
 import type {
+  FriendProfileItem,
   GroupInviteItem,
   GroupItem,
   SearchUserItem,
@@ -77,6 +78,14 @@ export interface FriendRequestResponse {
   createdAt: string;
 }
 
+export interface BlockedFriendResponse {
+  id: string;
+  fullName: string;
+  avatarUrl?: string;
+  blockedAt?: string;
+  isOnline?: boolean;
+}
+
 export const friendApi = {
   async getFriends(userId: string) {
     const response = await authFetch(buildUrl("/friends", { userId }));
@@ -86,6 +95,13 @@ export const friendApi = {
   async getIncomingFriendRequests(userId: string) {
     const response = await authFetch(
       buildUrl("/friend-requests/incoming", { userId }),
+    );
+    return toJson<FriendRequestResponse[]>(response);
+  },
+
+  async getOutgoingFriendRequests(userId: string) {
+    const response = await authFetch(
+      buildUrl("/friend-requests/outgoing", { userId }),
     );
     return toJson<FriendRequestResponse[]>(response);
   },
@@ -158,6 +174,49 @@ export const friendApi = {
         isOnline: boolean;
       }[]
     >(response);
+  },
+
+  async getBlockedFriends(userId: string) {
+    const response = await authFetch(buildUrl("/friends/blocked", { userId }));
+    return toJson<BlockedFriendResponse[]>(response);
+  },
+
+  async getFriendProfile(userId: string, friendId: string) {
+    const response = await authFetch(
+      buildUrl(`/friends/${userId}/${friendId}/profile`),
+    );
+    return toJson<FriendProfileItem>(response);
+  },
+
+  async removeFriend(userId: string, friendId: string) {
+    const response = await authFetch(buildUrl(`/friends/${userId}/${friendId}`), {
+      method: "DELETE",
+    });
+    return toJson<{ success: boolean; message: string }>(response);
+  },
+
+  async blockFriend(userId: string, friendId: string) {
+    const response = await authFetch(
+      buildUrl(`/friends/${userId}/${friendId}/block`),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      },
+    );
+    return toJson<{ success: boolean; message: string }>(response);
+  },
+
+  async unblockFriend(userId: string, friendId: string) {
+    const response = await authFetch(
+      buildUrl(`/friends/${userId}/${friendId}/unblock`),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      },
+    );
+    return toJson<{ success: boolean; message: string }>(response);
   },
 
   async getMyGroups(userId: string) {

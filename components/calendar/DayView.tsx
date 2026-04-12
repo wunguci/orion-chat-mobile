@@ -7,9 +7,15 @@ interface DayViewProps {
   date: Date;
   events: CalendarEvent[];
   onEventPress: (event: CalendarEvent) => void;
+  onCreateAtDate?: (date: Date) => void;
 }
 
-export default function DayView({ date, events, onEventPress }: DayViewProps) {
+export default function DayView({
+  date,
+  events,
+  onEventPress,
+  onCreateAtDate,
+}: DayViewProps) {
   const dayEvents = getEventsForDate(events, date);
 
   return (
@@ -20,13 +26,16 @@ export default function DayView({ date, events, onEventPress }: DayViewProps) {
           {formatDate(date, "full")}
         </Text>
         <Text className="text-sm text-gray-500 mt-1">
-          {dayEvents.length} event{dayEvents.length !== 1 ? "s" : ""} scheduled for today
+          {dayEvents.length} event{dayEvents.length !== 1 ? "s" : ""} scheduled
+          for today
         </Text>
       </View>
 
       <DayTimeline
+        date={date}
         events={dayEvents}
         onEventPress={onEventPress}
+        onTimeSlotPress={onCreateAtDate}
         startHour={8}
         endHour={17}
       />

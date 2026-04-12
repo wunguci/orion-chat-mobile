@@ -1,17 +1,21 @@
 import { CalendarEvent } from "@/types/calendar";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import EventCard from "./EventCard";
 
 interface DayTimelineProps {
+  date: Date;
   events: CalendarEvent[];
   onEventPress: (event: CalendarEvent) => void;
+  onTimeSlotPress?: (date: Date) => void;
   startHour?: number;
   endHour?: number;
 }
 
 export default function DayTimeline({
+  date,
   events,
   onEventPress,
+  onTimeSlotPress,
   startHour = 0,
   endHour = 23,
 }: DayTimelineProps) {
@@ -22,8 +26,8 @@ export default function DayTimeline({
   const HOUR_HEIGHT = 80;
 
   const getEventPosition = (event: CalendarEvent) => {
-    const start = new Date(event.startTime);
-    const end = new Date(event.endTime);
+    const start = new Date(event.start);
+    const end = new Date(event.end);
     const top =
       (start.getHours() - startHour) * HOUR_HEIGHT +
       (start.getMinutes() / 60) * HOUR_HEIGHT;
@@ -51,7 +55,16 @@ export default function DayTimeline({
                   {displayHour.toString().padStart(2, "0")}:00 {ampm}
                 </Text>
               </View>
-              <View className="flex-1" />
+              <TouchableOpacity
+                className="flex-1"
+                activeOpacity={0.7}
+                onPress={() => {
+                  if (!onTimeSlotPress) return;
+                  const slotDate = new Date(date);
+                  slotDate.setHours(hour, 0, 0, 0);
+                  onTimeSlotPress(slotDate);
+                }}
+              />
             </View>
           );
         })}
