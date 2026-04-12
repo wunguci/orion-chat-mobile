@@ -1,6 +1,6 @@
-import CalendarHeader from "@/components/calendar/CalendarHeader";
 import EventEditorModal from "@/components/calendar/EventEditorModal";
 import ViewModeTabs from "@/components/calendar/ViewModeTabs";
+import { whColors } from "@/constants/tailwindColors";
 import { calendarApi } from "@/services/api/calendar";
 import { CalendarEvent, ParticipantOption, ViewMode } from "@/types/calendar";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -12,8 +12,14 @@ import YearView from "@/components/calendar/YearView";
 import FloatingActionButton from "@/components/common/FloatingActionButton";
 import { formatDate } from "@/utils/calendar";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -24,6 +30,7 @@ import {
 } from "react-native";
 
 export default function CalendarScreen() {
+  const navigation = useNavigation();
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -200,14 +207,69 @@ export default function CalendarScreen() {
     }
   };
 
-  return (
-    <SafeAreaView className="flex-1 bg-white">
-      <CalendarHeader
-        title={getHeaderTitle()}
-        onSearchPress={() => setShowSearch((prev) => !prev)}
-        onMenuPress={openDateMenu}
-      />
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: getHeaderTitle(),
+      headerRight: () => (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginRight: 10,
+            gap: 6,
+          }}
+        >
+          <TouchableOpacity
+            onPress={() => setShowSearch((prev) => !prev)}
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 9,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: whColors.bgMedium,
+              borderWidth: 1,
+              borderColor: whColors.borderLight,
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={showSearch ? "close" : "search"}
+              size={18}
+              color={whColors.primary}
+            />
+          </TouchableOpacity>
 
+          <TouchableOpacity
+            onPress={openDateMenu}
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 9,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: whColors.bgMedium,
+              borderWidth: 1,
+              borderColor: whColors.borderLight,
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="ellipsis-vertical"
+              size={16}
+              color={whColors.primary}
+            />
+          </TouchableOpacity>
+        </View>
+      ),
+    });
+  }, [navigation, viewMode, currentDate, showSearch]);
+
+  return (
+    <SafeAreaView
+      className="flex-1 bg-white"
+      edges={["left", "right", "bottom"]}
+    >
       {showSearch && (
         <View className="border-b border-gray-200 bg-white px-4 py-3">
           <TextInput
