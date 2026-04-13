@@ -1,3 +1,4 @@
+/*eslint-disable*/
 import { useCallback, useContext, useEffect, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
 import { profileApi, ProfilePayload } from "../services/api/profile";

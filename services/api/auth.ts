@@ -117,21 +117,27 @@ export async function login(
                 'Content-Type': 'application/json',
                 'X-Platform': 'mobile',
             },
-            body: JSON.stringify({ phoneNumber, password, platform: 'mobile' }),
+            body: JSON.stringify({
+                phoneNumber,
+                password,
+                deviceType: 'mobile',
+                platform: 'mobile',
+            }),
         });
 
         if (!response.ok) {
+            let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
             try {
-                const errorData: ErrorResponse = await response.json();
-                throw new Error(
+                const errorData = await response.json();
+                // Extract error message - handle multiple possible formats
+                errorMessage =
                     errorData.message ||
-                        `Failed to login: ${response.statusText}`,
-                );
+                    (typeof errorData === 'string' ? errorData : null) ||
+                    errorMessage;
             } catch {
-                throw new Error(
-                    `HTTP ${response.status}: ${response.statusText}`,
-                );
+                // Failed to parse error response
             }
+            throw new Error(errorMessage);
         }
 
         return response.json();
@@ -144,7 +150,6 @@ export async function login(
                 'Không thể kết nối tới server. Vui lòng kiểm tra backend đang chạy',
             );
         }
-        console.error('[login] Error:', error);
         throw error;
     }
 }

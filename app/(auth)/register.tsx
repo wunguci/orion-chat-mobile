@@ -99,26 +99,60 @@ export default function RegisterScreen() {
     const handleCompleteRegister = async () => {
         setError(null);
 
-        if (!fullName) {
+        // Validate fullName - not empty
+        if (!fullName || fullName.trim().length === 0) {
             setError('Please enter your full name');
             return;
         }
 
+        // Validate dob - not empty
         if (!dob) {
             setError('Please select your date of birth');
+            return;
+        }
+
+        // Validate age - must be 15 or older
+        const today = new Date();
+        const birthDate = new Date(date);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (
+            monthDiff < 0 ||
+            (monthDiff === 0 && today.getDate() < birthDate.getDate())
+        ) {
+            age--;
+        }
+
+        if (age < 15) {
+            Alert.alert(
+                'Age Restriction',
+                'You must be at least 15 years old to register.',
+                [{ text: 'OK' }],
+            );
             return;
         }
 
         setLoading(true);
         try {
             // Convert display date back to ISO format
-            const birthDate = date.toISOString().split('T')[0];
+            const birthDateStr = date.toISOString().split('T')[0];
+
+            // Capitalize first letter of each word
+            const capitalizedName = fullName
+                .trim()
+                .split(' ')
+                .map(
+                    (word) =>
+                        word.charAt(0).toUpperCase() +
+                        word.slice(1).toLowerCase(),
+                )
+                .join(' ');
 
             const registrationData = {
                 phoneNumber: phone,
                 password: password,
-                fullName: fullName,
-                birthDate: birthDate,
+                fullName: capitalizedName,
+                birthDate: birthDateStr,
                 gender: gender.toLowerCase() as 'male' | 'female' | 'other',
             };
 
@@ -234,7 +268,18 @@ export default function RegisterScreen() {
                                     value={phone}
                                     onChangeText={setPhone}
                                     keyboardType="phone-pad"
-                                    className="w-full px-4 py-3.5 rounded-full border border-gray-300 bg-white"
+                                    textAlignVertical="center"
+                                    style={{
+                                        height: 48,
+                                        borderWidth: 1,
+                                        borderColor: '#D1D5DB',
+                                        borderRadius: 24,
+                                        paddingHorizontal: 16,
+                                        fontSize: 16,
+                                        color: '#111827',
+                                        backgroundColor: '#FFFFFF',
+                                    }}
+                                    className="px-4"
                                 />
                             </View>
 
@@ -243,14 +288,25 @@ export default function RegisterScreen() {
                                 <Text className="text-xs font-semibold text-gray-700 mb-2 tracking-wide">
                                     PASSWORD
                                 </Text>
-                                <View className="flex-row items-center border border-gray-300 rounded-full px-4 bg-white">
+                                <View
+                                    className="flex-row items-center border border-gray-300 rounded-full px-4 bg-white"
+                                    style={{
+                                        height: 48,
+                                        borderRadius: 24,
+                                    }}
+                                >
                                     <TextInput
                                         placeholder="Enter password"
                                         placeholderTextColor="#9CA3AF"
                                         secureTextEntry={!showPassword}
                                         value={password}
                                         onChangeText={setPassword}
-                                        className="flex-1 py-3.5 text-base text-gray-900"
+                                        textAlignVertical="center"
+                                        style={{
+                                            flex: 1,
+                                            fontSize: 16,
+                                            color: '#111827',
+                                        }}
                                     />
                                     <Pressable
                                         onPress={() =>
@@ -272,14 +328,36 @@ export default function RegisterScreen() {
                                 <Text className="text-xs font-semibold text-gray-700 mb-2 tracking-wide">
                                     CONFIRM PASSWORD
                                 </Text>
-                                <View className="flex-row items-center border border-gray-300 rounded-full px-4 bg-white">
+                                <View
+                                    className="flex-row items-center rounded-full px-4 bg-white"
+                                    style={{
+                                        height: 48,
+                                        borderRadius: 24,
+                                        borderWidth: 1,
+                                        borderColor:
+                                            confirmPassword &&
+                                            password &&
+                                            confirmPassword === password
+                                                ? '#10B981'
+                                                : confirmPassword &&
+                                                    password &&
+                                                    confirmPassword !== password
+                                                  ? '#EF4444'
+                                                  : '#D1D5DB',
+                                    }}
+                                >
                                     <TextInput
                                         placeholder="Confirm password"
                                         placeholderTextColor="#9CA3AF"
                                         secureTextEntry={!showConfirmPassword}
                                         value={confirmPassword}
                                         onChangeText={setConfirmPassword}
-                                        className="flex-1 py-3.5 text-base text-gray-900"
+                                        textAlignVertical="center"
+                                        style={{
+                                            flex: 1,
+                                            fontSize: 16,
+                                            color: '#111827',
+                                        }}
                                     />
                                     <Pressable
                                         onPress={() =>
@@ -441,9 +519,35 @@ export default function RegisterScreen() {
                                     placeholder="Nguyen Van A"
                                     placeholderTextColor="#9CA3AF"
                                     value={fullName}
-                                    onChangeText={setFullName}
+                                    onChangeText={(text) => {
+                                        // Auto-capitalize first letter of each word
+                                        const capitalized = text
+                                            .split(' ')
+                                            .map((word) => {
+                                                if (word.length === 0)
+                                                    return '';
+                                                return (
+                                                    word
+                                                        .charAt(0)
+                                                        .toUpperCase() +
+                                                    word.slice(1).toLowerCase()
+                                                );
+                                            })
+                                            .join(' ');
+                                        setFullName(capitalized);
+                                    }}
                                     keyboardType="default"
-                                    className="border border-gray-300 rounded-full px-4 py-3.5 text-base text-gray-900 bg-white"
+                                    textAlignVertical="center"
+                                    style={{
+                                        height: 48,
+                                        fontSize: 16,
+                                        color: '#111827',
+                                        borderWidth: 1,
+                                        borderColor: '#D1D5DB',
+                                        borderRadius: 24,
+                                        paddingHorizontal: 16,
+                                        backgroundColor: '#FFFFFF',
+                                    }}
                                 />
                             </View>
 
