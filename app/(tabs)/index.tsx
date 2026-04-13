@@ -5,7 +5,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
 import { ChatItem } from "@/types/chat";
 import { chatApi, ConversationResponse } from "@/services/api/chat";
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   FlatList,
   StatusBar,
@@ -14,6 +14,7 @@ import {
   Text,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "expo-router";
 
 /**
  * Chuyển đổi ConversationResponse thành ChatItem
@@ -82,8 +83,6 @@ const convertConversationToChatItem = (
     }
   };
 
-  console.log("[Index] Conversation last message ", conversation.lastMessage);
-
   return {
     id: conversation.conversationId,
     name,
@@ -109,7 +108,33 @@ export default function ChatsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch conversations when component mounts
+  const loadConversations = useCallback(async () => {
+    if (!authState.user?.userId) {
+      setError("User not authenticated");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setError(null);
+      const data = await chatApi.getConversations(
+        authState.user!.userId,
+        20,
+        0,
+      );
+      const chatItems = data.map(convertConversationToChatItem);
+      setConversations(chatItems);
+      setLoading(false);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to load conversations";
+      setError(errorMessage);
+      console.error("Error loading conversations:", err);
+      setLoading(false);
+    }
+  }, [authState.user?.userId]);
+
+  // Load khi component mount
   useEffect(() => {
     if (!authState.user?.userId) {
       setError("User not authenticated");
@@ -117,29 +142,29 @@ export default function ChatsScreen() {
       return;
     }
 
-    const loadConversations = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await chatApi.getConversations(
-          authState.user!.userId,
-          20,
-          0,
-        );
-        const chatItems = data.map(convertConversationToChatItem);
-        setConversations(chatItems);
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to load conversations";
-        setError(errorMessage);
-        console.error("Error loading conversations:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
+    setLoading(true);
     loadConversations();
-  }, [authState.user]);
+  }, [authState.user?.userId, loadConversations]);
+
+  // Polling: Refetch mỗi 5 giây
+  useEffect(() => {
+    if (!authState.user?.userId) return;
+
+    const interval = setInterval(() => {
+      loadConversations();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [authState.user?.userId, loadConversations]);
+
+  // Refetch khi app gain focus
+  useFocusEffect(
+    useCallback(() => {
+      if (authState.user?.userId) {
+        loadConversations();
+      }
+    }, [authState.user?.userId, loadConversations]),
+  );
 
   const filteredChats = useMemo(() => {
     let list = conversations;

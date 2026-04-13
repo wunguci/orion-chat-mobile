@@ -7,7 +7,7 @@ import { formatTime, getDiffMinutes, useChat } from "@/hooks/useChat";
 import { useTheme } from "@/hooks/useTheme";
 import { Message } from "@/types/chat";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { use, useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -17,6 +17,9 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import ForwardConversationModal from "@/components/chat/ForwardConversationModal";
+import { generateUniqueId } from "@/utils/generateUniqueId";
+import { chatApi } from "@/services/api/chat";
 
 function shouldShowAvatar(messages: Message[], index: number): boolean {
   const curr = messages[index];
@@ -38,6 +41,9 @@ export default function ChatScreen() {
   const { messages, inputText, setInputText, sendMessage, sendAttachment } =
     useChat(id || "");
   const listRef = useRef<FlatList>(null);
+
+  const [forwardVisible, setForwardVisible] = useState(false);
+  const [forwardMessageId, setForwardMessageId] = useState<string | null>(null);
 
   // Message action menu state
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
@@ -68,6 +74,11 @@ export default function ChatScreen() {
 
   const handleMessageRecalled = useCallback(() => {
     // The useChat hook should handle this via socket event
+  }, []);
+
+  const handleForward = useCallback((messageId: string) => {
+    setForwardMessageId(messageId);
+    setForwardVisible(true);
   }, []);
 
   function shouldShowTimestamp(messages: Message[], index: number): boolean {
@@ -157,10 +168,34 @@ export default function ChatScreen() {
             setShowActionMenu(false);
             setSelectedMessage(null);
           }}
+          onForward={handleForward}
           message={selectedMessage}
           conversationId={id || ""}
           onMessageDeleted={handleMessageDeleted}
           onMessageRecalled={handleMessageRecalled}
+        />
+      )}
+      {forwardMessageId && (
+        <ForwardConversationModal
+          visible={forwardVisible}
+          onClose={() => {
+            setForwardVisible(false);
+            setForwardMessageId(null);
+          }}
+          sourceMessageId={forwardMessageId}
+          currentConversationId={id || ""}
+          onForward={async (targetConversationId: string) => {
+            try {
+              const clientMessageId = generateUniqueId();
+              await chatApi.forwardMessage(
+                forwardMessageId,
+                targetConversationId,
+                clientMessageId,
+              );
+            } catch (error) {
+              console.error("Forward error:", error);
+            }
+          }}
         />
       )}
     </SafeAreaView>
