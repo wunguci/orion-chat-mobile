@@ -174,7 +174,7 @@ export default function ForwardConversationModal({
               color: colors.textSecondary,
             }}
           >
-            {isGroup ? `${item.participants.length} người` : "Chat 1 kèm 1"}
+            {isGroup ? `${item.participants.length} người` : "Chat đơn"}
           </Text>
         </View>
 
