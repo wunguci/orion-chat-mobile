@@ -1,112 +1,168 @@
-import ChatHeader from '@/components/chat/ChatHeader';
-import MessageBubble from '@/components/chat/MessageBubble';
-import MessageInput from '@/components/chat/MessageInput';
-import MessageTimestamp from '@/components/chat/MessageTimestamp';
-import { useChat } from '@/hooks/useChat';
-import { useTheme } from '@/hooks/useTheme';
-import { Message } from '@/types/chat';
-import { useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useRef } from 'react';
+import ChatHeader from "@/components/chat/ChatHeader";
+import MessageBubble from "@/components/chat/MessageBubble";
+import MessageInput from "@/components/chat/MessageInput";
+import MessageTimestamp from "@/components/chat/MessageTimestamp";
+import MessageActionMenu from "@/components/chat/MessageActionMenu";
+import { formatTime, getDiffMinutes, useChat } from "@/hooks/useChat";
+import { useTheme } from "@/hooks/useTheme";
+import { Message } from "@/types/chat";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    FlatList,
-    KeyboardAvoidingView,
-    Platform,
-    StatusBar,
-    View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-// Show timestamp between messages if gap is large or first in group
-function shouldShowTimestamp(messages: Message[], index: number): boolean {
-    if (index === 0) return true;
-    const prev = messages[index - 1];
-    const curr = messages[index];
-    return prev.timestamp !== curr.timestamp;
-}
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+  View,
+  Alert,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 function shouldShowAvatar(messages: Message[], index: number): boolean {
-    const curr = messages[index];
-    if (curr.isMine) return false;
-    const next = messages[index + 1];
-    return !next || next.isMine;
+  const curr = messages[index];
+  if (curr.isMine) return false;
+  const next = messages[index + 1];
+  return !next || next.isMine;
 }
 
 export default function ChatScreen() {
-    const params = useLocalSearchParams<{
-        id: string;
-        name: string;
-        avatarUri?: string;
-    }>();
+  const params = useLocalSearchParams<{
+    id: string;
+    name: string;
+    avatarUri?: string;
+  }>();
 
-    const { id, name, avatarUri } = params;
-    const { colors, colorScheme } = useTheme();
-    const { messages, inputText, setInputText, sendMessage } = useChat(id);
-    const listRef = useRef<FlatList>(null);
+  const router = useRouter();
+  const { id, name, avatarUri } = params;
+  const { colors, colorScheme } = useTheme();
+  const { messages, inputText, setInputText, sendMessage, sendAttachment } =
+    useChat(id || "");
+  const listRef = useRef<FlatList>(null);
 
-    const handleSend = useCallback(() => {
-        sendMessage(inputText);
-        setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
-    }, [inputText, sendMessage]);
+  // Message action menu state
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [showActionMenu, setShowActionMenu] = useState(false);
 
-    const renderItem = useCallback(
-        ({ item, index }: { item: Message; index: number }) => (
-            <View>
-                {shouldShowTimestamp(messages, index) && (
-                    <MessageTimestamp time={item.timestamp} />
-                )}
-                <MessageBubble
-                    message={item}
-                    showAvatar={shouldShowAvatar(messages, index)}
-                    avatarUri={avatarUri}
-                    senderName={name}
-                />
-            </View>
-        ),
-        [messages, avatarUri, name],
-    );
+  useEffect(() => {
+    if (!id) {
+      console.error("[ChatScreen] Missing required parameter: id");
+      Alert.alert("Error", "Invalid chat ID. Going back...");
+      setTimeout(() => router.back(), 500);
+    }
+  }, [id, router]);
 
-    return (
-        <SafeAreaView
-            style={{ flex: 1, backgroundColor: colors.background }}
-            edges={['top']}
-        >
-            <StatusBar
-                barStyle={
-                    colorScheme === 'dark' ? 'light-content' : 'dark-content'
-                }
-                backgroundColor={colors.background}
-            />
+  const handleSend = useCallback(() => {
+    sendMessage(inputText);
+    setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 100);
+  }, [inputText, sendMessage]);
 
-            {/* Header */}
-            <ChatHeader name={name ?? 'Chat'} avatarUri={avatarUri} isOnline />
+  const handleMessageLongPress = useCallback((message: Message) => {
+    setSelectedMessage(message);
+    setShowActionMenu(true);
+  }, []);
 
-            {/* Messages */}
-            <KeyboardAvoidingView
-                style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={0}
-            >
-                <FlatList
-                    ref={listRef}
-                    data={messages}
-                    keyExtractor={(m) => m.id}
-                    renderItem={renderItem}
-                    contentContainerStyle={{
-                        paddingVertical: 12,
-                    }}
-                    onContentSizeChange={() =>
-                        listRef.current?.scrollToEnd({ animated: false })
-                    }
-                    showsVerticalScrollIndicator={false}
-                />
+  const handleMessageDeleted = useCallback(() => {
+    // Remove message from list
+    // The useChat hook should handle this via socket event
+  }, []);
 
-                {/* Input */}
-                <MessageInput
-                    value={inputText}
-                    onChangeText={setInputText}
-                    onSend={handleSend}
-                />
-            </KeyboardAvoidingView>
-        </SafeAreaView>
-    );
+  const handleMessageRecalled = useCallback(() => {
+    // The useChat hook should handle this via socket event
+  }, []);
+
+  function shouldShowTimestamp(messages: Message[], index: number): boolean {
+    if (index === 0) return true;
+
+    const prev = messages[index - 1];
+    const curr = messages[index];
+
+    const diffMinutes = getDiffMinutes(prev.timestamp, curr.timestamp);
+    return diffMinutes > 30;
+  }
+
+  const lastMessage = messages[messages.length - 1];
+  const lastMessageTimeAgo = lastMessage
+    ? getDiffMinutes(lastMessage.timestamp, new Date().toISOString())
+    : "";
+
+  console.log("LAST MSG ", messages[messages.length - 1]);
+
+  console.log("LAST MSG TIME AGO ", lastMessageTimeAgo);
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: Message; index: number }) => (
+      <View>
+        {shouldShowTimestamp(messages, index) && (
+          <MessageTimestamp time={formatTime(item.timestamp)} />
+        )}
+        <MessageBubble
+          message={item}
+          showAvatar={shouldShowAvatar(messages, index)}
+          avatarUri={avatarUri}
+          senderName={name}
+          onLongPress={handleMessageLongPress}
+        />
+      </View>
+    ),
+    [messages, avatarUri, name, handleMessageLongPress],
+  );
+
+  return (
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      edges={["top"]}
+    >
+      <StatusBar
+        barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
+        backgroundColor={colors.background}
+      />
+
+      {/* Header */}
+      <ChatHeader name={name ?? "Chat"} avatarUri={avatarUri} isOnline />
+
+      {/* Messages */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
+      >
+        <FlatList
+          ref={listRef}
+          data={messages}
+          keyExtractor={(m) => m.id}
+          renderItem={renderItem}
+          contentContainerStyle={{
+            paddingVertical: 12,
+          }}
+          onContentSizeChange={() =>
+            listRef.current?.scrollToEnd({ animated: false })
+          }
+          showsVerticalScrollIndicator={false}
+        />
+
+        {/* Input */}
+        <MessageInput
+          value={inputText}
+          onChangeText={setInputText}
+          onSend={handleSend}
+          onAttach={sendAttachment}
+        />
+      </KeyboardAvoidingView>
+
+      {/* Message Action Menu */}
+      {selectedMessage && (
+        <MessageActionMenu
+          visible={showActionMenu}
+          onClose={() => {
+            setShowActionMenu(false);
+            setSelectedMessage(null);
+          }}
+          message={selectedMessage}
+          conversationId={id || ""}
+          onMessageDeleted={handleMessageDeleted}
+          onMessageRecalled={handleMessageRecalled}
+        />
+      )}
+    </SafeAreaView>
+  );
 }

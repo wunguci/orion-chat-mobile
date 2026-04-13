@@ -1,5 +1,6 @@
 import { Avatar } from "@/components/common/Avatar";
 import { CallContext } from "@/context/CallContext";
+import { chatApi } from "@/services/api/chat";
 import { friendApi } from "@/services/api/friend";
 import type { CallType } from "@/types/call";
 import type { FriendProfileItem } from "@/types/friend";
@@ -150,12 +151,54 @@ export default function FriendViewScreen() {
     }
   };
 
-  const handleChat = () => {
-    if (!profile) return;
-    Alert.alert(
-      "Chat",
-      `Chat with ${profile.fullName} will be supported in next step.`,
-    );
+  /**
+   * Xử lý khi nhấn nút Chat
+   *
+   * Luồng:
+   * 1. Gọi API POST /conversations/private tạo conversation
+   * 2. Nhận conversationId từ server
+   * 3. Điều hướng tới màn hình chat /chat/[id] với conversationId
+   */
+  const handleChat = async () => {
+    if (!profile || !currentUserId) return;
+
+    try {
+      //console.log("[FriendView] Creating conversation with:", profile.id);
+
+      // Gọi API tạo conversation với friend
+      const conversation = await chatApi.createConversation({
+        receiverId: profile.id,
+      });
+
+      const conversationId = conversation.conversationId;
+
+      if (!conversationId) {
+        throw new Error(
+          `No conversation ID received from server. Response: ${JSON.stringify(conversation)}`,
+        );
+      }
+
+      // console.log(
+      //   "[FriendView] Navigating to chat with conversationId:",
+      //   conversationId,
+      // );
+
+      // Điều hướng tới chat screen với conversationId và friend info
+      router.push({
+        pathname: "/chat/[id]",
+        params: {
+          id: conversationId,
+          name: profile.fullName,
+          avatarUri: profile.avatarUrl || "",
+        },
+      });
+    } catch (error) {
+      console.error("[FriendView] Chat error:", error);
+      Alert.alert(
+        "Tao Conversation",
+        error instanceof Error ? error.message : "Khong the mo chat",
+      );
+    }
   };
 
   const handleAddFriend = async () => {

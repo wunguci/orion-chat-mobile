@@ -11,12 +11,12 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "Allow Orion Chat to use your camera for video calls.",
-        "NSMicrophoneUsageDescription": "Allow Orion Chat to use your microphone for audio and video calls."
+        "NSPhotoLibraryUsageDescription": "Ứng dụng cần truy cập thư viện ảnh để gửi hình ảnh và video.",
+        "NSCameraUsageDescription": "Ứng dụng cần truy cập camera để chụp ảnh và quay video.",
+        "NSMicrophoneUsageDescription": "Ứng dụng cần truy cập microphone để quay video có âm thanh."
       }
     },
     "android": {
-      "package": "com.orionchat.mobile",
       "permissions": ["CAMERA", "RECORD_AUDIO", "MODIFY_AUDIO_SETTINGS"],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -25,7 +25,14 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -47,17 +54,19 @@
         }
       ],
       "expo-secure-store",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ứng dụng cần truy cập thư viện ảnh để gửi hình ảnh và video.",
+          "cameraPermission": "Ứng dụng cần truy cập camera để chụp ảnh và quay video."
+        }
+      ],
+      "expo-document-picker"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "2b0e18b8-8090-4a02-ac05-db5f400d1ff6"
-      }
     }
   }
 }
