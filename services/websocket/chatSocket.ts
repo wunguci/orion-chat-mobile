@@ -57,6 +57,7 @@ class ChatSocketService {
   private conversationListeners: Map<string, (data: any) => void> = new Map();
   private reactionListeners: Map<string, (data: any) => void> = new Map();
   private recallListeners: Map<string, (data: any) => void> = new Map();
+  private deleteListeners: Map<string, (data: any) => void> = new Map();
 
   /**
    * Khởi tạo WebSocket connection
@@ -307,7 +308,7 @@ class ChatSocketService {
 
     // Listen message deleted events
     this.socket.on("chat:message_deleted", (deleteData: any) => {
-      const callback = this.recallListeners.get(deleteData.conversationId);
+      const callback = this.deleteListeners.get(deleteData.conversationId);
       if (callback) {
         callback({
           conversationId: deleteData.conversationId,
@@ -362,6 +363,7 @@ class ChatSocketService {
     this.conversationListeners.delete(conversationId);
     this.reactionListeners.delete(conversationId);
     this.recallListeners.delete(conversationId);
+    this.deleteListeners.delete(conversationId);
 
     // console.log(
     //   "[ChatSocket] Cleared listeners for conversation:",
@@ -580,6 +582,10 @@ class ChatSocketService {
     this.recallListeners.set(conversationId, callback);
   }
 
+  onDelete(conversationId: string, callback: (data: any) => void): void {
+    this.deleteListeners.set(conversationId, callback);
+  }
+
   /**
    * Ngắt kết nối WebSocket
    */
@@ -590,6 +596,9 @@ class ChatSocketService {
       this.socket = null;
       this.messageListeners.clear();
       this.conversationListeners.clear();
+      this.reactionListeners.clear();
+      this.recallListeners.clear();
+      this.deleteListeners.clear();
     }
   }
 

@@ -319,7 +319,7 @@ export const useChat = (conversationId: string) => {
         chatSocketService.onAck(conversationId, handleAck);
         chatSocketService.onReaction(conversationId, handleReaction);
         chatSocketService.onRecall(conversationId, handleRecall);
-        chatSocketService.onRecall(conversationId, handleDelete);
+        chatSocketService.onDelete(conversationId, handleDelete);
 
         // console.log(
         //   "[useChat] Socket listeners registered for:",

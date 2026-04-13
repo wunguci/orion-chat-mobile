@@ -85,30 +85,34 @@ export default function MessageActionMenu({
   };
 
   const handleDelete = async () => {
-    Alert.alert("Xóa tin nhắn?", "Hành động này không thể hoàn tác", [
-      { text: "Hủy", onPress: () => {} },
-      {
-        text: "Xóa",
-        onPress: async () => {
-          setIsLoading(true);
-          try {
-            await chatApi.deleteMessageForMe(message.id, conversationId);
-            onMessageDeleted?.();
-            onClose();
-          } catch (error) {
-            console.error("Failed to delete message:", error);
-            Alert.alert(
-              "Error",
-              error instanceof Error
-                ? error.message
-                : "Failed to delete message",
-            );
-          } finally {
-            setIsLoading(false);
-          }
+    Alert.alert(
+      "Xóa tin nhắn?",
+      "Tin nhắn này sẽ chỉ bị ẩn ở thiết bị của bạn",
+      [
+        { text: "Hủy", onPress: () => {} },
+        {
+          text: "Xóa",
+          onPress: async () => {
+            setIsLoading(true);
+            try {
+              await chatApi.deleteMessageForMe(message.id, conversationId);
+              onMessageDeleted?.();
+              onClose();
+            } catch (error) {
+              console.error("Failed to delete message:", error);
+              Alert.alert(
+                "Error",
+                error instanceof Error
+                  ? error.message
+                  : "Failed to delete message",
+              );
+            } finally {
+              setIsLoading(false);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   const handleForward = async () => {

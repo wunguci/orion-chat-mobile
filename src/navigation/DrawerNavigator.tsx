@@ -83,6 +83,14 @@ export default function DrawerNavigator() {
       />
 
       <Drawer.Screen
+        name="index"
+        options={{
+          title: "Tin nhắn",
+          drawerItemStyle: { display: "none" },
+        }}
+      />
+
+      <Drawer.Screen
         name="ai"
         options={{
           title: "AI Chatbot",

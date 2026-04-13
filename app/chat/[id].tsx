@@ -80,14 +80,14 @@ export default function ChatScreen() {
     return diffMinutes > 30;
   }
 
-  const lastMessage = messages[messages.length - 1];
-  const lastMessageTimeAgo = lastMessage
-    ? getDiffMinutes(lastMessage.timestamp, new Date().toISOString())
-    : "";
+  // const lastMessage = messages[messages.length - 1];
+  // const lastMessageTimeAgo = lastMessage
+  //   ? getDiffMinutes(lastMessage.timestamp, new Date().toISOString())
+  //   : "";
 
-  console.log("LAST MSG ", messages[messages.length - 1]);
+  // console.log("LAST MSG ", messages[messages.length - 1]);
 
-  console.log("LAST MSG TIME AGO ", lastMessageTimeAgo);
+  // console.log("LAST MSG TIME AGO ", lastMessageTimeAgo);
 
   const renderItem = useCallback(
     ({ item, index }: { item: Message; index: number }) => (

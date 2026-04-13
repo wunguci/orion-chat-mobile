@@ -22,7 +22,6 @@ const convertConversationToChatItem = (
   conversation: ConversationResponse,
 ): ChatItem => {
   const lastMessage = conversation.lastMessage;
-  console.log("[Index] Conversation ", conversation.lastMessage);
 
   const isGroup = conversation.type === "GROUP";
 
@@ -82,6 +81,8 @@ const convertConversationToChatItem = (
       return msgDate.toLocaleDateString("vi-VN");
     }
   };
+
+  console.log("[Index] Conversation last message ", conversation.lastMessage);
 
   return {
     id: conversation.conversationId,
