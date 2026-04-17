@@ -1,8 +1,9 @@
 import { MessageCircle, Users, Calendar, User } from "lucide-react-native";
 import React from "react";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { whColors } from "@/constants/tailwindColors";
+import { useNotificationContext } from "@/context/NotificationContext";
 
 type TabIconType = {
   default: React.ReactNode;
@@ -36,6 +37,7 @@ const TAB_ICON: Record<string, TabIconType> = {
 
 export default function CustomTabBar({ state, navigation }: any) {
   const insets = useSafeAreaInsets();
+  const { unreadMessageCount } = useNotificationContext();
 
   return (
     <View
@@ -64,6 +66,13 @@ export default function CustomTabBar({ state, navigation }: any) {
           >
             <View style={[styles.iconWrap, isFocused && styles.iconWrapActive]}>
               {isFocused ? icon.active : icon.default}
+              {route.name === "index" && unreadMessageCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                  </Text>
+                </View>
+              )}
             </View>
             {isFocused && <View style={styles.dot} />}
           </TouchableOpacity>
@@ -97,6 +106,24 @@ const styles = StyleSheet.create({
   },
   iconWrapActive: {
     backgroundColor: whColors.bgHeavy,
+  },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -6,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    backgroundColor: "#ef4444",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: {
+    color: "#fff",
+    fontSize: 9,
+    fontWeight: "700",
+    lineHeight: 11,
   },
   dot: {
     width: 4,

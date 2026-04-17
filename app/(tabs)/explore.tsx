@@ -23,6 +23,7 @@ import type {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import React, {
   useCallback,
   useContext,
@@ -46,6 +47,7 @@ import { useFocusEffect } from "@react-navigation/native";
 
 export default function Friends() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ activeCategory?: string }>();
   const callContext = useContext(CallContext);
   const [activeCategory, setActiveCategory] =
     useState<FriendCategory>("friends");
@@ -68,6 +70,19 @@ export default function Friends() {
   const [pendingSentRequestIds, setPendingSentRequestIds] = useState<
     Set<string>
   >(new Set());
+
+  useEffect(() => {
+    const nextCategory = params.activeCategory;
+    if (
+      nextCategory === "friends" ||
+      nextCategory === "requests" ||
+      nextCategory === "groups" ||
+      nextCategory === "group_invites" ||
+      nextCategory === "blocked"
+    ) {
+      setActiveCategory(nextCategory);
+    }
+  }, [params.activeCategory]);
 
   const formatAgo = (iso: string) => {
     const ms = Date.now() - new Date(iso).getTime();
