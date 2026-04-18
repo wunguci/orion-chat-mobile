@@ -32,6 +32,8 @@ export type CallContextValue = CallState & {
   rejectCall: () => void;
   toggleAudio: () => void;
   toggleVideo: () => void;
+  requestVideoUpgrade: () => void;
+  respondVideoUpgradeRequest: (accepted: boolean) => void;
   endCall: () => void;
 };
 
@@ -51,6 +53,8 @@ const INITIAL_STATE: CallState = {
   otherUser: null,
   error: null,
   startTime: null,
+  incomingVideoUpgradeRequest: false,
+  isRequestingVideoUpgrade: false,
 };
 
 export function CallProvider({ children }: { children: React.ReactNode }) {
@@ -68,6 +72,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const acceptedCallIdRef = useRef<string | null>(null);
   const acceptedIncomingCallRef = useRef<IncomingCallData | null>(null);
   const pendingOfferRef = useRef<CallOfferData | null>(null);
+  const failedStateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   useEffect(() => {
     currentCallIdRef.current = callState.callId;
@@ -114,12 +121,31 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       });
     },
     onConnectionStateChange: (connectionState) => {
-      if (connectionState === "failed") {
-        setCallState((prev) => ({
-          ...prev,
-          status: "failed",
-          error: "Connection failed",
-        }));
+      if (failedStateTimerRef.current) {
+        clearTimeout(failedStateTimerRef.current);
+        failedStateTimerRef.current = null;
+      }
+
+      if (connectionState === "connected") {
+        return;
+      }
+
+      if (connectionState === "failed" || connectionState === "disconnected") {
+        failedStateTimerRef.current = setTimeout(() => {
+          setCallState((prev) => {
+            if (prev.status === "connected" || prev.remoteStream) {
+              return prev;
+            }
+
+            return {
+              ...prev,
+              status: "failed",
+              error: "Connection failed",
+            };
+          });
+
+          failedStateTimerRef.current = null;
+        }, 4000);
       }
     },
     onIceRestart: async (offer) => {
@@ -165,6 +191,11 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   );
 
   const resetCall = useCallback(() => {
+    if (failedStateTimerRef.current) {
+      clearTimeout(failedStateTimerRef.current);
+      failedStateTimerRef.current = null;
+    }
+
     cleanupWebRTC();
     setCallState(INITIAL_STATE);
     setIncomingCall(null);
@@ -221,6 +252,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         remoteStream: null,
         isAudioEnabled: true,
         isVideoEnabled: data.callType === "video",
+        incomingVideoUpgradeRequest: false,
+        isRequestingVideoUpgrade: false,
         startTime: null,
         error: null,
         otherUser: {
@@ -377,6 +410,70 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       setTimeout(resetCall, 500);
     };
 
+    const onVideoUpgradeRequest = (data: {
+      callId: string;
+      requesterId: string;
+    }) => {
+      if (data.callId !== currentCallIdRef.current) {
+        return;
+      }
+
+      setCallState((prev) => ({
+        ...prev,
+        incomingVideoUpgradeRequest: true,
+      }));
+    };
+
+    const onVideoUpgradeResponse = async (data: {
+      callId: string;
+      responderId: string;
+      accepted: boolean;
+    }) => {
+      if (data.callId !== currentCallIdRef.current) {
+        return;
+      }
+
+      setCallState((prev) => ({
+        ...prev,
+        isRequestingVideoUpgrade: false,
+      }));
+
+      if (!data.accepted) {
+        return;
+      }
+
+      const socket = callSocketService.getSocket();
+      if (!socket) {
+        return;
+      }
+
+      try {
+        const stream = await getLocalStream(true, true);
+        setCallState((prev) => ({
+          ...prev,
+          callType: "video",
+          localStream: stream,
+          isVideoEnabled: true,
+        }));
+
+        const offer = await createOffer();
+        socket.emit("call:offer", {
+          callId: data.callId,
+          receiverId: data.responderId,
+          offer,
+        });
+      } catch (error) {
+        setCallState((prev) => ({
+          ...prev,
+          status: "failed",
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to upgrade video call",
+        }));
+      }
+    };
+
     socket.on("call:incoming", onIncoming);
     socket.on("call:initiated", onInitiated);
     socket.on("call:accept", onAccept);
@@ -386,6 +483,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     socket.on("call:reject", onReject);
     socket.on("call:ended", onEnded);
     socket.on("call:error", onError);
+    socket.on("call:video-upgrade-request", onVideoUpgradeRequest);
+    socket.on("call:video-upgrade-response", onVideoUpgradeResponse);
 
     return () => {
       socket.off("call:incoming", onIncoming);
@@ -397,13 +496,15 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       socket.off("call:reject", onReject);
       socket.off("call:ended", onEnded);
       socket.off("call:error", onError);
+      socket.off("call:video-upgrade-request", onVideoUpgradeRequest);
+      socket.off("call:video-upgrade-response", onVideoUpgradeResponse);
     };
   }, [
     state.isAuthenticated,
     state.user?.userId,
     resetCall,
-    openCallScreen,
     createOffer,
+    openCallScreen,
     handleOffer,
     handleAnswer,
     addIceCandidate,
@@ -706,6 +807,75 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     toggleVideoTrack,
   ]);
 
+  const requestVideoUpgrade = useCallback(() => {
+    const socket = callSocketService.getSocket();
+    const targetUserId = callState.otherUser?.id;
+
+    if (!socket || !callState.callId || !targetUserId) {
+      return;
+    }
+
+    if (callState.callType !== "audio") {
+      return;
+    }
+
+    socket.emit("call:request-video-upgrade", {
+      callId: callState.callId,
+      targetUserId,
+    });
+
+    setCallState((prev) => ({
+      ...prev,
+      isRequestingVideoUpgrade: true,
+    }));
+  }, [callState.callId, callState.callType, callState.otherUser?.id]);
+
+  const respondVideoUpgradeRequest = useCallback(
+    async (accepted: boolean) => {
+      const socket = callSocketService.getSocket();
+      const targetUserId = callState.otherUser?.id;
+
+      if (!socket || !callState.callId || !targetUserId) {
+        return;
+      }
+
+      socket.emit("call:respond-video-upgrade", {
+        callId: callState.callId,
+        targetUserId,
+        accepted,
+      });
+
+      if (!accepted) {
+        setCallState((prev) => ({
+          ...prev,
+          incomingVideoUpgradeRequest: false,
+        }));
+        return;
+      }
+
+      try {
+        const stream = await getLocalStream(true, true);
+        setCallState((prev) => ({
+          ...prev,
+          incomingVideoUpgradeRequest: false,
+          callType: "video",
+          localStream: stream,
+          isVideoEnabled: true,
+        }));
+      } catch (error) {
+        setCallState((prev) => ({
+          ...prev,
+          status: "failed",
+          error:
+            error instanceof Error
+              ? error.message
+              : "Cannot access camera for video upgrade",
+        }));
+      }
+    },
+    [callState.callId, callState.otherUser?.id, getLocalStream],
+  );
+
   return (
     <CallContext.Provider
       value={{
@@ -716,6 +886,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         rejectCall,
         toggleAudio,
         toggleVideo,
+        requestVideoUpgrade,
+        respondVideoUpgradeRequest,
         endCall,
       }}
     >

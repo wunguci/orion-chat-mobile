@@ -11,8 +11,12 @@ type WebRTCModule = {
     getUserMedia: (constraints: MediaStreamConstraints) => Promise<MediaStream>;
   };
   MediaStream: new (tracks?: MediaStreamTrack[]) => MediaStream;
-  RTCPeerConnection: new (configuration?: RTCConfiguration) => RTCPeerConnection;
-  RTCIceCandidate: new (candidateInitDict?: RTCIceCandidateInit) => RTCIceCandidate;
+  RTCPeerConnection: new (
+    configuration?: RTCConfiguration,
+  ) => RTCPeerConnection;
+  RTCIceCandidate: new (
+    candidateInitDict?: RTCIceCandidateInit,
+  ) => RTCIceCandidate;
   RTCSessionDescription: new (
     descriptionInitDict?: RTCSessionDescriptionInit,
   ) => RTCSessionDescription;
@@ -188,7 +192,9 @@ export const useWebRTC = ({
     peerConnection.oniceconnectionstatechange = () => {
       if (peerConnection.iceConnectionState === "disconnected") {
         setTimeout(() => {
-          if (peerConnectionRef.current?.iceConnectionState === "disconnected") {
+          if (
+            peerConnectionRef.current?.iceConnectionState === "disconnected"
+          ) {
             void restartIce();
           }
         }, 2500);
@@ -207,9 +213,9 @@ export const useWebRTC = ({
         video: videoEnabled
           ? {
               facingMode: "user",
-              width: 640,
-              height: 480,
-              frameRate: 30,
+              width: 480,
+              height: 360,
+              frameRate: 15,
             }
           : false,
         audio: audioEnabled
@@ -250,7 +256,9 @@ export const useWebRTC = ({
       const { RTCSessionDescription } = ensureWebRTCModule();
 
       const peerConnection = initializePeerConnection();
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+      await peerConnection.setRemoteDescription(
+        new RTCSessionDescription(offer),
+      );
       await flushPendingIceCandidates();
 
       const answer = await peerConnection.createAnswer();
@@ -270,28 +278,33 @@ export const useWebRTC = ({
         throw new Error("Peer connection not initialized");
       }
 
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+      await peerConnection.setRemoteDescription(
+        new RTCSessionDescription(answer),
+      );
       await flushPendingIceCandidates();
     },
     [flushPendingIceCandidates],
   );
 
-  const addIceCandidate = useCallback(async (candidate: RTCIceCandidateInit) => {
-    const { RTCIceCandidate } = ensureWebRTCModule();
+  const addIceCandidate = useCallback(
+    async (candidate: RTCIceCandidateInit) => {
+      const { RTCIceCandidate } = ensureWebRTCModule();
 
-    const peerConnection = peerConnectionRef.current;
+      const peerConnection = peerConnectionRef.current;
 
-    if (!peerConnection || !peerConnection.remoteDescription) {
-      pendingIceCandidatesRef.current.push(candidate);
-      return;
-    }
+      if (!peerConnection || !peerConnection.remoteDescription) {
+        pendingIceCandidatesRef.current.push(candidate);
+        return;
+      }
 
-    try {
-      await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-    } catch (error) {
-      console.log("[WebRTC] Failed to add ICE candidate", error);
-    }
-  }, []);
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (error) {
+        console.log("[WebRTC] Failed to add ICE candidate", error);
+      }
+    },
+    [],
+  );
 
   const toggleVideo = useCallback((enabled: boolean) => {
     const stream = localStreamRef.current;

@@ -82,7 +82,7 @@ export default function VideoCallScreen() {
     return null;
   }
 
-  const showLocalPreview = callMode === "video" && localStreamUrl;
+  const showLocalPreview = callMode === "video" && Boolean(call?.localStream);
   const showRemoteVideo = callMode === "video" && remoteStreamUrl;
 
   return (
@@ -135,14 +135,50 @@ export default function VideoCallScreen() {
 
         {showLocalPreview ? (
           <View className="absolute right-4 top-28 h-40 w-28 rounded-xl overflow-hidden border border-white/25 bg-black">
-            {RTCViewComponent ? (
+            {RTCViewComponent && localStreamUrl ? (
               <RTCViewComponent
                 streamURL={localStreamUrl}
                 style={{ flex: 1 }}
                 objectFit="cover"
                 mirror
               />
-            ) : null}
+            ) : (
+              <View className="flex-1 items-center justify-center">
+                <Ionicons
+                  name={call.isVideoEnabled ? "videocam" : "videocam-off"}
+                  size={20}
+                  color="#fff"
+                />
+              </View>
+            )}
+          </View>
+        ) : null}
+
+        {callMode === "audio" &&
+        call.status === "connected" &&
+        call.incomingVideoUpgradeRequest ? (
+          <View className="absolute top-24 left-4 right-4 rounded-xl border border-white/20 bg-black/70 px-4 py-3">
+            <Text className="text-white text-sm mb-3 text-center">
+              {title} wants to switch to video call
+            </Text>
+            <View className="flex-row justify-center">
+              <TouchableOpacity
+                onPress={() => {
+                  void call.respondVideoUpgradeRequest(false);
+                }}
+                className="px-4 py-2 rounded-lg bg-red-600 mx-2"
+              >
+                <Text className="text-white text-sm font-medium">Decline</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  void call.respondVideoUpgradeRequest(true);
+                }}
+                className="px-4 py-2 rounded-lg bg-green-600 mx-2"
+              >
+                <Text className="text-white text-sm font-medium">Accept</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : null}
 
@@ -173,6 +209,18 @@ export default function VideoCallScreen() {
                   size={24}
                   color="#fff"
                 />
+              </TouchableOpacity>
+            ) : call.status === "connected" ? (
+              <TouchableOpacity
+                onPress={call.requestVideoUpgrade}
+                disabled={Boolean(call.isRequestingVideoUpgrade)}
+                className={`h-14 w-14 rounded-full items-center justify-center mx-3 ${
+                  call.isRequestingVideoUpgrade
+                    ? "bg-indigo-900"
+                    : "bg-indigo-600"
+                }`}
+              >
+                <Ionicons name="videocam" size={24} color="#fff" />
               </TouchableOpacity>
             ) : null}
 

@@ -31,6 +31,8 @@ export interface CallState {
   otherUser: CallUser | null;
   error: string | null;
   startTime: number | null;
+  incomingVideoUpgradeRequest?: boolean;
+  isRequestingVideoUpgrade?: boolean;
 }
 
 export interface IncomingCallData {
