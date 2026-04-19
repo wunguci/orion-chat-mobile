@@ -50,6 +50,7 @@ const getAuthToken = async () => {
 const authFetch = async (url: string, init?: RequestInit) => {
   const token = await getAuthToken();
   const headers = new Headers(init?.headers);
+  headers.set("X-Platform", "mobile");
 
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);

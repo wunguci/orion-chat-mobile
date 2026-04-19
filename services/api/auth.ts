@@ -114,31 +114,40 @@ export async function login(
         "Content-Type": "application/json",
         "X-Platform": "mobile",
       },
-      body: JSON.stringify({ phoneNumber, password, platform: "mobile" }),
+      body: JSON.stringify({
+        phoneNumber,
+        password,
+        deviceType: "mobile",
+        osType: "mobile",
+        appVersion: "mobile",
+      }),
     });
 
     if (!response.ok) {
+      const fallbackMessage =
+        `HTTP ${response.status}: ${response.statusText || "Bad Request"}`;
+      const raw = await response.text();
+
+      if (!raw) {
+        throw new Error(fallbackMessage);
+      }
+
+      let parsedMessage: string | null = null;
       try {
-        const raw = await response.text();
-        const parsed = raw ? JSON.parse(raw) : null;
-        const errorData = parsed as
+        const parsed = JSON.parse(raw) as
           | (ErrorResponse & { error?: string; message?: string | string[] })
           | null;
 
-        const message = Array.isArray(errorData?.message)
-          ? errorData?.message.join(", ")
-          : errorData?.message;
+        const message = Array.isArray(parsed?.message)
+          ? parsed.message.join(", ")
+          : parsed?.message;
 
-        throw new Error(
-          message ||
-            errorData?.error ||
-            `HTTP ${response.status}: ${response.statusText || "Bad Request"}`,
-        );
+        parsedMessage = message || parsed?.error || null;
       } catch {
-        throw new Error(
-          `HTTP ${response.status}: ${response.statusText || "Bad Request"}`,
-        );
+        // Response body is not JSON; will fallback to raw text below.
       }
+
+      throw new Error(parsedMessage || raw || fallbackMessage);
     }
 
     return response.json();
