@@ -1,4 +1,4 @@
-import "@/index.css";
+import '@/index.css';
 import {
     DarkTheme,
     DefaultTheme,
@@ -16,6 +16,7 @@ import { store } from '@/store';
 import { AuthProvider } from '@/context/AuthContext';
 import { CallProvider } from '@/context/CallContext';
 import { SocketProvider } from '@/context/SocketContext';
+import { NotificationProvider } from '@/context/NotificationContext';
 import { useSessionConflictListener } from '@/hooks/useSessionConflictListener';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -102,7 +103,9 @@ export default function RootLayout() {
             <AuthProvider>
                 <SocketProvider>
                     <CallProvider>
-                        <RootLayoutContent />
+                        <NotificationProvider>
+                            <RootLayoutContent />
+                        </NotificationProvider>
                     </CallProvider>
                 </SocketProvider>
             </AuthProvider>

@@ -91,11 +91,15 @@ export const tokenUtils = {
 
     // xóa tất cả dữ liệu xác thực (đăng xuất)
     async clearAll() {
+        console.log(
+            '[tokenUtils] Clearing all tokens and user data from AsyncStorage',
+        );
         await AsyncStorage.multiRemove([
             TOKEN_KEY,
             USER_KEY,
             LAST_ACTIVITY_KEY,
         ]);
+        console.log('[tokenUtils] All data cleared successfully');
     },
 
     // Giải mã token để lấy payload

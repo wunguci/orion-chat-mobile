@@ -307,8 +307,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 }
             }
 
-            console.log('[AuthContext] Clearing local auth state...');
-            // Clear all stored data
+            console.log(
+                '[AuthContext] Clearing local auth state and tokens...',
+            );
+            // Clear all stored data including tokens
             await tokenUtils.clearAll();
 
             // Clear session check interval
@@ -325,7 +327,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 lastActivityTime: null,
             }));
 
-            console.log('[AuthContext] Logout completed');
+            console.log('[AuthContext] Logout completed - all tokens cleared');
         } catch (error) {
             console.error('[AuthContext] Error during logout:', error);
             throw error;

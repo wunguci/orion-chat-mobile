@@ -1,8 +1,21 @@
 import API_BASE_URL from '../../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface FetchOptions extends RequestInit {
     params?: Record<string, string | number | boolean>;
 }
+
+/**
+ * Lấy JWT token từ AsyncStorage
+ */
+const getAuthToken = async () => {
+    const tokenCandidates = [
+        await AsyncStorage.getItem('auth_token'),
+        await AsyncStorage.getItem('token'),
+        await AsyncStorage.getItem('accessToken'),
+    ];
+    return tokenCandidates.find((item) => !!item) || null;
+};
 
 // make API request với định danh nền tảng di động
 
@@ -23,12 +36,20 @@ export async function fetchApi<T = any>(
         }
     }
 
+    // Get token for authorization
+    const token = await getAuthToken();
+
     // thêm tiêu đề nền tảng cho tất cả các yêu cầu
-    const headers = {
+    const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'X-Platform': 'mobile', // ← Tự động thêm tiêu đề nền tảng
         ...(fetchOptions.headers as Record<string, string> | undefined),
     };
+
+    // Add authorization header if token exists
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
 
     const response = await fetch(url, {
         ...fetchOptions,
