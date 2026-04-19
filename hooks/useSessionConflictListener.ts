@@ -24,15 +24,19 @@ export const useSessionConflictListener = () => {
             !!socket,
             'isConnected:',
             isConnected,
+            'authenticated:',
+            state.isAuthenticated,
         );
 
-        if (!socket) {
-            console.log('[useSessionConflictListener] No socket, returning');
+        if (!socket || !state.isAuthenticated) {
+            console.log(
+                '[useSessionConflictListener] No socket or not authenticated, returning',
+            );
             return;
         }
 
         console.log(
-            '[useSessionConflictListener] Setting up listener for session:conflict',
+            '[useSessionConflictListener] Setting up listener for session:conflict event',
         );
 
         const handleSessionConflict = (data: {
@@ -42,49 +46,71 @@ export const useSessionConflictListener = () => {
             timestamp: number;
         }) => {
             console.log(
-                '[useSessionConflictListener] ✅ Received session conflict event:',
-                data,
+                '[useSessionConflictListener] RECEIVED SESSION CONFLICT EVENT:',
+                JSON.stringify(data, null, 2),
             );
 
             if (handledRef.current) {
                 console.log(
-                    '[useSessionConflictListener] Already handled conflict, ignoring',
+                    '[useSessionConflictListener] Already handled conflict, ignoring duplicate',
                 );
                 return;
             }
 
             handledRef.current = true;
 
-            Alert.alert(
-                'Session Conflict',
-                data.message ||
-                    'Your session has been terminated on another device.',
-                [
-                    {
-                        text: 'OK',
-                        onPress: async () => {
-                            console.log(
-                                '[useSessionConflictListener] User confirmed, logging out',
-                            );
-                            try {
-                                await logout();
-                            } catch (error) {
-                                console.error(
-                                    '[useSessionConflictListener] Error during logout:',
-                                    error,
+            // Auto-logout immediately without waiting for user confirmation
+            const performLogout = async () => {
+                console.log(
+                    '[useSessionConflictListener] AUTO-LOGOUT triggered immediately...',
+                );
+                try {
+                    await logout();
+                    console.log(
+                        '[useSessionConflictListener] Auto-logout successful',
+                    );
+                } catch (error) {
+                    console.error(
+                        '[useSessionConflictListener] Error during auto-logout:',
+                        error,
+                    );
+                }
+            };
+
+            // Start logout immediately
+            performLogout();
+
+            // Show alert to inform user (after logout starts)
+            setTimeout(() => {
+                Alert.alert(
+                    'Session Conflict',
+                    data.message ||
+                        'Your session has been terminated on another device. You have been logged out.',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => {
+                                console.log(
+                                    '[useSessionConflictListener] User dismissed alert',
                                 );
-                            }
+                            },
                         },
-                    },
-                ],
-                { cancelable: false },
-            );
+                    ],
+                    { cancelable: false },
+                );
+            }, 300);
         };
 
         socket.on('session:conflict', handleSessionConflict);
+        console.log(
+            '[useSessionConflictListener] Listener attached to session:conflict event',
+        );
 
         return () => {
+            console.log(
+                '[useSessionConflictListener] Removing session:conflict listener',
+            );
             socket.off('session:conflict', handleSessionConflict);
         };
-    }, [socket, isConnected, logout]);
+    }, [socket, isConnected, logout, state.isAuthenticated]);
 };

@@ -150,6 +150,7 @@ export async function login(
                 'Không thể kết nối tới server. Vui lòng kiểm tra backend đang chạy',
             );
         }
+        console.error('[login] Error:', error);
         throw error;
     }
 }
@@ -159,19 +160,30 @@ export async function login(
  */
 export async function logout(token: string): Promise<{ message: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+        console.log(
+            '[logout] Attempting logout with token:',
+            token ? `${token.substring(0, 20)}...` : 'NO TOKEN',
+        );
+
+        const response = await fetch(`${API_BASE_URL}/auth/logout-with-token`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-Platform': 'mobile',
-                Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ platform: 'mobile' }),
+            body: JSON.stringify({ token, platform: 'mobile' }),
         });
+
+        console.log(
+            '[logout] Response status:',
+            response.status,
+            response.statusText,
+        );
 
         if (!response.ok) {
             try {
                 const errorData: ErrorResponse = await response.json();
+                console.error('[logout] Error response:', errorData);
                 throw new Error(
                     errorData.message ||
                         `Failed to logout: ${response.statusText}`,
@@ -183,7 +195,9 @@ export async function logout(token: string): Promise<{ message: string }> {
             }
         }
 
-        return response.json();
+        const result = await response.json();
+        console.log('[logout] Logout successful:', result);
+        return result;
     } catch (error) {
         console.error('[logout] Error:', error);
         throw error;

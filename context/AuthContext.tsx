@@ -2,7 +2,7 @@ import React, { createContext, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { AuthState, User } from '../types/auth';
 import { tokenUtils } from '../utils/tokenUtils';
-import { login as apiLogin } from '../services/api/auth';
+import { login as apiLogin, logout as apiLogout } from '../services/api/auth';
 import {
     profileApi,
     UpdateProfileDto,
@@ -288,11 +288,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const logout = async () => {
         try {
-            if (state.token) {
-                // Call backend logout endpoint
-                // await authService.logout(state.token);
+            console.log('[AuthContext] Starting logout...');
+
+            const token = state.token;
+            if (token) {
+                try {
+                    console.log('[AuthContext] Calling backend logout API...');
+                    await apiLogout(token);
+                    console.log(
+                        '[AuthContext] Backend logout API call successful',
+                    );
+                } catch (apiError) {
+                    console.warn(
+                        '[AuthContext] Backend logout API error (continuing with local logout):',
+                        apiError,
+                    );
+                    // Continue with local logout even if API fails
+                }
             }
 
+            console.log('[AuthContext] Clearing local auth state...');
             // Clear all stored data
             await tokenUtils.clearAll();
 
@@ -309,8 +324,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 error: null,
                 lastActivityTime: null,
             }));
+
+            console.log('[AuthContext] Logout completed');
         } catch (error) {
-            console.error('Error during logout:', error);
+            console.error('[AuthContext] Error during logout:', error);
+            throw error;
         }
     };
 
