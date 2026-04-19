@@ -107,86 +107,103 @@ export async function login(
   phoneNumber: string,
   password: string,
 ): Promise<LoginResponse> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Platform": "mobile",
-      },
-      body: JSON.stringify({ phoneNumber, password, platform: "mobile" }),
-    });
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Platform': 'mobile',
+            },
+            body: JSON.stringify({
+                phoneNumber,
+                password,
+                deviceType: 'mobile',
+                platform: 'mobile',
+            }),
+        });
 
-    if (!response.ok) {
-      try {
-        const raw = await response.text();
-        const parsed = raw ? JSON.parse(raw) : null;
-        const errorData = parsed as
-          | (ErrorResponse & { error?: string; message?: string | string[] })
-          | null;
+        if (!response.ok) {
+            let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            try {
+                const errorData = await response.json();
+                // Extract error message - handle multiple possible formats
+                const message = Array.isArray(errorData?.message)
+                  ? errorData?.message.join(", ")
+                  : errorData?.message;
+                errorMessage =
+                  message ||
+                  errorData?.error ||
+                  (typeof errorData === 'string' ? errorData : null) ||
+                  errorMessage;
+            } catch {
+                // Failed to parse error response
+            }
+            throw new Error(errorMessage);
+        }
 
-        const message = Array.isArray(errorData?.message)
-          ? errorData?.message.join(", ")
-          : errorData?.message;
-
-        throw new Error(
-          message ||
-            errorData?.error ||
-            `HTTP ${response.status}: ${response.statusText || "Bad Request"}`,
-        );
-      } catch {
-        throw new Error(
-          `HTTP ${response.status}: ${response.statusText || "Bad Request"}`,
-        );
-      }
+        return response.json();
+    } catch (error) {
+        if (
+            error instanceof TypeError &&
+            error.message.includes("Failed to fetch")
+        ) {
+            throw new Error(
+                "Không thể kết nối tới server. Vui lòng kiểm tra backend đang chạy",
+            );
+        }
+        console.error("[login] Error:", error);
+        throw error;
     }
-
-    return response.json();
-  } catch (error) {
-    if (
-      error instanceof TypeError &&
-      error.message.includes("Failed to fetch")
-    ) {
-      throw new Error(
-        "Không thể kết nối tới server. Vui lòng kiểm tra backend đang chạy",
-      );
-    }
-    console.error("[login] Error:", error);
-    throw error;
-  }
 }
 
 /**
  * Logout
  */
 export async function logout(token: string): Promise<{ message: string }> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Platform": "mobile",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ platform: "mobile" }),
-    });
-
-    if (!response.ok) {
-      try {
-        const errorData: ErrorResponse = await response.json();
-        throw new Error(
-          errorData.message || `Failed to logout: ${response.statusText}`,
+    try {
+        console.log(
+            '[logout] Attempting logout with token:',
+            token ? `${token.substring(0, 20)}...` : 'NO TOKEN',
         );
-      } catch {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
+
+        const response = await fetch(`${API_BASE_URL}/auth/logout-with-token`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Platform': 'mobile',
+            },
+            body: JSON.stringify({ token, platform: 'mobile' }),
+        });
+
+        console.log(
+            '[logout] Response status:',
+            response.status,
+            response.statusText,
+        );
+
+        if (!response.ok) {
+            try {
+                const errorData: ErrorResponse = await response.json();
+                console.error('[logout] Error response:', errorData);
+                throw new Error(
+                    errorData.message ||
+                        `Failed to logout: ${response.statusText}`,
+                );
+            } catch {
+                throw new Error(
+                    `HTTP ${response.status}: ${response.statusText}`,
+                );
+            }
+        }
+
+        const result = await response.json();
+        console.log('[logout] Logout successful:', result);
+        return result;
+    } catch (error) {
+        console.error('[logout] Error:', error);
+        throw error;
     }
 
-    return response.json();
-  } catch (error) {
-    console.error("[logout] Error:", error);
-    throw error;
-  }
 }
 
 /**

@@ -225,7 +225,17 @@ export default function ForgotPasswordScreen() {
                                     value={phone}
                                     onChangeText={setPhone}
                                     keyboardType="phone-pad"
-                                    className="w-full px-4 py-3.5 rounded-full border border-gray-300 bg-white"
+                                    textAlignVertical="center"
+                                    style={{
+                                        height: 48,
+                                        borderWidth: 1,
+                                        borderColor: '#D1D5DB',
+                                        borderRadius: 24,
+                                        paddingHorizontal: 16,
+                                        fontSize: 16,
+                                        color: '#111827',
+                                        backgroundColor: '#FFFFFF',
+                                    }}
                                 />
                             </View>
 
@@ -307,14 +317,25 @@ export default function ForgotPasswordScreen() {
                                 <Text className="text-xs font-semibold text-gray-700 mb-2 tracking-wide">
                                     PASSWORD
                                 </Text>
-                                <View className="flex-row items-center border border-gray-300 rounded-full px-4 bg-white">
+                                <View
+                                    className="flex-row items-center border border-gray-300 rounded-full px-4 bg-white"
+                                    style={{
+                                        height: 48,
+                                        borderRadius: 24,
+                                    }}
+                                >
                                     <TextInput
                                         placeholder="Enter password"
                                         placeholderTextColor="#9CA3AF"
                                         secureTextEntry={!showNewPassword}
                                         value={newPassword}
                                         onChangeText={setNewPassword}
-                                        className="flex-1 py-3.5 text-base text-gray-900"
+                                        textAlignVertical="center"
+                                        style={{
+                                            flex: 1,
+                                            fontSize: 16,
+                                            color: '#111827',
+                                        }}
                                     />
                                     <Pressable
                                         onPress={() =>
@@ -336,14 +357,37 @@ export default function ForgotPasswordScreen() {
                                 <Text className="text-xs font-semibold text-gray-700 mb-2 tracking-wide">
                                     CONFIRM PASSWORD
                                 </Text>
-                                <View className="flex-row items-center border border-gray-300 rounded-full px-4 bg-white">
+                                <View
+                                    className="flex-row items-center rounded-full px-4 bg-white"
+                                    style={{
+                                        height: 48,
+                                        borderRadius: 24,
+                                        borderWidth: 1,
+                                        borderColor:
+                                            confirmPassword &&
+                                            newPassword &&
+                                            confirmPassword === newPassword
+                                                ? '#10B981'
+                                                : confirmPassword &&
+                                                    newPassword &&
+                                                    confirmPassword !==
+                                                        newPassword
+                                                  ? '#EF4444'
+                                                  : '#D1D5DB',
+                                    }}
+                                >
                                     <TextInput
                                         placeholder="Confirm password"
                                         placeholderTextColor="#9CA3AF"
                                         secureTextEntry={!showConfirmPassword}
                                         value={confirmPassword}
                                         onChangeText={setConfirmPassword}
-                                        className="flex-1 py-3.5 text-base text-gray-900"
+                                        textAlignVertical="center"
+                                        style={{
+                                            flex: 1,
+                                            fontSize: 16,
+                                            color: '#111827',
+                                        }}
                                     />
                                     <Pressable
                                         onPress={() =>
