@@ -17,7 +17,7 @@ const TAB_ICON: Record<string, TabIconType> = {
         ),
         active: <Users size={22} strokeWidth={2.4} color={whColors.primary} />,
     },
-    chat: {
+    explore: {
         default: (
             <MessageCircle
                 size={22}
@@ -33,7 +33,7 @@ const TAB_ICON: Record<string, TabIconType> = {
             />
         ),
     },
-    explore: {
+    calendar: {
         default: (
             <Calendar size={22} strokeWidth={1.7} color={whColors.textMuted} />
         ),
@@ -41,7 +41,7 @@ const TAB_ICON: Record<string, TabIconType> = {
             <Calendar size={22} strokeWidth={2.4} color={whColors.primary} />
         ),
     },
-    profile: {
+    setting: {
         default: (
             <User size={22} strokeWidth={1.7} color={whColors.textMuted} />
         ),
@@ -55,6 +55,7 @@ export default function CustomTabBar({ state, navigation }: any) {
     // Safe access to notification context with fallback
     const notificationContext = useNotificationContext();
     const unreadMessageCount = notificationContext?.unreadMessageCount ?? 0;
+    const unreadCount = notificationContext?.unreadCount ?? 0;
 
     return (
         <View
@@ -101,6 +102,13 @@ export default function CustomTabBar({ state, navigation }: any) {
                                         </Text>
                                     </View>
                                 )}
+                            {route.name === 'setting' && unreadCount > 0 && (
+                                <View style={styles.badgeAlt}>
+                                    <Text style={styles.badgeText}>
+                                        {unreadCount > 99 ? '99+' : unreadCount}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                         {isFocused && <View style={styles.dot} />}
                     </TouchableOpacity>
@@ -152,6 +160,18 @@ const styles = StyleSheet.create({
         fontSize: 9,
         fontWeight: '700',
         lineHeight: 11,
+    },
+    badgeAlt: {
+        position: 'absolute',
+        top: -4,
+        right: -6,
+        minWidth: 16,
+        height: 16,
+        borderRadius: 8,
+        paddingHorizontal: 3,
+        backgroundColor: '#fb923c',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     dot: {
         width: 4,

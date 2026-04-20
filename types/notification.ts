@@ -3,6 +3,11 @@ export type NotificationType =
   | "call"
   | "friend_request"
   | "group_invite"
+  | "group_join_approved"
+  | "group_join_rejected"
+  | "group_promoted"
+  | "group_removed"
+  | "group_dissolved"
   | "event_invite"
   | "event_reminder"
   | "system";

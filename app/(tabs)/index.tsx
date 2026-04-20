@@ -8,6 +8,7 @@ import { useGroupCreation } from '@/hooks/useGroupCreation';
 import { ChatItem } from '@/types/chat';
 import { chatApi, ConversationResponse } from '@/services/api/chat';
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { useNotificationContext } from '@/context/NotificationContext';
 import {
     FlatList,
     StatusBar,
@@ -23,6 +24,8 @@ import { useFocusEffect } from 'expo-router';
  */
 const convertConversationToChatItem = (
     conversation: ConversationResponse,
+    currentUserId?: string,
+    unreadByConversation: Record<string, number> = {},
 ): ChatItem => {
     const lastMessage = conversation.lastMessage;
 
@@ -94,12 +97,11 @@ const convertConversationToChatItem = (
         name,
         lastMessage: lastMessage?.content || 'No messages yet',
         time: formatTime(lastMessage?.createdAt || lastMessage?.timestamp),
-        unread: 0, // TODO: Lấy từ API nếu có
+        unread: unreadByConversation[conversation.conversationId] || 0,
         isGroup,
         isMuted: conversation.myIsHidden || false,
         isSentByMe:
-            lastMessage?.senderId === conversation.participants[0]?.userId ||
-            false,
+            !!currentUserId && lastMessage?.senderId === currentUserId,
         isRead: true,
         avatarUri,
         avatarUris,
@@ -109,6 +111,7 @@ const convertConversationToChatItem = (
 export default function ChatsScreen() {
     const { colors, colorScheme } = useTheme();
     const { state: authState } = useAuth();
+    const { unreadByConversation } = useNotificationContext();
     const { modalVisible, openModal, closeModal, handleGroupCreated } =
         useGroupCreation();
     const [search, setSearch] = useState('');
@@ -139,7 +142,12 @@ export default function ChatsScreen() {
                 }
             });
             const chatItems = Array.from(uniqueConversations.values()).map(
-                convertConversationToChatItem,
+                (conversation) =>
+                    convertConversationToChatItem(
+                        conversation,
+                        authState.user?.userId,
+                        unreadByConversation,
+                    ),
             );
 
             // SORT: Conversations with latest message first
@@ -160,7 +168,7 @@ export default function ChatsScreen() {
             console.error('Error loading conversations:', err);
             setLoading(false);
         }
-    }, [authState.user]);
+    }, [authState.user, unreadByConversation]);
 
     // Load khi component mount
     useEffect(() => {

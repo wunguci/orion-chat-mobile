@@ -20,6 +20,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import ForwardConversationModal from '@/components/chat/ForwardConversationModal';
 import { generateUniqueId } from '@/utils/generateUniqueId';
 import { chatApi } from '@/services/api/chat';
+import { useNotificationContext } from '@/context/NotificationContext';
+import { useFocusEffect } from 'expo-router';
 
 function shouldShowAvatar(messages: Message[], index: number): boolean {
     const curr = messages[index];
@@ -50,6 +52,7 @@ export default function ChatScreen() {
     const router = useRouter();
     const { id, name, avatarUri } = params;
     const { colors, colorScheme } = useTheme();
+    const { markConversationNotificationsAsRead } = useNotificationContext();
     const { messages, inputText, setInputText, sendMessage, sendAttachment } =
         useChat(id || '');
     const listRef = useRef<FlatList>(null);
@@ -72,6 +75,14 @@ export default function ChatScreen() {
             setTimeout(() => router.back(), 500);
         }
     }, [id, router]);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (!id) return;
+
+            void markConversationNotificationsAsRead(id);
+        }, [id, markConversationNotificationsAsRead]),
+    );
 
     const handleSend = useCallback(() => {
         sendMessage(inputText);

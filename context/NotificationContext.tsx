@@ -12,6 +12,7 @@ import React, {
   useState,
 } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
 
 type NotificationToastItem = {
@@ -23,9 +24,11 @@ type NotificationContextValue = {
   notifications: AppNotification[];
   unreadCount: number;
   unreadMessageCount: number;
+  unreadByConversation: Record<string, number>;
   loading: boolean;
   fetchNotifications: () => Promise<void>;
   markAsRead: (id: string) => Promise<AppNotification | null>;
+  markConversationNotificationsAsRead: (conversationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   deleteNotification: (id: string) => Promise<void>;
   openNotification: (item: AppNotification) => Promise<void>;
@@ -34,6 +37,41 @@ type NotificationContextValue = {
 const NotificationContext = createContext<NotificationContextValue | null>(
   null,
 );
+
+const getNotificationConversationId = (
+  item: AppNotification,
+): string | undefined => {
+  const metadata = item.metadata;
+  if (!metadata || typeof metadata !== "object") return undefined;
+
+  const conversationId = metadata.conversationId;
+  if (typeof conversationId === "string" && conversationId.length > 0) {
+    return conversationId;
+  }
+
+  const groupId = metadata.groupId;
+  if (typeof groupId === "string" && groupId.length > 0) {
+    return groupId;
+  }
+
+  return undefined;
+};
+
+const isConversationScopedNotification = (item: AppNotification): boolean => {
+  const conversationId = getNotificationConversationId(item);
+  if (!conversationId) return false;
+
+  return (
+    item.type === "message" ||
+    item.type === "call" ||
+    item.type === "group_invite" ||
+    item.type === "group_join_approved" ||
+    item.type === "group_join_rejected" ||
+    item.type === "group_promoted" ||
+    item.type === "group_removed" ||
+    item.type === "group_dissolved"
+  );
+};
 
 function NotificationToastStack({
   items,
@@ -44,6 +82,8 @@ function NotificationToastStack({
   onDismiss: (id: string) => void;
   onOpen: (item: AppNotification) => void;
 }) {
+  const insets = useSafeAreaInsets();
+
   useEffect(() => {
     if (items.length === 0) return;
 
@@ -60,14 +100,33 @@ function NotificationToastStack({
   if (items.length === 0) return null;
 
   return (
-    <View className="pointer-events-box-none absolute bottom-6 right-4 left-4 z-50">
+    <View
+      pointerEvents="box-none"
+      className="absolute left-0 right-0 z-50 px-3"
+      style={{ top: insets.top + 8 }}
+    >
       {items.map(({ id, notification }) => (
         <TouchableOpacity
           key={id}
           activeOpacity={0.88}
-          className="mb-2 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow"
+          className="mb-2 rounded-xl border-l-4 border-orange-500 bg-white px-4 py-3 shadow"
           onPress={() => onOpen(notification)}
         >
+          <View className="mb-1 flex-row items-center justify-between">
+            <Text className="text-[11px] font-semibold uppercase tracking-wide text-orange-600">
+              Thong bao moi
+            </Text>
+            <TouchableOpacity
+              className="ml-2"
+              onPress={(event) => {
+                event.stopPropagation();
+                onDismiss(id);
+              }}
+            >
+              <Text className="text-xs font-medium text-gray-500">Dong</Text>
+            </TouchableOpacity>
+          </View>
+
           <View className="flex-row items-start justify-between">
             <View className="mr-2 flex-1">
               <Text className="text-sm font-semibold text-gray-800">
@@ -77,16 +136,6 @@ function NotificationToastStack({
                 {notification.body}
               </Text>
             </View>
-
-            <TouchableOpacity
-              className="ml-2"
-              onPress={(event) => {
-                event.stopPropagation();
-                onDismiss(id);
-              }}
-            >
-              <Text className="text-xs font-medium text-gray-500">Đóng</Text>
-            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       ))}
@@ -152,6 +201,34 @@ export function NotificationProvider({
     [notifications],
   );
 
+  const markConversationNotificationsAsRead = useCallback(
+    async (conversationId: string) => {
+      if (!conversationId) return;
+
+      const pending = notifications.filter(
+        (item) =>
+          !item.isRead &&
+          isConversationScopedNotification(item) &&
+          getNotificationConversationId(item) === conversationId,
+      );
+
+      if (pending.length === 0) return;
+
+      await Promise.all(pending.map((item) => markAsRead(item._id)));
+
+      try {
+        const unread = await notificationApi.getUnreadCount();
+        setUnreadCount(unread.count || 0);
+      } catch (error) {
+        console.error(
+          "Failed to refresh unread count after conversation read:",
+          error,
+        );
+      }
+    },
+    [notifications, markAsRead],
+  );
+
   const markAllAsRead = useCallback(async () => {
     try {
       await notificationApi.markAllAsRead();
@@ -193,12 +270,10 @@ export function NotificationProvider({
         await markAsRead(item._id);
       }
 
-      const conversationId =
-        typeof item.metadata?.conversationId === "string"
-          ? item.metadata.conversationId
-          : undefined;
+      const conversationId = getNotificationConversationId(item);
 
-      if (conversationId && (item.type === "message" || item.type === "call")) {
+      if (conversationId && isConversationScopedNotification(item)) {
+        await markConversationNotificationsAsRead(conversationId);
         router.push({
           pathname: "/chat/[id]",
           params: {
@@ -244,7 +319,7 @@ export function NotificationProvider({
         router.push("/(tabs)/(main)");
       }
     },
-    [markAsRead, router],
+    [markAsRead, markConversationNotificationsAsRead, router],
   );
 
   useEffect(() => {
@@ -282,7 +357,7 @@ export function NotificationProvider({
           return next.slice(0, 4);
         });
 
-        setUnreadCount((prev) => prev + 1);
+        void handleRefreshUnread();
       };
 
       const handleUpdated = (payload: AppNotification) => {
@@ -333,20 +408,38 @@ export function NotificationProvider({
   const unreadMessageCount = useMemo(
     () =>
       notifications.filter(
-        (item) =>
-          !item.isRead && (item.type === "message" || item.type === "call"),
+        (item) => !item.isRead && isConversationScopedNotification(item),
       ).length,
     [notifications],
   );
+
+  const unreadByConversation = useMemo(() => {
+    const result: Record<string, number> = {};
+
+    notifications.forEach((item) => {
+      const conversationId = getNotificationConversationId(item);
+      if (
+        !item.isRead &&
+        typeof conversationId === "string" &&
+        isConversationScopedNotification(item)
+      ) {
+        result[conversationId] = (result[conversationId] || 0) + 1;
+      }
+    });
+
+    return result;
+  }, [notifications]);
 
   const value = useMemo<NotificationContextValue>(
     () => ({
       notifications,
       unreadCount,
       unreadMessageCount,
+      unreadByConversation,
       loading,
       fetchNotifications,
       markAsRead,
+      markConversationNotificationsAsRead,
       markAllAsRead,
       deleteNotification,
       openNotification,
@@ -355,9 +448,11 @@ export function NotificationProvider({
       notifications,
       unreadCount,
       unreadMessageCount,
+      unreadByConversation,
       loading,
       fetchNotifications,
       markAsRead,
+      markConversationNotificationsAsRead,
       markAllAsRead,
       deleteNotification,
       openNotification,
