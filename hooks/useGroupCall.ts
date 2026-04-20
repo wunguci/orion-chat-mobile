@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type {
   MediaStream,
+  MediaStreamTrack,
   RTCIceCandidate,
   RTCPeerConnection,
   RTCSessionDescription,
@@ -152,7 +153,9 @@ export const useGroupCall = ({
         userName,
         isInitiator,
         (event: RTCTrackEvent) => {
-          const incomingStream = event.streams?.[0];
+          const incomingStream = event.streams?.[0] as unknown as
+            | MediaStream
+            | undefined;
 
           if (incomingStream) {
             peerManager.setParticipantStream(userId, incomingStream);
@@ -160,17 +163,21 @@ export const useGroupCall = ({
             return;
           }
 
-          if (event.track) {
+          const incomingTrack = event.track as unknown as
+            | MediaStreamTrack
+            | undefined;
+
+          if (incomingTrack) {
             const { MediaStream } = ensureWebRTCModule();
             const existingStream = peerManager.getParticipantStream(userId);
             const trackStream = existingStream ?? new MediaStream();
 
             const hasTrack = trackStream
               .getTracks()
-              .some((track) => track.id === event.track.id);
+              .some((track) => track.id === incomingTrack.id);
 
             if (!hasTrack) {
-              trackStream.addTrack(event.track);
+              trackStream.addTrack(incomingTrack);
             }
 
             peerManager.setParticipantStream(userId, trackStream);
@@ -198,6 +205,9 @@ export const useGroupCall = ({
         localStreamRef.current.getTracks().forEach((track) => {
           peerConnection.addTrack(track, localStreamRef.current!);
         });
+      } else if (typeof peerConnection.addTransceiver === "function") {
+        peerConnection.addTransceiver("audio", { direction: "recvonly" });
+        peerConnection.addTransceiver("video", { direction: "recvonly" });
       }
 
       const pendingCandidates = pendingIceCandidatesRef.current.get(userId);

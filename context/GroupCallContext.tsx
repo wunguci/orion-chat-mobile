@@ -21,6 +21,7 @@ import React, {
   useState,
 } from "react";
 import { Alert } from "react-native";
+import type { MediaStream } from "react-native-webrtc";
 
 export type GroupCallContextValue = GroupCallState & {
   incomingCall: GroupIncomingCallData | null;
@@ -260,20 +261,21 @@ export function GroupCallProvider({
         data.participants?.find((p) => p.id === data.userId)?.name ||
         "User";
 
-      if (!getAllParticipantIds().includes(data.userId)) {
-        try {
+      try {
+        if (!getAllParticipantIds().includes(data.userId)) {
           await createPeerForParticipant(data.userId, participantName, false);
-          const offer = await createOfferForParticipant(data.userId);
-          if (offer) {
-            socket.emit("groupcall:offer", {
-              callId: data.callId,
-              targetUserId: data.userId,
-              offer,
-            });
-          }
-        } catch {
-          // Ignore individual peer creation failures
         }
+
+        const offer = await createOfferForParticipant(data.userId);
+        if (offer) {
+          socket.emit("groupcall:offer", {
+            callId: data.callId,
+            targetUserId: data.userId,
+            offer,
+          });
+        }
+      } catch {
+        // Ignore individual peer creation failures
       }
 
       setCallState((prev) => {
@@ -456,11 +458,47 @@ export function GroupCallProvider({
         error: null,
       }));
 
-      const stream = await getLocalStream(callType === "video", true);
-      setCallState((prev) => ({
-        ...prev,
-        localStream: stream,
-      }));
+      let stream: MediaStream | null = null;
+      try {
+        stream = await getLocalStream(callType === "video", true);
+      } catch (error) {
+        if (callType === "video") {
+          try {
+            stream = await getLocalStream(false, true);
+            setCallState((prev) => ({
+              ...prev,
+              isVideoEnabled: false,
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Cannot access camera, starting with audio only",
+            }));
+          } catch (audioError) {
+            setCallState((prev) => ({
+              ...prev,
+              error:
+                audioError instanceof Error
+                  ? audioError.message
+                  : "Cannot access microphone",
+            }));
+          }
+        } else {
+          setCallState((prev) => ({
+            ...prev,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Cannot access microphone",
+          }));
+        }
+      }
+
+      if (stream) {
+        setCallState((prev) => ({
+          ...prev,
+          localStream: stream,
+        }));
+      }
 
       openGroupCallScreen(conversationId, callType);
 
@@ -542,7 +580,8 @@ export function GroupCallProvider({
 
   const joinGroupCall = useCallback(
     async (callId: string, conversationId: string) => {
-      if (!incomingCallRef.current || !userId) return;
+      const callData = incomingCallRef.current ?? incomingCall;
+      if (!callData || !userId) return;
 
       const socket = callSocketService.getSocket();
       if (!socket) return;
@@ -555,8 +594,7 @@ export function GroupCallProvider({
 
       currentCallIdRef.current = callId;
 
-      const callType = incomingCallRef.current.callType;
-      const initialParticipants = (incomingCallRef.current.participants || [])
+      const initialParticipants = (callData.participants || [])
         .filter((participant) => participant.id !== userId)
         .map((participant) => ({
           id: participant.id,
@@ -570,25 +608,59 @@ export function GroupCallProvider({
         ...prev,
         callId,
         conversationId,
-        callType: callType || prev.callType,
+        callType: callData.callType || prev.callType,
         callMode: "group",
         status: "calling",
         isInitiator: false,
         isCaller: false,
         isHost: false,
         participants: initialParticipants,
-        isVideoEnabled:
-          callType === "video" || prev.isVideoEnabled,
+        isVideoEnabled: callData.callType === "video" || prev.isVideoEnabled,
         isAudioEnabled: true,
         error: null,
       }));
 
-      const stream = await getLocalStream(callType === "video", true);
+      let stream: MediaStream | null = null;
+      try {
+        stream = await getLocalStream(callData.callType === "video", true);
+      } catch (error) {
+        if (callData.callType === "video") {
+          try {
+            stream = await getLocalStream(false, true);
+            setCallState((prev) => ({
+              ...prev,
+              isVideoEnabled: false,
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Cannot access camera, joining with audio only",
+            }));
+          } catch (audioError) {
+            setCallState((prev) => ({
+              ...prev,
+              error:
+                audioError instanceof Error
+                  ? audioError.message
+                  : "Cannot access microphone",
+            }));
+          }
+        } else {
+          setCallState((prev) => ({
+            ...prev,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Cannot access microphone",
+          }));
+        }
+      }
 
-      setCallState((prev) => ({
-        ...prev,
-        localStream: stream,
-      }));
+      if (stream) {
+        setCallState((prev) => ({
+          ...prev,
+          localStream: stream,
+        }));
+      }
 
       socket.emit("groupcall:join", {
         callId,
@@ -606,10 +678,11 @@ export function GroupCallProvider({
       }
 
       setIncomingCall(null);
-      openGroupCallScreen(conversationId, callType);
+      openGroupCallScreen(conversationId, callData.callType);
     },
     [
       userId,
+      incomingCall,
       isSupported,
       handleUnsupportedRuntime,
       getLocalStream,
