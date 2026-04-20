@@ -1,0 +1,372 @@
+import { useCallback, useEffect, useRef } from "react";
+import type {
+  MediaStream,
+  RTCIceCandidate,
+  RTCPeerConnection,
+  RTCSessionDescription,
+} from "react-native-webrtc";
+import { GroupCallPeerManager } from "../services/groupCallPeerManager";
+
+type WebRTCModule = {
+  mediaDevices: {
+    getUserMedia: (constraints: MediaStreamConstraints) => Promise<MediaStream>;
+  };
+  MediaStream: new (tracks?: MediaStreamTrack[]) => MediaStream;
+  RTCPeerConnection: new (
+    configuration?: RTCConfiguration,
+  ) => RTCPeerConnection;
+  RTCIceCandidate: new (
+    candidateInitDict?: RTCIceCandidateInit,
+  ) => RTCIceCandidate;
+  RTCSessionDescription: new (
+    descriptionInitDict?: RTCSessionDescriptionInit,
+  ) => RTCSessionDescription;
+};
+
+let webRTCModule: WebRTCModule | null = null;
+
+try {
+  webRTCModule = require("react-native-webrtc") as WebRTCModule;
+} catch {
+  webRTCModule = null;
+}
+
+const ensureWebRTCModule = (): WebRTCModule => {
+  if (!webRTCModule) {
+    throw new Error(
+      "WebRTC native module is unavailable in this runtime. Use a development build (expo prebuild + run:android/run:ios) instead of Expo Go.",
+    );
+  }
+
+  return webRTCModule;
+};
+
+const getIceConfiguration = (): RTCConfiguration => {
+  const turnUrls = process.env.EXPO_PUBLIC_TURN_URLS;
+  const turnUsername = process.env.EXPO_PUBLIC_TURN_USERNAME;
+  const turnCredential = process.env.EXPO_PUBLIC_TURN_CREDENTIAL;
+  const forceRelay = process.env.EXPO_PUBLIC_FORCE_TURN_RELAY === "true";
+
+  const iceServers: RTCIceServer[] = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+  ];
+
+  if (turnUrls && turnUsername && turnCredential) {
+    const parsedTurnUrls = turnUrls
+      .split(",")
+      .map((item) => item.trim())
+      .filter(
+        (item) =>
+          Boolean(item) &&
+          (item.startsWith("turn:") || item.startsWith("turns:")),
+      );
+
+    if (parsedTurnUrls.length > 0) {
+      iceServers.push({
+        urls: parsedTurnUrls,
+        username: turnUsername,
+        credential: turnCredential,
+      });
+    }
+  }
+
+  return {
+    iceServers,
+    iceCandidatePoolSize: 8,
+    iceTransportPolicy: forceRelay ? "relay" : "all",
+  };
+};
+
+interface UseGroupCallProps {
+  onParticipantStream: (userId: string, stream: MediaStream) => void;
+  onParticipantLeft: (userId: string) => void;
+  onIceCandidate?: (userId: string, candidate: RTCIceCandidate) => void;
+  onConnectionStateChange?: (userId: string, state: RTCPeerConnectionState) => void;
+}
+
+export const useGroupCall = ({
+  onParticipantStream,
+  onParticipantLeft,
+  onIceCandidate,
+  onConnectionStateChange,
+}: UseGroupCallProps) => {
+  const peerManagerRef = useRef<GroupCallPeerManager | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const pendingIceCandidatesRef = useRef<
+    Map<string, RTCIceCandidateInit[]>
+  >(new Map());
+
+  useEffect(() => {
+    if (!peerManagerRef.current) {
+      peerManagerRef.current = new GroupCallPeerManager(getIceConfiguration());
+    }
+  }, []);
+
+  const getLocalStream = useCallback(
+    async (enableVideo = true, enableAudio = true): Promise<MediaStream> => {
+      if (localStreamRef.current) {
+        return localStreamRef.current;
+      }
+
+      const { mediaDevices } = ensureWebRTCModule();
+
+      const stream = await mediaDevices.getUserMedia({
+        video: enableVideo
+          ? {
+              facingMode: "user",
+              width: 480,
+              height: 360,
+              frameRate: 15,
+            }
+          : false,
+        audio: enableAudio
+          ? {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            }
+          : false,
+      });
+
+      localStreamRef.current = stream;
+      peerManagerRef.current?.addLocalStreamToAll(stream);
+      return stream;
+    },
+    [],
+  );
+
+  const createPeerForParticipant = useCallback(
+    async (
+      userId: string,
+      userName: string,
+      isInitiator: boolean = false,
+    ): Promise<RTCPeerConnection> => {
+      const peerManager = peerManagerRef.current;
+      if (!peerManager) {
+        throw new Error("Peer manager not initialized");
+      }
+
+      const peerConnection = peerManager.createPeerConnection(
+        userId,
+        userName,
+        isInitiator,
+        (event: RTCTrackEvent) => {
+          const incomingStream = event.streams?.[0];
+
+          if (incomingStream) {
+            peerManager.setParticipantStream(userId, incomingStream);
+            onParticipantStream(userId, incomingStream);
+            return;
+          }
+
+          if (event.track) {
+            const { MediaStream } = ensureWebRTCModule();
+            const existingStream = peerManager.getParticipantStream(userId);
+            const trackStream = existingStream ?? new MediaStream();
+
+            const hasTrack = trackStream
+              .getTracks()
+              .some((track) => track.id === event.track.id);
+
+            if (!hasTrack) {
+              trackStream.addTrack(event.track);
+            }
+
+            peerManager.setParticipantStream(userId, trackStream);
+            onParticipantStream(userId, trackStream);
+          }
+        },
+        (candidate: RTCIceCandidate) => {
+          onIceCandidate?.(userId, candidate);
+        },
+        (state: RTCPeerConnectionState) => {
+          if (
+            state === "disconnected" ||
+            state === "failed" ||
+            state === "closed"
+          ) {
+            peerManager.closePeerConnection(userId);
+            onParticipantLeft(userId);
+          }
+
+          onConnectionStateChange?.(userId, state);
+        },
+      );
+
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          peerConnection.addTrack(track, localStreamRef.current!);
+        });
+      }
+
+      const pendingCandidates = pendingIceCandidatesRef.current.get(userId);
+      if (pendingCandidates) {
+        const { RTCIceCandidate } = ensureWebRTCModule();
+        for (const candidate of pendingCandidates) {
+          try {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch {
+            // Ignore pending candidate errors
+          }
+        }
+        pendingIceCandidatesRef.current.delete(userId);
+      }
+
+      return peerConnection;
+    },
+    [onParticipantStream, onParticipantLeft, onIceCandidate, onConnectionStateChange],
+  );
+
+  const createOfferForParticipant = useCallback(
+    async (userId: string): Promise<RTCSessionDescriptionInit | null> => {
+      const peerConnection = peerManagerRef.current?.getPeerConnection(userId);
+      if (!peerConnection) {
+        return null;
+      }
+
+      try {
+        const offer = await peerConnection.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true,
+        });
+        await peerConnection.setLocalDescription(offer);
+        return offer;
+      } catch {
+        return null;
+      }
+    },
+    [],
+  );
+
+  const handleOfferFromParticipant = useCallback(
+    async (
+      userId: string,
+      offer: RTCSessionDescriptionInit,
+    ): Promise<RTCSessionDescriptionInit | null> => {
+      const peerConnection = peerManagerRef.current?.getPeerConnection(userId);
+      if (!peerConnection) {
+        return null;
+      }
+
+      try {
+        const { RTCSessionDescription } = ensureWebRTCModule();
+        await peerConnection.setRemoteDescription(
+          new RTCSessionDescription(offer),
+        );
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        return answer;
+      } catch {
+        return null;
+      }
+    },
+    [],
+  );
+
+  const handleAnswerFromParticipant = useCallback(
+    async (userId: string, answer: RTCSessionDescriptionInit) => {
+      const peerConnection = peerManagerRef.current?.getPeerConnection(userId);
+      if (!peerConnection) {
+        return;
+      }
+
+      try {
+        const { RTCSessionDescription } = ensureWebRTCModule();
+        await peerConnection.setRemoteDescription(
+          new RTCSessionDescription(answer),
+        );
+      } catch {
+        // Ignore answer errors
+      }
+    },
+    [],
+  );
+
+  const addIceCandidateForParticipant = useCallback(
+    async (userId: string, candidate: RTCIceCandidateInit) => {
+      const peerConnection = peerManagerRef.current?.getPeerConnection(userId);
+
+      if (!peerConnection) {
+        if (!pendingIceCandidatesRef.current.has(userId)) {
+          pendingIceCandidatesRef.current.set(userId, []);
+        }
+        pendingIceCandidatesRef.current.get(userId)?.push(candidate);
+        return;
+      }
+
+      try {
+        const { RTCIceCandidate } = ensureWebRTCModule();
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch {
+        // Ignore ICE errors
+      }
+    },
+    [],
+  );
+
+  const toggleAudioForParticipant = useCallback(
+    (userId: string, enabled: boolean): boolean => {
+      return peerManagerRef.current?.toggleAudio(userId, enabled) ?? false;
+    },
+    [],
+  );
+
+  const toggleVideoForParticipant = useCallback(
+    (userId: string, enabled: boolean): boolean => {
+      return peerManagerRef.current?.toggleVideo(userId, enabled) ?? false;
+    },
+    [],
+  );
+
+  const toggleMediaForAll = useCallback(
+    (mediaType: "audio" | "video", enabled: boolean): void => {
+      peerManagerRef.current?.toggleMediaForAll(mediaType, enabled);
+    },
+    [],
+  );
+
+  const removeParticipant = useCallback((userId: string): void => {
+    peerManagerRef.current?.closePeerConnection(userId);
+    pendingIceCandidatesRef.current.delete(userId);
+  }, []);
+
+  const cleanup = useCallback((): void => {
+    peerManagerRef.current?.closeAllPeerConnections();
+    pendingIceCandidatesRef.current.clear();
+
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current = null;
+    }
+  }, []);
+
+  const getAllParticipantIds = useCallback((): string[] => {
+    return peerManagerRef.current?.getAllParticipantIds() ?? [];
+  }, []);
+
+  const getParticipantStream = useCallback(
+    (userId: string): MediaStream | undefined => {
+      return peerManagerRef.current?.getParticipantStream(userId);
+    },
+    [],
+  );
+
+  return {
+    getLocalStream,
+    createPeerForParticipant,
+    createOfferForParticipant,
+    handleOfferFromParticipant,
+    handleAnswerFromParticipant,
+    addIceCandidateForParticipant,
+    toggleAudioForParticipant,
+    toggleVideoForParticipant,
+    toggleMediaForAll,
+    removeParticipant,
+    cleanup,
+    getAllParticipantIds,
+    getParticipantStream,
+    localStream: localStreamRef.current,
+    isSupported: Boolean(webRTCModule),
+  };
+};

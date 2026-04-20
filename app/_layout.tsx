@@ -17,8 +17,10 @@ import { AuthProvider } from '@/context/AuthContext';
 import { CallProvider } from '@/context/CallContext';
 import { SocketProvider } from '@/context/SocketContext';
 import { NotificationProvider } from '@/context/NotificationContext';
+import { GroupCallProvider } from '@/context/GroupCallContext';
 import { useSessionConflictListener } from '@/hooks/useSessionConflictListener';
 import { useAuth } from '@/hooks/useAuth';
+import IncomingGroupCallModal from '@/components/call/IncomingGroupCallModal';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -103,9 +105,12 @@ export default function RootLayout() {
             <AuthProvider>
                 <SocketProvider>
                     <CallProvider>
-                        <NotificationProvider>
-                            <RootLayoutContent />
-                        </NotificationProvider>
+                        <GroupCallProvider>
+                            <NotificationProvider>
+                                <RootLayoutContent />
+                                <IncomingGroupCallModal />
+                            </NotificationProvider>
+                        </GroupCallProvider>
                     </CallProvider>
                 </SocketProvider>
             </AuthProvider>

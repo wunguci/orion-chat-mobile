@@ -69,6 +69,15 @@ export interface GroupItem {
   type: "BUSINESS" | "EDUCATION" | "COMMUNITY" | "PERSONAL";
 }
 
+export interface GroupMemberItem {
+  userId: string;
+  fullName: string;
+  avatarUrl?: string | null;
+  role?: string;
+  joinedAt?: string;
+  isMe?: boolean;
+}
+
 export interface GroupInviteItem {
   id: string;
   groupId: string;

@@ -6,6 +6,8 @@ import { GroupInviteRow } from "@/components/friends/GroupInviteRow";
 import { GroupRow } from "@/components/friends/GroupRow";
 import { SearchUserRow } from "@/components/friends/SearchUserRow";
 import { CallContext } from "@/context/CallContext";
+import { GroupCallContext } from "@/context/GroupCallContext";
+import { chatApi } from "@/services/api/chat";
 import { friendApi } from "@/services/api/friend";
 import { presenceSocketService } from "@/services/websocket/presenceSocket";
 import type { CallType } from "@/types/call";
@@ -49,6 +51,7 @@ export default function Friends() {
   const router = useRouter();
   const params = useLocalSearchParams<{ activeCategory?: string }>();
   const callContext = useContext(CallContext);
+  const groupCallContext = useContext(GroupCallContext);
   const [activeCategory, setActiveCategory] =
     useState<FriendCategory>("friends");
   const [searchQuery, setSearchQuery] = useState("");
@@ -561,6 +564,84 @@ export default function Friends() {
     setGroupInvites((prev) => prev.filter((item) => item.id !== inviteId));
   };
 
+  const handleOpenGroupChat = useCallback(
+    async (group: GroupItem) => {
+      if (!group.id) return;
+
+      try {
+        const conversation = await chatApi.getConversation(group.id);
+        const conversationId = conversation?.conversationId || group.id;
+
+        router.push({
+          pathname: "/chat/[id]",
+          params: {
+            id: conversationId,
+            name: group.name,
+            avatarUri: group.avatar || "",
+          },
+        });
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Cannot open group chat",
+        );
+      }
+    },
+    [router],
+  );
+
+  const handleGroupCall = useCallback(
+    async (group: GroupItem, callType: CallType) => {
+      if (!groupCallContext) {
+        return;
+      }
+
+      if (!currentUserId) {
+        setErrorMessage("Missing current user identity. Please re-login.");
+        return;
+      }
+
+      if ((callContext && callContext.status !== "idle") || groupCallContext.status !== "idle") {
+        setErrorMessage("You are already in another call.");
+        return;
+      }
+
+      try {
+        setErrorMessage(null);
+        const membersResponse = await friendApi.getGroupMembers(group.id);
+        const members = membersResponse.items || [];
+        const participantIds = members
+          .filter((member) => member.userId !== currentUserId)
+          .map((member) => member.userId);
+
+        if (participantIds.length === 0) {
+          setErrorMessage("No other participants in this group.");
+          return;
+        }
+
+        const participantNames: Record<string, string> = {};
+        members.forEach((member) => {
+          if (member.userId !== currentUserId) {
+            participantNames[member.userId] = member.fullName;
+          }
+        });
+
+        await groupCallContext.initiateGroupCall(
+          group.id,
+          participantIds,
+          callType,
+          participantNames,
+        );
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error ? error.message : "Cannot start group call",
+        );
+      }
+    },
+    [callContext, currentUserId, groupCallContext],
+  );
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       <View className="border-b border-gray-200 bg-white px-4 pb-4 flex-row items-center justify-between">
@@ -762,7 +843,19 @@ export default function Friends() {
         {!loading && activeCategory === "groups" && (
           <View>
             {groups.map((group) => (
-              <GroupRow key={group.id} group={group} />
+              <GroupRow
+                key={group.id}
+                group={group}
+                onPress={(item) => {
+                  void handleOpenGroupChat(item);
+                }}
+                onAudioCall={(item) => {
+                  void handleGroupCall(item, "audio");
+                }}
+                onVideoCall={(item) => {
+                  void handleGroupCall(item, "video");
+                }}
+              />
             ))}
           </View>
         )}
