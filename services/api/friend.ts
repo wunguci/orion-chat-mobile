@@ -2,6 +2,7 @@ import type {
     FriendProfileItem,
     GroupInviteItem,
     GroupItem,
+    GroupMemberItem,
     SearchUserItem,
 } from '@/types/friend';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -250,6 +251,11 @@ export const friendApi = {
             buildUrl('/group-invites/my-groups', { userId }),
         );
         return toJson<GroupItem[]>(response);
+    },
+
+    async getGroupMembers(groupId: string) {
+        const response = await authFetch(buildUrl(`/groups/${groupId}/members`));
+        return toJson<{ groupId: string; items: GroupMemberItem[] }>(response);
     },
 
     async getIncomingGroupInvites(userId: string) {

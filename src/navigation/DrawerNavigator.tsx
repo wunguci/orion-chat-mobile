@@ -121,6 +121,14 @@ export default function DrawerNavigator() {
           drawerItemStyle: { display: "none" },
         }}
       />
+
+      <Drawer.Screen
+        name="group-call"
+        options={{
+          title: "Group Call",
+          drawerItemStyle: { display: "none" },
+        }}
+      />
     </Drawer>
   );
 }

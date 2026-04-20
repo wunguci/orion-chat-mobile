@@ -12,7 +12,7 @@ class CallSocketService {
   private currentUserId: string | null = null;
 
   connect(userId: string, token?: string) {
-    if (this.socket?.connected && this.currentUserId === userId) {
+    if (this.socket && this.currentUserId === userId) {
       return this.socket;
     }
 
