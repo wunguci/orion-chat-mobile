@@ -48,9 +48,9 @@ const getAuthToken = async () => {
  * Gửi request HTTP với JWT token
  */
 const authFetch = async (url: string, init?: RequestInit) => {
-  const token = await getAuthToken();
-  const headers = new Headers(init?.headers);
-  headers.set("X-Platform", "mobile");
+    const token = await getAuthToken();
+    const headers = new Headers(init?.headers);
+    headers.set('X-Platform', 'mobile');
 
     if (token) {
         headers.set('Authorization', `Bearer ${token}`);
@@ -150,9 +150,17 @@ export interface MessageResponse {
  * Payload để tạo Conversation
  */
 export interface CreateConversationPayload {
+    type?: 'PRIVATE' | 'GROUP';
     participantIds?: string[];
     receiverId?: string;
     participants?: string[];
+    // For GROUP type
+    groupName?: string;
+    memberIds?: string[];
+    memberNicknames?: {
+        userId: string;
+        nickname: string;
+    }[];
 }
 
 /**
@@ -204,8 +212,31 @@ export const chatApi = {
      * Tạo hoặc lấy Private Conversation với một bạn bè
      * - Dùng endpoint /conversations/private
      * - Server sẽ kiểm tra nếu conversation đã tồn tại thì return, nếu không thì tạo mới
+     *
+     * Hoặc tạo GROUP Conversation
+     * - Dùng endpoint /conversations
+     * - Với type='GROUP'
      */
     async createConversation(payload: CreateConversationPayload) {
+        // Handle GROUP conversation creation
+        if (payload.type === 'GROUP') {
+            const response = await authFetch(buildUrl('/conversations'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    type: 'GROUP',
+                    groupName: payload.groupName,
+                    memberIds: payload.memberIds,
+                    memberNicknames: payload.memberNicknames,
+                }),
+            });
+            const data = await toJson<ConversationResponse>(response);
+            return data;
+        }
+
+        // Handle PRIVATE conversation (default)
         const response = await authFetch(buildUrl('/conversations/private'), {
             method: 'POST',
             headers: {
@@ -286,16 +317,18 @@ export const chatApi = {
         emoji: string,
         conversationId: string,
     ) {
+        const payload = {
+            messageId,
+            emoji,
+            conversationId,
+        };
+        console.log('[addEmojiReaction] Sending payload:', payload);
         const response = await authFetch(buildUrl('/messages/emoji'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                messageId,
-                emoji,
-                conversationId,
-            }),
+            body: JSON.stringify(payload),
         });
         return toJson<any>(response);
     },
@@ -362,17 +395,20 @@ export const chatApi = {
         targetConversationId: string,
         clientMessageId: string,
     ) {
+        const payload = {
+            sourceMessageId,
+            targetConversationId,
+            clientMessageId,
+        };
+        console.log('[forwardMessage] Sending payload:', payload);
         const response = await authFetch(buildUrl('/messages/forward'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                sourceMessageId,
-                targetConversationId,
-                clientMessageId,
-            }),
+            body: JSON.stringify(payload),
         });
+        console.log('[forwardMessage] Response status:', response.status);
         return toJson<any>(response);
     },
 };
