@@ -335,15 +335,22 @@ class ChatSocketService {
       return;
     }
 
+    // Generate requestId
+    const requestId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
     //console.log("[ChatSocket] Joining conversation:", conversationId);
     // Emit event chat:join_conversation tới server
-    this.socket.emit("chat:join_conversation", { conversationId });
+    this.socket.emit("chat:join_conversation", { requestId, conversationId });
   }
 
   private rejoinConversations() {
     this.joinedConversations.forEach((conversationId) => {
+      const requestId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       //console.log("[ChatSocket] Rejoining:", conversationId);
-      this.socket?.emit("chat:join_conversation", { conversationId });
+      this.socket?.emit("chat:join_conversation", {
+        requestId,
+        conversationId,
+      });
     });
   }
 
@@ -353,8 +360,11 @@ class ChatSocketService {
   leaveConversation(conversationId: string): void {
     if (!this.socket?.connected) return;
 
+    const requestId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
     //console.log("[ChatSocket] Leaving conversation:", conversationId);
     this.socket.emit("chat:leave_conversation", {
+      requestId,
       conversationId,
     });
 
@@ -421,7 +431,6 @@ class ChatSocketService {
         content,
         clientMessageId,
         type: "text",
-        receiverId: "",
       },
       (ackData: any, error: any) => {
         clearTimeout(timeoutId);
@@ -493,7 +502,6 @@ class ChatSocketService {
       fileName: attachmentData?.fileName,
       fileSize: attachmentData?.fileSize,
       videoDuration: attachmentData?.videoDuration,
-      receiverId: "",
     };
 
     // console.log("[ChatSocket] Sending attachment message:", {

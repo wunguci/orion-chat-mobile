@@ -54,7 +54,6 @@ export default function Setting() {
           text: "Đăng xuất",
           style: "destructive",
           onPress: () => {
-            // Handle logout logic here
             router.replace("/(auth)/login");
           },
         },

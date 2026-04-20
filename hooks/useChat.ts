@@ -6,6 +6,7 @@ import {
   chatSocketService,
   SocketMessage,
 } from "@/services/websocket/chatSocket";
+import { useAuth } from "./useAuth";
 
 /**
  * Generate unique ID cho client message
@@ -52,46 +53,18 @@ export const useChat = (conversationId: string) => {
     error: null,
   });
 
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  // Lấy userId từ Auth context
+  const authContext = useAuth();
+  const currentUserId = authContext.state.user?.userId || null;
 
-  // ─────────────────────────────────────────────────────────
-  // INITIALIZERS
-  // ─────────────────────────────────────────────────────────
-
-  /**
-   * Lấy ID user hiện tại từ AsyncStorage
-   */
+  // Debug log
   useEffect(() => {
-    let isMounted = true;
-
-    const bootstrap = async () => {
-      const candidates = [
-        await AsyncStorage.getItem("auth_user"),
-        await AsyncStorage.getItem("user"),
-        await AsyncStorage.getItem("current_user"),
-        await AsyncStorage.getItem("userId"),
-      ];
-
-      for (const raw of candidates) {
-        if (!raw) continue;
-        try {
-          const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-          const id = parsed?.id || parsed?.userId;
-          if (id && isMounted) {
-            setCurrentUserId(String(id));
-            return;
-          }
-        } catch {
-          continue;
-        }
-      }
-    };
-
-    void bootstrap();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    console.log("[useChat] Current user ID:", {
+      currentUserId,
+      hasAuth: !!authContext.state.user,
+      user: authContext.state.user ? { userId: authContext.state.user.userId, fullName: authContext.state.user.fullName } : null,
+    });
+  }, [currentUserId, authContext.state.user]);
 
   // ─────────────────────────────────────────────────────────
   // CHAT INITIALIZATION & CLEANUP

@@ -1,10 +1,12 @@
 import SettingsHeader from "@/components/setting/SettingsHeader";
 import SettingsSection from "@/components/setting/SettingsSection";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { Bell, Camera, Eye, Volume2 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
   Image,
+  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -48,6 +50,7 @@ export default function ProfileSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Preferences state
   const [pushNotifications, setPushNotifications] = useState(true);
@@ -65,6 +68,14 @@ export default function ProfileSettings() {
       setAvatarPreview(resolveImageUrl(user.avatarUrl));
     }
   }, [user]);
+
+  const handleBirthDateChange = (event: any, selectedDate?: Date) => {
+    if (selectedDate) {
+      const dateString = selectedDate.toISOString().split("T")[0]; // Format: YYYY-MM-DD
+      setBirthDate(dateString);
+    }
+    setShowDatePicker(false);
+  };
 
   const inferMimeType = (uri: string, fallback?: string | null) => {
     if (fallback && fallback.includes("/")) {
@@ -315,16 +326,48 @@ export default function ProfileSettings() {
             <Text className="mb-2 text-sm font-semibold text-gray-primary">
               Birth Date
             </Text>
-            <TextInput
-              value={birthDate}
-              onChangeText={setBirthDate}
-              className="rounded-lg border border-orange-border-light bg-orange-bg-light px-4 py-3 text-gray-primary"
-              placeholder="YYYY-MM-DD (e.g., 1990-05-15)"
-              placeholderTextColor={colors.graySecondary}
-            />
-            <Text className="mt-1 text-xs text-gray-secondary">
-              Format: YYYY-MM-DD
-            </Text>
+            {Platform.OS === "android" ? (
+              <>
+                <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+                  <TextInput
+                    value={birthDate}
+                    editable={false}
+                    className="rounded-lg border border-orange-border-light bg-orange-bg-light px-4 py-3 text-gray-primary"
+                    placeholder="Select your birth date (YYYY-MM-DD)"
+                    placeholderTextColor={colors.graySecondary}
+                  />
+                </TouchableOpacity>
+                <Text className="mt-1 text-xs text-gray-secondary">
+                  Format: YYYY-MM-DD
+                </Text>
+
+                {/* Date Picker Modal - Android Only */}
+                {showDatePicker && (
+                  <View className="mt-4 rounded-lg border border-orange-border-light bg-orange-bg-light p-4">
+                    <DateTimePicker
+                      value={birthDate ? new Date(birthDate) : new Date()}
+                      mode="date"
+                      display="default"
+                      onChange={handleBirthDateChange}
+                      maximumDate={new Date()}
+                    />
+                  </View>
+                )}
+              </>
+            ) : (
+              <>
+                <TextInput
+                  value={birthDate}
+                  onChangeText={setBirthDate}
+                  className="rounded-lg border border-orange-border-light bg-orange-bg-light px-4 py-3 text-gray-primary"
+                  placeholder="Enter birth date (YYYY-MM-DD)"
+                  placeholderTextColor={colors.graySecondary}
+                />
+                <Text className="mt-1 text-xs text-gray-secondary">
+                  Format: YYYY-MM-DD
+                </Text>
+              </>
+            )}
           </View>
 
           {/* Gender */}
