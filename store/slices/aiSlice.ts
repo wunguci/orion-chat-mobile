@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { AIState, Conversation, AIMessage } from "@/types/aichat";
-import { geminiService } from "@/services/ai/geminiService";
 import { conversationStorage } from "@/services/ai/conservationStorage";
+import { orionAiApi } from "@/services/api/orionAi";
 
 // Async thunks
 export const sendMessage = createAsyncThunk(
@@ -17,15 +17,51 @@ export const sendMessage = createAsyncThunk(
 
     if (!conversation) throw new Error("Conversation not found");
 
-    const response = await geminiService.chat(message, conversation.messages);
-    return { conversationId, message, response };
+    const serverConversation =
+      conversation.serverSessionId
+        ? conversation
+        : await orionAiApi.createSession({
+            title: conversation.title,
+            aiModel: "qwen2.5:7b",
+            systemPrompt:
+              "You are Orion AI Assistant. Be concise, practical, reliable, and answer in Vietnamese when the user writes Vietnamese.",
+          });
+
+    const serverSessionId = serverConversation.serverSessionId;
+    if (!serverSessionId) {
+      throw new Error("Unable to create AI session");
+    }
+
+    const response = await orionAiApi.sendSessionMessage(
+      serverSessionId,
+      message,
+    );
+
+    return {
+      conversationId,
+      serverSessionId,
+      message,
+      response: response.assistantMessage,
+    };
   },
 );
 
 export const loadConversations = createAsyncThunk(
   "ai/loadConversations",
   async () => {
-    return await conversationStorage.loadConversations();
+    try {
+      const sessions = await orionAiApi.listSessions();
+      return await Promise.all(
+        sessions.map(async (session) => ({
+          ...session,
+          messages: session.serverSessionId
+            ? await orionAiApi.getSessionMessages(session.serverSessionId)
+            : [],
+        })),
+      );
+    } catch {
+      return await conversationStorage.loadConversations();
+    }
   },
 );
 
@@ -91,12 +127,15 @@ const aiSlice = createSlice({
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
         state.isLoading = false;
-        const { conversationId, message, response } = action.payload;
+        const { conversationId, serverSessionId, message, response } =
+          action.payload;
         const conversation = state.conversations.find(
           (c) => c.id === conversationId,
         );
 
         if (conversation) {
+          conversation.serverSessionId = serverSessionId;
+
           // Add user message
           conversation.messages.push({
             id: Date.now().toString(),
@@ -117,7 +156,11 @@ const aiSlice = createSlice({
           // Update title if first message
           if (conversation.messages.length === 2) {
             conversation.title = message.substring(0, 50);
+            void orionAiApi.updateSession(serverSessionId, {
+              title: conversation.title,
+            });
           }
+          state.currentConversation = conversation;
         }
       })
       .addCase(sendMessage.rejected, (state, action) => {
@@ -126,6 +169,7 @@ const aiSlice = createSlice({
       })
       .addCase(loadConversations.fulfilled, (state, action) => {
         state.conversations = action.payload;
+        state.currentConversation = action.payload[0] || null;
       });
   },
 });

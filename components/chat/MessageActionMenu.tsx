@@ -13,6 +13,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { Message } from '@/types/chat';
 import { chatApi } from '@/services/api/chat';
+import { formatGridResponse, orionAiApi } from '@/services/api/orionAi';
 
 // Emoji list cho reaction
 const EMOJI_LIST = ['😂', '❤️', '😍', '😮', '😢', '🔥', '👍', '👎'];
@@ -174,6 +175,48 @@ export default function MessageActionMenu({
         onClose();
     };
 
+    const handleAISummarize = async () => {
+        setIsLoading(true);
+        try {
+            const response = await orionAiApi.summarizeConversation({
+                conversationId,
+                mode: 'range',
+                rangeMonths: 1,
+            });
+            Alert.alert(response.title || 'AI summary', formatGridResponse(response));
+            onClose();
+        } catch (error) {
+            Alert.alert(
+                'AI summary failed',
+                error instanceof Error ? error.message : 'Please try again later',
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleAIReplySuggestions = async () => {
+        setIsLoading(true);
+        try {
+            const response = await orionAiApi.suggestReplies({
+                conversationId,
+                limit: 4,
+            });
+            Alert.alert(
+                response.title || 'AI reply suggestions',
+                formatGridResponse(response),
+            );
+            onClose();
+        } catch (error) {
+            Alert.alert(
+                'AI suggestions failed',
+                error instanceof Error ? error.message : 'Please try again later',
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <>
             <Modal
@@ -313,6 +356,62 @@ export default function MessageActionMenu({
                                 </TouchableOpacity>
 
                                 {/* Recall Button - chỉ nếu là tin nhắn của mình */}
+                                <TouchableOpacity
+                                    onPress={handleAISummarize}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        paddingHorizontal: 16,
+                                        paddingVertical: 12,
+                                        borderBottomWidth: 1,
+                                        borderBottomColor:
+                                            colors.backgroundSecondary,
+                                    }}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="text-box-search-outline"
+                                        size={24}
+                                        color={colors.primary}
+                                        style={{ marginRight: 12 }}
+                                    />
+                                    <Text
+                                        style={{
+                                            fontSize: 16,
+                                            color: colors.text,
+                                        }}
+                                    >
+                                        AI summarize chat
+                                    </Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    onPress={handleAIReplySuggestions}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        paddingHorizontal: 16,
+                                        paddingVertical: 12,
+                                        borderBottomWidth: 1,
+                                        borderBottomColor:
+                                            colors.backgroundSecondary,
+                                    }}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="message-reply-text-outline"
+                                        size={24}
+                                        color={colors.primary}
+                                        style={{ marginRight: 12 }}
+                                    />
+                                    <Text
+                                        style={{
+                                            fontSize: 16,
+                                            color: colors.text,
+                                        }}
+                                    >
+                                        AI reply suggestions
+                                    </Text>
+                                </TouchableOpacity>
+
                                 {message.isMine && (
                                     <TouchableOpacity
                                         onPress={handleRecall}

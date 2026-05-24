@@ -3,7 +3,11 @@ import { AIHeader } from "@/components/ai/AIHeader";
 import { AIInput } from "@/components/ai/AIInput";
 import { AIMessageBubble } from "@/components/ai/AIMessageBubble";
 import { useAppDispatch, useAppSelector } from "@/hooks/useRedux";
-import { createConversation, sendMessage } from "@/store/slices/aiSlice";
+import {
+  createConversation,
+  loadConversations,
+  sendMessage,
+} from "@/store/slices/aiSlice";
 import React, { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
@@ -24,11 +28,25 @@ export default function AIScreen() {
   );
 
   useEffect(() => {
-    // Create initial conversation if none exists
-    if (!currentConversation) {
-      dispatch(createConversation({ type: "chat" }));
-    }
-  }, [currentConversation, dispatch]);
+    let active = true;
+
+    void dispatch(loadConversations())
+      .unwrap()
+      .then((conversations) => {
+        if (active && conversations.length === 0) {
+          dispatch(createConversation({ type: "chat" }));
+        }
+      })
+      .catch(() => {
+        if (active) {
+          dispatch(createConversation({ type: "chat" }));
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [dispatch]);
 
   const handleSendMessage = async (message: string) => {
     if (!currentConversation) return;

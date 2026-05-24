@@ -136,21 +136,26 @@ export default function EventEditorModal({
 
   const selectedParticipants = useMemo<Participant[]>(() => {
     return selectedParticipantKeys
-      .map((key) => {
+      .flatMap((key) => {
         const option = optionMap.get(key);
-        if (!option) return null;
+        if (!option) return [];
 
-        return {
+        const participant: Participant = {
           id: option.id,
           type: option.type,
           name: option.name,
           avatar:
             option.avatarUrl || "https://picsum.photos/seed/calendar-user/120",
-          userId: option.type === "friend" ? option.id : undefined,
-          groupId: option.type === "group" ? option.id : undefined,
         };
+
+        if (option.type === "friend") {
+          participant.userId = option.id;
+        } else {
+          participant.groupId = option.id;
+        }
+
+        return [participant];
       })
-      .filter((item): item is Participant => !!item);
   }, [optionMap, selectedParticipantKeys]);
 
   const toggleParticipant = (option: ParticipantOption) => {

@@ -15,6 +15,7 @@ export interface AIMessage {
 
 export interface Conversation {
   id: string;
+  serverSessionId?: string;
   title: string;
   description: string;
   type: ConversationType;

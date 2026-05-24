@@ -99,9 +99,11 @@ function DrawerRow({
       activeOpacity={0.7}
     >
       <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
-        {React.cloneElement(icon as React.ReactElement, {
-          color: isActive ? whColors.primary : whColors.textSecondary,
-        })}
+        {React.isValidElement<{ color?: string }>(icon)
+          ? React.cloneElement(icon, {
+              color: isActive ? whColors.primary : whColors.textSecondary,
+            })
+          : icon}
       </View>
       <Text style={[styles.itemLabel, isActive && styles.itemLabelActive]}>
         {label}
