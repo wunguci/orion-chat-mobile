@@ -83,7 +83,8 @@ export default function VideoCallScreen() {
   }
 
   const showLocalPreview = callMode === "video" && Boolean(call?.localStream);
-  const showRemoteVideo = callMode === "video" && remoteStreamUrl;
+  const showRemoteVideo =
+    callMode === "video" && remoteStreamUrl && call.isRemoteVideoEnabled;
 
   return (
     <SafeAreaView className="flex-1 bg-black">

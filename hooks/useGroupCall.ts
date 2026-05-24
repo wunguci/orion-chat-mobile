@@ -83,7 +83,10 @@ interface UseGroupCallProps {
   onParticipantStream: (userId: string, stream: MediaStream) => void;
   onParticipantLeft: (userId: string) => void;
   onIceCandidate?: (userId: string, candidate: RTCIceCandidate) => void;
-  onConnectionStateChange?: (userId: string, state: RTCPeerConnectionState) => void;
+  onConnectionStateChange?: (
+    userId: string,
+    state: RTCPeerConnectionState,
+  ) => void;
 }
 
 export const useGroupCall = ({
@@ -94,9 +97,9 @@ export const useGroupCall = ({
 }: UseGroupCallProps) => {
   const peerManagerRef = useRef<GroupCallPeerManager | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
-  const pendingIceCandidatesRef = useRef<
-    Map<string, RTCIceCandidateInit[]>
-  >(new Map());
+  const pendingIceCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(
+    new Map(),
+  );
 
   useEffect(() => {
     if (!peerManagerRef.current) {
@@ -205,6 +208,12 @@ export const useGroupCall = ({
         localStreamRef.current.getTracks().forEach((track) => {
           peerConnection.addTrack(track, localStreamRef.current!);
         });
+      } else if (localStreamRef.current === null) {
+        // Ensure recvonly transceivers exist before offers for joiners without local stream
+        if (typeof peerConnection.addTransceiver === "function") {
+          peerConnection.addTransceiver("audio", { direction: "recvonly" });
+          peerConnection.addTransceiver("video", { direction: "recvonly" });
+        }
       } else if (typeof peerConnection.addTransceiver === "function") {
         peerConnection.addTransceiver("audio", { direction: "recvonly" });
         peerConnection.addTransceiver("video", { direction: "recvonly" });
@@ -215,7 +224,9 @@ export const useGroupCall = ({
         const { RTCIceCandidate } = ensureWebRTCModule();
         for (const candidate of pendingCandidates) {
           try {
-            await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+            await peerConnection.addIceCandidate(
+              new RTCIceCandidate(candidate),
+            );
           } catch {
             // Ignore pending candidate errors
           }
@@ -225,7 +236,12 @@ export const useGroupCall = ({
 
       return peerConnection;
     },
-    [onParticipantStream, onParticipantLeft, onIceCandidate, onConnectionStateChange],
+    [
+      onParticipantStream,
+      onParticipantLeft,
+      onIceCandidate,
+      onConnectionStateChange,
+    ],
   );
 
   const createOfferForParticipant = useCallback(
@@ -341,6 +357,141 @@ export const useGroupCall = ({
     pendingIceCandidatesRef.current.delete(userId);
   }, []);
 
+  /**
+   * Bật/tắt camera local, có thay track khi track cũ đã kết thúc
+   */
+  const toggleLocalVideo = useCallback(async (enabled: boolean) => {
+    const stream = localStreamRef.current;
+    if (!stream) {
+      return;
+    }
+
+    if (!enabled) {
+      stream.getVideoTracks().forEach((track) => {
+        track.enabled = false;
+      });
+      return stream;
+    }
+
+    const videoTracks = stream.getVideoTracks();
+    const shouldRecreate =
+      videoTracks.length === 0 || videoTracks[0].readyState === "ended";
+
+    if (!shouldRecreate) {
+      videoTracks.forEach((track) => {
+        track.enabled = true;
+      });
+      return stream;
+    }
+
+    try {
+      const { mediaDevices, MediaStream } = ensureWebRTCModule();
+      const newVideoStream = await mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user",
+          width: 480,
+          height: 360,
+          frameRate: 15,
+        },
+        audio: false,
+      });
+
+      const newVideoTrack = newVideoStream.getVideoTracks()[0];
+      const audioTracks = stream.getAudioTracks();
+      const rebuiltStream = new MediaStream([
+        ...audioTracks,
+        newVideoTrack,
+      ]);
+      if (!newVideoTrack) {
+        return stream;
+      }
+
+      await peerManagerRef.current?.replaceVideoTrackForAll(
+        newVideoTrack,
+        rebuiltStream,
+      );
+
+      videoTracks.forEach((track) => {
+        try {
+          stream.removeTrack(track);
+        } catch {
+          // ignore removeTrack errors
+        }
+        track.stop();
+      });
+      stream.addTrack(newVideoTrack);
+      localStreamRef.current = rebuiltStream;
+      return rebuiltStream;
+    } catch {
+      // ignore re-enable errors
+    }
+    return stream;
+  }, []);
+
+  /**
+   * Bật/tắt micro local, có thay track khi track cũ đã kết thúc
+   */
+  const toggleLocalAudio = useCallback(async (enabled: boolean) => {
+    const stream = localStreamRef.current;
+    if (!stream) {
+      return;
+    }
+
+    if (!enabled) {
+      stream.getAudioTracks().forEach((track) => {
+        track.enabled = false;
+      });
+      toggleMediaForAll("audio", false);
+      return;
+    }
+
+    const audioTracks = stream.getAudioTracks();
+    const shouldRecreate =
+      audioTracks.length === 0 || audioTracks[0].readyState === "ended";
+
+    if (!shouldRecreate) {
+      audioTracks.forEach((track) => {
+        track.enabled = true;
+      });
+      toggleMediaForAll("audio", true);
+      return;
+    }
+
+    try {
+      const { mediaDevices } = ensureWebRTCModule();
+      const newAudioStream = await mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+        video: false,
+      });
+
+      const newAudioTrack = newAudioStream.getAudioTracks()[0];
+      if (!newAudioTrack) {
+        return;
+      }
+
+      await peerManagerRef.current?.replaceAudioTrackForAll(
+        newAudioTrack,
+        stream,
+      );
+
+      audioTracks.forEach((track) => {
+        try {
+          stream.removeTrack(track);
+        } catch {
+          // ignore removeTrack errors
+        }
+        track.stop();
+      });
+      stream.addTrack(newAudioTrack);
+    } catch {
+      // ignore re-enable errors
+    }
+  }, []);
+
   const cleanup = useCallback((): void => {
     peerManagerRef.current?.closeAllPeerConnections();
     pendingIceCandidatesRef.current.clear();
@@ -372,6 +523,8 @@ export const useGroupCall = ({
     toggleAudioForParticipant,
     toggleVideoForParticipant,
     toggleMediaForAll,
+    toggleLocalVideo,
+    toggleLocalAudio,
     removeParticipant,
     cleanup,
     getAllParticipantIds,

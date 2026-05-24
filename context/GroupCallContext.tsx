@@ -63,17 +63,12 @@ const INITIAL_STATE: GroupCallState = {
   startTime: null,
 };
 
-export function GroupCallProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function GroupCallProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { state } = useAuth();
   const [callState, setCallState] = useState<GroupCallState>(INITIAL_STATE);
-  const [incomingCall, setIncomingCall] = useState<GroupIncomingCallData | null>(
-    null,
-  );
+  const [incomingCall, setIncomingCall] =
+    useState<GroupIncomingCallData | null>(null);
 
   const currentCallIdRef = useRef<string | null>(null);
   const callScreenOpenedRef = useRef(false);
@@ -83,8 +78,7 @@ export function GroupCallProvider({
   );
 
   const userId = state.user?.userId;
-  const userName =
-    state.user?.fullName || state.user?.phoneNumber || "User";
+  const userName = state.user?.fullName || state.user?.phoneNumber || "User";
 
   const {
     getLocalStream,
@@ -96,6 +90,8 @@ export function GroupCallProvider({
     toggleAudioForParticipant: toggleAudioForPeer,
     toggleVideoForParticipant: toggleVideoForPeer,
     toggleMediaForAll,
+    toggleLocalVideo,
+    toggleLocalAudio,
     removeParticipant,
     cleanup: cleanupGroupCall,
     getAllParticipantIds,
@@ -544,6 +540,15 @@ export function GroupCallProvider({
                 participant.name,
                 true,
               );
+
+              const offer = await createOfferForParticipant(participant.id);
+              if (offer) {
+                currentSocket.emit("groupcall:offer", {
+                  callId: data.callId,
+                  targetUserId: participant.id,
+                  offer,
+                });
+              }
             } catch {
               // Ignore individual peer creation failures
             }
@@ -671,7 +676,20 @@ export function GroupCallProvider({
 
       for (const participant of initialParticipants) {
         try {
-          await createPeerForParticipant(participant.id, participant.name, false);
+          await createPeerForParticipant(
+            participant.id,
+            participant.name,
+            false,
+          );
+
+          const offer = await createOfferForParticipant(participant.id);
+          if (offer) {
+            socket.emit("groupcall:offer", {
+              callId,
+              targetUserId: participant.id,
+              offer,
+            });
+          }
         } catch {
           // Ignore individual peer creation failures
         }
@@ -725,13 +743,10 @@ export function GroupCallProvider({
     resetCall();
   }, [callState.callId, callState.isHost, resetCall]);
 
-  const toggleAudio = useCallback(() => {
+  const toggleAudio = useCallback(async () => {
     const nextEnabled = !callState.isAudioEnabled;
+    await toggleLocalAudio(nextEnabled);
     toggleMediaForAll("audio", nextEnabled);
-
-    callState.localStream?.getAudioTracks().forEach((track) => {
-      track.enabled = nextEnabled;
-    });
 
     setCallState((prev) => ({
       ...prev,
@@ -750,22 +765,28 @@ export function GroupCallProvider({
   }, [
     callState.isAudioEnabled,
     callState.callId,
-    callState.localStream,
     toggleMediaForAll,
     userId,
+    toggleLocalAudio,
   ]);
 
-  const toggleVideo = useCallback(() => {
+  const toggleVideo = useCallback(async () => {
     const nextEnabled = !callState.isVideoEnabled;
-    toggleMediaForAll("video", nextEnabled);
 
-    callState.localStream?.getVideoTracks().forEach((track) => {
-      track.enabled = nextEnabled;
-    });
+    let updatedStream: MediaStream | null = null;
+
+    try {
+      updatedStream = await toggleLocalVideo(nextEnabled);
+    } catch (error) {
+      console.warn("[GroupCallContext] toggleVideo failed", error);
+    }
+
+    toggleMediaForAll("video", nextEnabled);
 
     setCallState((prev) => ({
       ...prev,
       isVideoEnabled: nextEnabled,
+      localStream: updatedStream || prev.localStream,
     }));
 
     const socket = callSocketService.getSocket();
@@ -780,9 +801,9 @@ export function GroupCallProvider({
   }, [
     callState.isVideoEnabled,
     callState.callId,
-    callState.localStream,
     toggleMediaForAll,
     userId,
+    toggleLocalVideo,
   ]);
 
   const toggleAudioForParticipant = useCallback(

@@ -50,6 +50,8 @@ const INITIAL_STATE: CallState = {
   remoteStream: null,
   isVideoEnabled: true,
   isAudioEnabled: true,
+  isRemoteVideoEnabled: true,
+  isRemoteAudioEnabled: true,
   otherUser: null,
   error: null,
   startTime: null,
@@ -98,11 +100,40 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     isSupported,
   } = useWebRTC({
     onRemoteStream: (stream) => {
+      const videoTrack = stream.getVideoTracks()[0];
+      const audioTrack = stream.getAudioTracks()[0];
+
+      if (videoTrack) {
+        videoTrack.onmute = () => {
+          setCallState((prev) => ({ ...prev, isRemoteVideoEnabled: false }));
+        };
+        videoTrack.onunmute = () => {
+          setCallState((prev) => ({ ...prev, isRemoteVideoEnabled: true }));
+        };
+        videoTrack.onended = () => {
+          setCallState((prev) => ({ ...prev, isRemoteVideoEnabled: false }));
+        };
+      }
+
+      if (audioTrack) {
+        audioTrack.onmute = () => {
+          setCallState((prev) => ({ ...prev, isRemoteAudioEnabled: false }));
+        };
+        audioTrack.onunmute = () => {
+          setCallState((prev) => ({ ...prev, isRemoteAudioEnabled: true }));
+        };
+        audioTrack.onended = () => {
+          setCallState((prev) => ({ ...prev, isRemoteAudioEnabled: false }));
+        };
+      }
+
       setCallState((prev) => ({
         ...prev,
         remoteStream: stream,
         status: "connected",
         startTime: prev.startTime || Date.now(),
+        isRemoteVideoEnabled: Boolean(videoTrack) && !videoTrack.muted,
+        isRemoteAudioEnabled: Boolean(audioTrack) && !audioTrack.muted,
       }));
     },
     onIceCandidate: (candidate) => {
@@ -252,6 +283,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         remoteStream: null,
         isAudioEnabled: true,
         isVideoEnabled: data.callType === "video",
+        isRemoteAudioEnabled: true,
+        isRemoteVideoEnabled: data.callType === "video",
         incomingVideoUpgradeRequest: false,
         isRequestingVideoUpgrade: false,
         startTime: null,
@@ -454,6 +487,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           callType: "video",
           localStream: stream,
           isVideoEnabled: true,
+          isRemoteVideoEnabled: true,
         }));
 
         const offer = await createOffer();
@@ -474,6 +508,24 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    const onMediaToggled = (data: {
+      callId: string;
+      userId: string;
+      mediaType: "audio" | "video";
+      enabled: boolean;
+    }) => {
+      if (data.userId === state.user?.userId) {
+        return;
+      }
+
+      setCallState((prev) => {
+        if (data.mediaType === "video") {
+          return { ...prev, isRemoteVideoEnabled: data.enabled };
+        }
+        return { ...prev, isRemoteAudioEnabled: data.enabled };
+      });
+    };
+
     socket.on("call:incoming", onIncoming);
     socket.on("call:initiated", onInitiated);
     socket.on("call:accept", onAccept);
@@ -485,6 +537,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     socket.on("call:error", onError);
     socket.on("call:video-upgrade-request", onVideoUpgradeRequest);
     socket.on("call:video-upgrade-response", onVideoUpgradeResponse);
+    socket.on("call:media-toggled", onMediaToggled);
 
     return () => {
       socket.off("call:incoming", onIncoming);
@@ -498,6 +551,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       socket.off("call:error", onError);
       socket.off("call:video-upgrade-request", onVideoUpgradeRequest);
       socket.off("call:video-upgrade-response", onVideoUpgradeResponse);
+      socket.off("call:media-toggled", onMediaToggled);
     };
   }, [
     state.isAuthenticated,
@@ -549,6 +603,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           avatar: receiverInfo?.avatar,
         },
         error: null,
+        isRemoteAudioEnabled: true,
+        isRemoteVideoEnabled: callType === "video",
       }));
 
       initializePeerConnection();
@@ -753,17 +809,21 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     resetCall();
   }, [callState.callId, callState.otherUser?.id, resetCall]);
 
-  const toggleAudio = useCallback(() => {
+  const toggleAudio = useCallback(async () => {
     const socket = callSocketService.getSocket();
     const targetUserId = callState.otherUser?.id;
     const nextEnabled = !callState.isAudioEnabled;
+
+    try {
+      await toggleAudioTrack(nextEnabled);
+    } catch (error) {
+      console.warn("[CallContext] toggleAudio failed", error);
+    }
 
     setCallState((prev) => ({
       ...prev,
       isAudioEnabled: nextEnabled,
     }));
-
-    toggleAudioTrack(nextEnabled);
 
     if (socket && callState.callId && targetUserId) {
       socket.emit("call:toggle-media", {
@@ -780,17 +840,24 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     toggleAudioTrack,
   ]);
 
-  const toggleVideo = useCallback(() => {
+  const toggleVideo = useCallback(async () => {
     const socket = callSocketService.getSocket();
     const targetUserId = callState.otherUser?.id;
     const nextEnabled = !callState.isVideoEnabled;
 
+    let updatedStream: MediaStream | null | undefined;
+
+    try {
+      updatedStream = await toggleVideoTrack(nextEnabled);
+    } catch (error) {
+      console.warn("[CallContext] toggleVideo failed", error);
+    }
+
     setCallState((prev) => ({
       ...prev,
       isVideoEnabled: nextEnabled,
+      localStream: updatedStream || prev.localStream,
     }));
-
-    toggleVideoTrack(nextEnabled);
 
     if (socket && callState.callId && targetUserId) {
       socket.emit("call:toggle-media", {

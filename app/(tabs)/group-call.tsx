@@ -116,16 +116,13 @@ export default function GroupCallScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-black">
-      <View className="absolute -top-20 -left-16 h-56 w-56 rounded-full bg-emerald-500/10" />
-      <View className="absolute bottom-0 -right-20 h-72 w-72 rounded-full bg-cyan-500/10" />
-
       <View className="flex-1 px-4">
         <View className="items-center pt-4">
-          <Text className="text-white text-xl font-semibold">
-            Group {callMode === "video" ? "Video" : "Audio"} Call
+          <Text className="text-white text-lg font-semibold">
+            {callMode === "video" ? "Group video call" : "Group audio call"}
           </Text>
-          <Text className="text-white/70 text-sm mt-1">
-            {statusText[call.status] || call.status} - {tiles.length} members
+          <Text className="text-white/60 text-xs mt-1">
+            {statusText[call.status] || call.status} · {tiles.length} members
           </Text>
           {call.error ? (
             <Text className="text-red-300 text-xs mt-2 text-center">
@@ -139,7 +136,8 @@ export default function GroupCallScreen() {
             {tiles.map((tile, index) => {
               const columnIndex = index % columnCount;
               const streamUrl = tile.stream?.toURL?.() || null;
-              const showVideo = callMode === "video" && streamUrl && tile.isVideoEnabled;
+              const showVideo =
+                callMode === "video" && streamUrl && tile.isVideoEnabled;
               const isActive = call.activeParticipantId === tile.id;
 
               return (
@@ -154,7 +152,7 @@ export default function GroupCallScreen() {
                     marginRight: columnIndex === columnCount - 1 ? 0 : gap,
                   }}
                   className={`overflow-hidden rounded-2xl border ${
-                    isActive ? "border-emerald-400" : "border-white/10"
+                    isActive ? "border-white/40" : "border-white/10"
                   } bg-neutral-900`}
                 >
                   {showVideo ? (
@@ -174,12 +172,12 @@ export default function GroupCallScreen() {
                     )
                   ) : (
                     <View className="flex-1 items-center justify-center">
-                      <View className="h-14 w-14 rounded-full bg-emerald-500/15 items-center justify-center">
-                        <Text className="text-emerald-200 text-base font-semibold">
+                      <View className="h-14 w-14 rounded-full bg-white/10 items-center justify-center">
+                        <Text className="text-white text-base font-semibold">
                           {getInitials(tile.name)}
                         </Text>
                       </View>
-                      <Text className="text-white/70 text-xs mt-2">
+                      <Text className="text-white/60 text-xs mt-2">
                         {tile.isVideoEnabled && callMode === "video"
                           ? "Waiting for video"
                           : "Camera off"}
@@ -193,7 +191,7 @@ export default function GroupCallScreen() {
                         {tile.name}
                       </Text>
                       {tile.isHost ? (
-                        <Text className="text-emerald-300 text-[10px] ml-2">
+                        <Text className="text-white/60 text-[10px] ml-2">
                           Host
                         </Text>
                       ) : null}
@@ -202,7 +200,7 @@ export default function GroupCallScreen() {
                       <Ionicons
                         name={tile.isAudioEnabled ? "mic" : "mic-off"}
                         size={14}
-                        color={tile.isAudioEnabled ? "#a7f3d0" : "#fca5a5"}
+                        color={tile.isAudioEnabled ? "#e5e7eb" : "#fca5a5"}
                       />
                     </View>
                   </View>

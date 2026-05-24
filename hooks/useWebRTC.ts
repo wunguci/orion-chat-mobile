@@ -306,26 +306,148 @@ export const useWebRTC = ({
     [],
   );
 
-  const toggleVideo = useCallback((enabled: boolean) => {
+  const toggleVideo = useCallback(async (enabled: boolean) => {
     const stream = localStreamRef.current;
     if (!stream) {
       return;
     }
 
-    stream.getVideoTracks().forEach((track) => {
-      track.enabled = enabled;
-    });
+    if (!enabled) {
+      // Giữ track để bật lại không bị đen
+      stream.getVideoTracks().forEach((track) => {
+        track.enabled = false;
+      });
+      return;
+    }
+
+    const videoTracks = stream.getVideoTracks();
+    const shouldRecreate =
+      videoTracks.length === 0 || videoTracks[0].readyState === "ended";
+
+    if (!shouldRecreate) {
+      videoTracks.forEach((track) => {
+        track.enabled = true;
+      });
+      return;
+    }
+
+    try {
+      const { mediaDevices, MediaStream } = ensureWebRTCModule();
+      const newStream = await mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user",
+          width: 480,
+          height: 360,
+          frameRate: 15,
+        },
+        audio: false,
+      });
+
+      const newVideoTrack = newStream.getVideoTracks()[0];
+      const audioTracks = stream.getAudioTracks();
+      const rebuiltStream = new MediaStream([
+        ...audioTracks,
+        newVideoTrack,
+      ]);
+      if (!newVideoTrack) {
+        return;
+      }
+
+      const peerConnection = peerConnectionRef.current;
+      if (peerConnection) {
+        const sender = peerConnection
+          .getSenders()
+          .find((item) => item.track?.kind === "video");
+
+        if (sender?.replaceTrack) {
+          await sender.replaceTrack(newVideoTrack);
+        } else {
+          peerConnection.addTrack(newVideoTrack, rebuiltStream);
+        }
+      }
+
+      // cập nhật local stream để preview đúng track mới
+      videoTracks.forEach((track) => {
+        try {
+          stream.removeTrack(track);
+        } catch {
+          // ignore removeTrack errors
+        }
+        track.stop();
+      });
+      stream.addTrack(newVideoTrack);
+      localStreamRef.current = rebuiltStream;
+      return rebuiltStream;
+    } catch (error) {
+      console.log("[WebRTC] Failed to re-enable video", error);
+    }
   }, []);
 
-  const toggleAudio = useCallback((enabled: boolean) => {
+  const toggleAudio = useCallback(async (enabled: boolean) => {
     const stream = localStreamRef.current;
     if (!stream) {
       return;
     }
 
-    stream.getAudioTracks().forEach((track) => {
-      track.enabled = enabled;
-    });
+    if (!enabled) {
+      stream.getAudioTracks().forEach((track) => {
+        track.enabled = false;
+      });
+      return;
+    }
+
+    const audioTracks = stream.getAudioTracks();
+    const shouldRecreate =
+      audioTracks.length === 0 || audioTracks[0].readyState === "ended";
+
+    if (!shouldRecreate) {
+      audioTracks.forEach((track) => {
+        track.enabled = true;
+      });
+      return;
+    }
+
+    try {
+      const { mediaDevices } = ensureWebRTCModule();
+      const newAudioStream = await mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+        video: false,
+      });
+
+      const newAudioTrack = newAudioStream.getAudioTracks()[0];
+      if (!newAudioTrack) {
+        return;
+      }
+
+      const peerConnection = peerConnectionRef.current;
+      if (peerConnection) {
+        const sender = peerConnection
+          .getSenders()
+          .find((item) => item.track?.kind === "audio");
+
+        if (sender?.replaceTrack) {
+          await sender.replaceTrack(newAudioTrack);
+        } else {
+          peerConnection.addTrack(newAudioTrack, stream);
+        }
+      }
+
+      audioTracks.forEach((track) => {
+        try {
+          stream.removeTrack(track);
+        } catch {
+          // ignore removeTrack errors
+        }
+        track.stop();
+      });
+      stream.addTrack(newAudioTrack);
+    } catch (error) {
+      console.log("[WebRTC] Failed to re-enable audio", error);
+    }
   }, []);
 
   const cleanup = useCallback(() => {

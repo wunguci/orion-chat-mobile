@@ -28,6 +28,8 @@ export interface CallState {
   remoteStream: MediaStream | null;
   isVideoEnabled: boolean;
   isAudioEnabled: boolean;
+  isRemoteVideoEnabled: boolean;
+  isRemoteAudioEnabled: boolean;
   otherUser: CallUser | null;
   error: string | null;
   startTime: number | null;
