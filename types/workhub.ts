@@ -18,6 +18,24 @@ export interface WorkspaceMember {
   joinedAt: string;
 }
 
+export interface WorkspaceJoinRequest {
+  requestId: string;
+  requestedRole: WorkspaceRole;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  requestedAt: string;
+  user: WorkHubUser;
+}
+
+export interface WorkspaceInviteLink {
+  workspaceId: string;
+  workspaceName: string;
+  role: WorkspaceRole;
+  token: string;
+  inviteUrl: string;
+  qrData: string;
+  expiresAt: string;
+}
+
 export interface Workspace {
   id: string;
   name: string;

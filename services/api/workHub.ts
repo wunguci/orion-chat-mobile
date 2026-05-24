@@ -19,6 +19,8 @@ import type {
   WorkloadMember,
   Workspace,
   WorkspaceDashboardStats,
+  WorkspaceInviteLink,
+  WorkspaceJoinRequest,
   WorkspaceMember,
   WorkspaceRole,
   WorkspaceType,
@@ -185,6 +187,14 @@ const mapMember = (member: WorkspaceMemberResponse): WorkspaceMember => ({
   joinedAt: member.joinedAt,
 });
 
+const mapJoinRequest = (request: any): WorkspaceJoinRequest => ({
+  requestId: request.requestId,
+  requestedRole: normalizeRole(request.requestedRole),
+  status: request.status || "PENDING",
+  requestedAt: request.requestedAt,
+  user: request.user ? mapUser(request.user) : emptyUser,
+});
+
 const mapWorkspace = (workspace: WorkspaceResponse): Workspace => ({
   id: workspace.workspaceId,
   name: workspace.workspaceName,
@@ -303,6 +313,13 @@ export const workHubApi = {
     return fetchApi(`/workspaces/${id}`, { method: "DELETE" });
   },
 
+  transferWorkspaceOwner(workspaceId: string, targetUserId: string) {
+    return fetchApi(`/workspaces/${workspaceId}/transfer-owner/${targetUserId}`, {
+      method: "PATCH",
+      ...jsonBody({}),
+    });
+  },
+
   async getDashboardStats(id: string): Promise<WorkspaceDashboardStats> {
     const data = await fetchApi<any>(`/workspaces/${id}/dashboard-stats`);
     return {
@@ -338,6 +355,48 @@ export const workHubApi = {
     return fetchApi(`/workspaces/${workspaceId}/members/${userId}`, {
       method: "DELETE",
     });
+  },
+
+  async getInviteLink(
+    workspaceId: string,
+    role: WorkspaceRole = "member",
+  ): Promise<WorkspaceInviteLink> {
+    const data = await fetchApi<any>(
+      `/workspaces/${workspaceId}/members/invite-link`,
+      { params: { role: roleToBackend(role) } },
+    );
+    return {
+      ...data,
+      role: normalizeRole(data.role),
+    };
+  },
+
+  joinByInviteLink(workspaceId: string, token: string) {
+    return fetchApi(`/workspaces/${workspaceId}/members/join-by-link`, {
+      method: "POST",
+      ...jsonBody({ token }),
+    });
+  },
+
+  async getJoinRequests(workspaceId: string): Promise<WorkspaceJoinRequest[]> {
+    const rows = await fetchApi<any[]>(
+      `/workspaces/${workspaceId}/members/join-requests`,
+    );
+    return rows.map(mapJoinRequest);
+  },
+
+  approveJoinRequest(workspaceId: string, requestId: string) {
+    return fetchApi(
+      `/workspaces/${workspaceId}/members/join-requests/${requestId}/approve`,
+      { method: "POST", ...jsonBody({}) },
+    );
+  },
+
+  rejectJoinRequest(workspaceId: string, requestId: string) {
+    return fetchApi(
+      `/workspaces/${workspaceId}/members/join-requests/${requestId}/reject`,
+      { method: "POST", ...jsonBody({}) },
+    );
   },
 
   async getBoards(workspaceId: string) {
