@@ -1,0 +1,57 @@
+name: Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "EXPO_PUBLIC_API_URL bundled into the APK"
+        required: true
+        default: "https://aracelis-provable-grammatically.ngrok-free.dev"
+      socket_url:
+        description: "EXPO_PUBLIC_SOCKET_URL bundled into the APK"
+        required: true
+        default: "https://aracelis-provable-grammatically.ngrok-free.dev"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_URL: ${{ inputs.api_url }}
+      EXPO_PUBLIC_SOCKET_URL: ${{ inputs.socket_url }}
+      EXPO_PUBLIC_GEMINI_API_KEY: ${{ secrets.EXPO_PUBLIC_GEMINI_API_KEY }}
+      EXPO_PUBLIC_TURN_URLS: ${{ secrets.EXPO_PUBLIC_TURN_URLS }}
+      EXPO_PUBLIC_TURN_USERNAME: ${{ secrets.EXPO_PUBLIC_TURN_USERNAME }}
+      EXPO_PUBLIC_TURN_CREDENTIAL: ${{ secrets.EXPO_PUBLIC_TURN_CREDENTIAL }}
+      EXPO_PUBLIC_FORCE_TURN_RELAY: ${{ secrets.EXPO_PUBLIC_FORCE_TURN_RELAY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --clean --non-interactive
+
+      - name: Build release APK
+        run: cd android && ./gradlew assembleRelease --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: orion-chat-release-apk
+          path: android/app/build/outputs/apk/release/*.apk

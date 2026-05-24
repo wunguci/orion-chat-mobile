@@ -1,4 +1,4 @@
-import type { MediaStream } from "react-native-webrtc";
+import type { MediaStream } from "@stream-io/react-native-webrtc";
 
 export interface CallUser {
   id: string;

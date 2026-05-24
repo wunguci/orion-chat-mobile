@@ -27,7 +27,7 @@ export default function Index() {
         return <Redirect href="/(auth)/login" />;
     }
 
-    // Authenticated, go to home
-    console.log('[Index] Authenticated, redirecting to home');
-    return <Redirect href="/home" />;
+    // Authenticated, go to app
+    console.log('[Index] Authenticated, redirecting to app tabs');
+    return <Redirect href="/(tabs)" />;
 }

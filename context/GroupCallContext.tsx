@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useGroupCall } from "@/hooks/useGroupCall";
+import { useStreamVideoRuntime } from "@/context/StreamVideoContext";
 import { callSocketService } from "@/services/websocket/callSocket";
 import type {
   CallType,
@@ -21,7 +22,7 @@ import React, {
   useState,
 } from "react";
 import { Alert } from "react-native";
-import type { MediaStream } from "react-native-webrtc";
+import type { MediaStream } from "@stream-io/react-native-webrtc";
 
 export type GroupCallContextValue = GroupCallState & {
   incomingCall: GroupIncomingCallData | null;
@@ -70,6 +71,9 @@ export function GroupCallProvider({
 }) {
   const router = useRouter();
   const { state } = useAuth();
+  const streamVideoRuntime = useStreamVideoRuntime();
+  const streamVideoEnabled =
+    streamVideoRuntime.sdkAvailable && streamVideoRuntime.clientReady;
   const [callState, setCallState] = useState<GroupCallState>(INITIAL_STATE);
   const [incomingCall, setIncomingCall] = useState<GroupIncomingCallData | null>(
     null,
@@ -261,6 +265,30 @@ export function GroupCallProvider({
         data.participants?.find((p) => p.id === data.userId)?.name ||
         "User";
 
+      if (streamVideoEnabled) {
+        setCallState((prev) => {
+          if (prev.participants.some((p) => p.id === data.userId)) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            participants: [
+              ...prev.participants,
+              {
+                id: data.userId,
+                name: participantName,
+                avatar: data.userAvatar,
+                isVideoEnabled: true,
+                isAudioEnabled: true,
+                isHost: data.isHost,
+              },
+            ],
+          };
+        });
+        return;
+      }
+
       try {
         if (!getAllParticipantIds().includes(data.userId)) {
           await createPeerForParticipant(data.userId, participantName, false);
@@ -311,6 +339,7 @@ export function GroupCallProvider({
 
     const onOffer = async (data: GroupCallOfferData) => {
       if (data.callId !== currentCallIdRef.current) return;
+      if (streamVideoEnabled) return;
       try {
         if (!getAllParticipantIds().includes(data.callerId)) {
           await createPeerForParticipant(data.callerId, "User", false);
@@ -419,6 +448,7 @@ export function GroupCallProvider({
     addIceCandidateForParticipant,
     removeParticipant,
     resetCall,
+    streamVideoEnabled,
   ]);
 
   const initiateGroupCall = useCallback(
@@ -439,7 +469,7 @@ export function GroupCallProvider({
         throw new Error("Call socket is not connected");
       }
 
-      if (!isSupported) {
+      if (!streamVideoEnabled && !isSupported) {
         handleUnsupportedRuntime("initiate");
         return;
       }
@@ -458,46 +488,48 @@ export function GroupCallProvider({
         error: null,
       }));
 
-      let stream: MediaStream | null = null;
-      try {
-        stream = await getLocalStream(callType === "video", true);
-      } catch (error) {
-        if (callType === "video") {
-          try {
-            stream = await getLocalStream(false, true);
+      if (!streamVideoEnabled) {
+        let stream: MediaStream | null = null;
+        try {
+          stream = await getLocalStream(callType === "video", true);
+        } catch (error) {
+          if (callType === "video") {
+            try {
+              stream = await getLocalStream(false, true);
+              setCallState((prev) => ({
+                ...prev,
+                isVideoEnabled: false,
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : "Cannot access camera, starting with audio only",
+              }));
+            } catch (audioError) {
+              setCallState((prev) => ({
+                ...prev,
+                error:
+                  audioError instanceof Error
+                    ? audioError.message
+                    : "Cannot access microphone",
+              }));
+            }
+          } else {
             setCallState((prev) => ({
               ...prev,
-              isVideoEnabled: false,
               error:
                 error instanceof Error
                   ? error.message
-                  : "Cannot access camera, starting with audio only",
-            }));
-          } catch (audioError) {
-            setCallState((prev) => ({
-              ...prev,
-              error:
-                audioError instanceof Error
-                  ? audioError.message
                   : "Cannot access microphone",
             }));
           }
-        } else {
+        }
+
+        if (stream) {
           setCallState((prev) => ({
             ...prev,
-            error:
-              error instanceof Error
-                ? error.message
-                : "Cannot access microphone",
+            localStream: stream,
           }));
         }
-      }
-
-      if (stream) {
-        setCallState((prev) => ({
-          ...prev,
-          localStream: stream,
-        }));
       }
 
       openGroupCallScreen(conversationId, callType);
@@ -537,15 +569,17 @@ export function GroupCallProvider({
             })),
           }));
 
-          for (const participant of remoteParticipants) {
-            try {
-              await createPeerForParticipant(
-                participant.id,
-                participant.name,
-                true,
-              );
-            } catch {
-              // Ignore individual peer creation failures
+          if (!streamVideoEnabled) {
+            for (const participant of remoteParticipants) {
+              try {
+                await createPeerForParticipant(
+                  participant.id,
+                  participant.name,
+                  true,
+                );
+              } catch {
+                // Ignore individual peer creation failures
+              }
             }
           }
 
@@ -570,6 +604,7 @@ export function GroupCallProvider({
     [
       userId,
       isSupported,
+      streamVideoEnabled,
       handleUnsupportedRuntime,
       getLocalStream,
       openGroupCallScreen,
@@ -586,7 +621,7 @@ export function GroupCallProvider({
       const socket = callSocketService.getSocket();
       if (!socket) return;
 
-      if (!isSupported) {
+      if (!streamVideoEnabled && !isSupported) {
         handleUnsupportedRuntime("accept");
         setIncomingCall(null);
         return;
@@ -620,46 +655,48 @@ export function GroupCallProvider({
         error: null,
       }));
 
-      let stream: MediaStream | null = null;
-      try {
-        stream = await getLocalStream(callData.callType === "video", true);
-      } catch (error) {
-        if (callData.callType === "video") {
-          try {
-            stream = await getLocalStream(false, true);
+      if (!streamVideoEnabled) {
+        let stream: MediaStream | null = null;
+        try {
+          stream = await getLocalStream(callData.callType === "video", true);
+        } catch (error) {
+          if (callData.callType === "video") {
+            try {
+              stream = await getLocalStream(false, true);
+              setCallState((prev) => ({
+                ...prev,
+                isVideoEnabled: false,
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : "Cannot access camera, joining with audio only",
+              }));
+            } catch (audioError) {
+              setCallState((prev) => ({
+                ...prev,
+                error:
+                  audioError instanceof Error
+                    ? audioError.message
+                    : "Cannot access microphone",
+              }));
+            }
+          } else {
             setCallState((prev) => ({
               ...prev,
-              isVideoEnabled: false,
               error:
                 error instanceof Error
                   ? error.message
-                  : "Cannot access camera, joining with audio only",
-            }));
-          } catch (audioError) {
-            setCallState((prev) => ({
-              ...prev,
-              error:
-                audioError instanceof Error
-                  ? audioError.message
                   : "Cannot access microphone",
             }));
           }
-        } else {
+        }
+
+        if (stream) {
           setCallState((prev) => ({
             ...prev,
-            error:
-              error instanceof Error
-                ? error.message
-                : "Cannot access microphone",
+            localStream: stream,
           }));
         }
-      }
-
-      if (stream) {
-        setCallState((prev) => ({
-          ...prev,
-          localStream: stream,
-        }));
       }
 
       socket.emit("groupcall:join", {
@@ -669,11 +706,13 @@ export function GroupCallProvider({
         userName,
       });
 
-      for (const participant of initialParticipants) {
-        try {
-          await createPeerForParticipant(participant.id, participant.name, false);
-        } catch {
-          // Ignore individual peer creation failures
+      if (!streamVideoEnabled) {
+        for (const participant of initialParticipants) {
+          try {
+            await createPeerForParticipant(participant.id, participant.name, false);
+          } catch {
+            // Ignore individual peer creation failures
+          }
         }
       }
 
@@ -684,6 +723,7 @@ export function GroupCallProvider({
       userId,
       incomingCall,
       isSupported,
+      streamVideoEnabled,
       handleUnsupportedRuntime,
       getLocalStream,
       createPeerForParticipant,

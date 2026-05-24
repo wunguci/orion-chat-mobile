@@ -9,11 +9,12 @@ import ChatAvatar from './ChatAvatar';
 interface ChatListItemProps {
     item: ChatItem;
     onPress?: (item: ChatItem) => void;
+    onLongPress?: (item: ChatItem) => void;
 }
 
 const UNREAD_COLOR = '#00B14F';
 
-export default function ChatListItem({ item, onPress }: ChatListItemProps) {
+export default function ChatListItem({ item, onPress, onLongPress }: ChatListItemProps) {
     const { colors } = useTheme();
 
     const renderRightMeta = () => {
@@ -80,6 +81,9 @@ export default function ChatListItem({ item, onPress }: ChatListItemProps) {
                     id: item.id,
                     name: item.name,
                     avatarUri: item.avatarUri ?? '',
+                    otherUserId: item.otherUserId ?? '',
+                    isGroup: item.isGroup ? 'true' : 'false',
+                    participantIds: item.participantIds?.join(',') ?? '',
                 },
             });
         }
@@ -88,6 +92,7 @@ export default function ChatListItem({ item, onPress }: ChatListItemProps) {
     return (
         <TouchableOpacity
             onPress={handlePress}
+            onLongPress={() => onLongPress?.(item)}
             style={{
                 flexDirection: 'row',
                 alignItems: 'center',

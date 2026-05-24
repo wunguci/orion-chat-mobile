@@ -10,9 +10,11 @@ export type ChatItem = {
     isRead: boolean; // only relevant when isSentByMe = true
     avatarUri?: string; // single avatar
     avatarUris?: string[]; // group avatars (up to 3)
+    otherUserId?: string;
+    participantIds?: string[];
 };
 
-// ─── Message types ──────────────────────────────────────────
+//  Message types 
 
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
 

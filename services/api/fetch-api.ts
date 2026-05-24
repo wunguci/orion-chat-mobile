@@ -1,4 +1,4 @@
-import API_BASE_URL from '../../config/api';
+import { API_BASE_URL, fetchWithTimeout } from '../../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface FetchOptions extends RequestInit {
@@ -51,7 +51,7 @@ export async function fetchApi<T = any>(
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
         ...fetchOptions,
         headers,
     });

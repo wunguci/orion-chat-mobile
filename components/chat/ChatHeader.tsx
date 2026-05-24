@@ -8,12 +8,18 @@ interface ChatHeaderProps {
     name: string;
     avatarUri?: string;
     isOnline?: boolean;
+    onAudioCall?: () => void;
+    onVideoCall?: () => void;
+    onMenuPress?: () => void;
 }
 
 export default function ChatHeader({
     name,
     avatarUri,
     isOnline,
+    onAudioCall,
+    onVideoCall,
+    onMenuPress,
 }: ChatHeaderProps) {
     const { colors } = useTheme();
 
@@ -106,17 +112,25 @@ export default function ChatHeader({
             </Text>
 
             {/* Action icons */}
-            <TouchableOpacity hitSlop={8}>
+            <TouchableOpacity onPress={onAudioCall} hitSlop={8}>
                 <Ionicons name="call-outline" size={22} color={colors.text} />
             </TouchableOpacity>
-            <TouchableOpacity hitSlop={8} style={{ marginLeft: 4 }}>
+            <TouchableOpacity
+                onPress={onVideoCall}
+                hitSlop={8}
+                style={{ marginLeft: 4 }}
+            >
                 <Ionicons
                     name="videocam-outline"
                     size={24}
                     color={colors.text}
                 />
             </TouchableOpacity>
-            <TouchableOpacity hitSlop={8} style={{ marginLeft: 4 }}>
+            <TouchableOpacity
+                onPress={onMenuPress}
+                hitSlop={8}
+                style={{ marginLeft: 4 }}
+            >
                 <MaterialIcons name="menu" size={24} color={colors.text} />
             </TouchableOpacity>
         </View>

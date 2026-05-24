@@ -1,8 +1,12 @@
 import type {
   MediaStream,
-  RTCPeerConnection,
   RTCIceCandidate,
-} from "react-native-webrtc";
+  RTCPeerConnection,
+} from "@stream-io/react-native-webrtc";
+
+type RTCPeerConnectionConstructor = new (
+  configuration?: RTCConfiguration,
+) => RTCPeerConnection;
 
 interface PeerConnectionContext {
   peerConnection: RTCPeerConnection;
@@ -15,28 +19,41 @@ interface PeerConnectionContext {
 
 export class GroupCallPeerManager {
   private peerConnections: Map<string, PeerConnectionContext> = new Map();
-  private iceConfiguration: RTCConfiguration;
+  private iceConfiguration: any;
+  private RTCPeerConnectionCtor: RTCPeerConnectionConstructor | null;
 
-  constructor(iceConfiguration: RTCConfiguration) {
+  constructor(
+    iceConfiguration: any,
+    RTCPeerConnectionCtor: RTCPeerConnectionConstructor | null,
+  ) {
     this.iceConfiguration = iceConfiguration;
+    this.RTCPeerConnectionCtor = RTCPeerConnectionCtor;
   }
 
   createPeerConnection(
     userId: string,
     userName: string,
     isInitiator: boolean = false,
-    onTrack?: (event: RTCTrackEvent) => void,
+    onTrack?: (event: any) => void,
     onIceCandidate?: (candidate: RTCIceCandidate) => void,
     onConnectionStateChange?: (state: RTCPeerConnectionState) => void,
   ): RTCPeerConnection {
-    const peerConnection = new RTCPeerConnection(this.iceConfiguration);
+    if (!this.RTCPeerConnectionCtor) {
+      throw new Error(
+        "WebRTC native module is unavailable in this runtime. Use a development build instead of Expo Go.",
+      );
+    }
+
+    const peerConnection = new this.RTCPeerConnectionCtor(
+      this.iceConfiguration,
+    );
 
     if (onTrack) {
       peerConnection.ontrack = onTrack;
     }
 
     if (onIceCandidate) {
-      peerConnection.onicecandidate = (event) => {
+      peerConnection.onicecandidate = (event: any) => {
         if (event.candidate) {
           onIceCandidate(event.candidate as RTCIceCandidate);
         }

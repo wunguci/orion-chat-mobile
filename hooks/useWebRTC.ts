@@ -4,7 +4,8 @@ import type {
   RTCPeerConnection,
   RTCIceCandidate,
   RTCSessionDescription,
-} from "react-native-webrtc";
+} from "@stream-io/react-native-webrtc";
+import { getIceConfiguration } from "@/config/webrtcIce";
 
 type WebRTCModule = {
   mediaDevices: {
@@ -25,7 +26,8 @@ type WebRTCModule = {
 let webRTCModule: WebRTCModule | null = null;
 
 try {
-  webRTCModule = require("react-native-webrtc") as WebRTCModule;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  webRTCModule = require("@stream-io/react-native-webrtc") as WebRTCModule;
 } catch {
   webRTCModule = null;
 }
@@ -38,43 +40,6 @@ const ensureWebRTCModule = (): WebRTCModule => {
   }
 
   return webRTCModule;
-};
-
-const getIceConfiguration = (): RTCConfiguration => {
-  const turnUrls = process.env.EXPO_PUBLIC_TURN_URLS;
-  const turnUsername = process.env.EXPO_PUBLIC_TURN_USERNAME;
-  const turnCredential = process.env.EXPO_PUBLIC_TURN_CREDENTIAL;
-  const forceRelay = process.env.EXPO_PUBLIC_FORCE_TURN_RELAY === "true";
-
-  const iceServers: RTCIceServer[] = [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-  ];
-
-  if (turnUrls && turnUsername && turnCredential) {
-    const parsedTurnUrls = turnUrls
-      .split(",")
-      .map((item) => item.trim())
-      .filter(
-        (item) =>
-          Boolean(item) &&
-          (item.startsWith("turn:") || item.startsWith("turns:")),
-      );
-
-    if (parsedTurnUrls.length > 0) {
-      iceServers.push({
-        urls: parsedTurnUrls,
-        username: turnUsername,
-        credential: turnCredential,
-      });
-    }
-  }
-
-  return {
-    iceServers,
-    iceCandidatePoolSize: 8,
-    iceTransportPolicy: forceRelay ? "relay" : "all",
-  };
 };
 
 interface UseWebRTCProps {
@@ -143,6 +108,7 @@ export const useWebRTC = ({
 
     const pending = [...pendingIceCandidatesRef.current];
     pendingIceCandidatesRef.current = [];
+    const { RTCIceCandidate } = ensureWebRTCModule();
 
     for (const candidate of pending) {
       try {
@@ -162,13 +128,13 @@ export const useWebRTC = ({
 
     const peerConnection = new RTCPeerConnection(getIceConfiguration());
 
-    peerConnection.onicecandidate = (event) => {
+    peerConnection.onicecandidate = (event: any) => {
       if (event.candidate) {
         onIceCandidateRef.current(event.candidate);
       }
     };
 
-    peerConnection.ontrack = (event) => {
+    peerConnection.ontrack = (event: any) => {
       const [stream] = event.streams || [];
       if (stream) {
         onRemoteStreamRef.current(stream);
@@ -218,13 +184,7 @@ export const useWebRTC = ({
               frameRate: 15,
             }
           : false,
-        audio: audioEnabled
-          ? {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
-            }
-          : false,
+        audio: audioEnabled,
       });
 
       localStreamRef.current = stream;

@@ -5,6 +5,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
 import { ChatItem } from "@/types/chat";
 import { chatApi, ConversationResponse } from "@/services/api/chat";
+import { chatSocketService } from "@/services/websocket/chatSocket";
 import React, { useMemo, useState, useEffect } from "react";
 import {
   FlatList,
@@ -12,6 +13,7 @@ import {
   View,
   ActivityIndicator,
   Text,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -20,6 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
  */
 const convertConversationToChatItem = (
   conversation: ConversationResponse,
+  currentUserId?: string,
 ): ChatItem => {
   const lastMessage = conversation.lastMessage;
 
@@ -28,7 +31,7 @@ const convertConversationToChatItem = (
   // Lấy thông tin người dùng khác (cho private chat)
   const otherParticipant = !isGroup
     ? conversation.participants.find(
-        (p: any) => p.userId !== conversation.participants[0]?.userId,
+        (p: any) => p.userId !== currentUserId,
       )
     : null;
 
@@ -97,6 +100,10 @@ const convertConversationToChatItem = (
     isRead: true,
     avatarUri,
     avatarUris,
+    otherUserId: otherParticipant?.userId,
+    participantIds: conversation.participants
+      .map((participant) => participant.userId)
+      .filter((userId) => userId !== currentUserId),
   };
 };
 
@@ -126,7 +133,12 @@ export default function ChatsScreen() {
           20,
           0,
         );
-        const chatItems = data.map(convertConversationToChatItem);
+        const chatItems = data.map((conversation) =>
+          convertConversationToChatItem(
+            conversation,
+            authState.user?.userId,
+          ),
+        );
         setConversations(chatItems);
       } catch (err) {
         const errorMessage =
@@ -140,6 +152,59 @@ export default function ChatsScreen() {
 
     loadConversations();
   }, [authState.user]);
+
+  useEffect(() => {
+    const handleConversationDeleted = (payload: { conversationId?: string }) => {
+      if (!payload?.conversationId) return;
+      setConversations((prev) =>
+        prev.filter((item) => item.id !== payload.conversationId),
+      );
+    };
+
+    let isMounted = true;
+    void chatSocketService
+      .connect()
+      .then(() => {
+        if (isMounted) {
+          chatSocketService.onConversationDeleted(handleConversationDeleted);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isMounted = false;
+      chatSocketService.offConversationDeleted(handleConversationDeleted);
+    };
+  }, []);
+
+  const handleDeleteConversation = (item: ChatItem) => {
+    Alert.alert(
+      "Xoa hoi thoai",
+      item.isGroup
+        ? "Hien tai thao tac nay chi ap dung cho hoi thoai 1-1. Ban co muon thu xoa khoi danh sach khong?"
+        : `Xoa hoi thoai voi ${item.name}?`,
+      [
+        { text: "Huy", style: "cancel" },
+        {
+          text: "Xoa",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await chatApi.deleteConversation(item.id);
+              setConversations((prev) =>
+                prev.filter((conversation) => conversation.id !== item.id),
+              );
+            } catch (err) {
+              Alert.alert(
+                "Khong the xoa",
+                err instanceof Error ? err.message : "Vui long thu lai sau",
+              );
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const filteredChats = useMemo(() => {
     let list = conversations;
@@ -219,7 +284,12 @@ export default function ChatsScreen() {
         <FlatList
           data={filteredChats}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ChatListItem item={item} />}
+          renderItem={({ item }) => (
+            <ChatListItem
+              item={item}
+              onLongPress={handleDeleteConversation}
+            />
+          )}
           ItemSeparatorComponent={() => (
             <View
               style={{

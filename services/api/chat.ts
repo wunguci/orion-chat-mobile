@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import API_BASE_URL from '@/config/api';
-import { Message } from '@/types/chat';
+import { API_BASE_URL, fetchWithTimeout } from '@/config/api';
 
 /**
  * Xây dựng URL với query parameters
@@ -59,9 +58,12 @@ const authFetch = async (url: string, init?: RequestInit) => {
     // IMPORTANT: Add platform header so server knows this is mobile platform
     // This is critical for session validation - server uses this to check token against correct platform session
     headers.set('X-Platform', 'mobile');
-    headers.set('Content-Type', 'application/json');
 
-    return fetch(url, {
+    if (!(init?.body instanceof FormData)) {
+        headers.set('Content-Type', 'application/json');
+    }
+
+    return fetchWithTimeout(url, {
         ...init,
         headers,
     });
@@ -248,6 +250,16 @@ export const chatApi = {
         });
         const data = await toJson<ConversationResponse>(response);
         return data;
+    },
+
+    async deleteConversation(conversationId: string) {
+        const response = await authFetch(
+            buildUrl(`/conversations/${conversationId}`),
+            {
+                method: 'DELETE',
+            },
+        );
+        return toJson<{ success: boolean; conversationId: string }>(response);
     },
 
     /**

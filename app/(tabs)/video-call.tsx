@@ -1,4 +1,6 @@
 import { CallContext } from "@/context/CallContext";
+import StreamCallView from "@/components/call/StreamCallView";
+import { useAuth } from "@/hooks/useAuth";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useContext, useEffect, useMemo } from "react";
@@ -14,7 +16,7 @@ let RTCViewComponent: React.ComponentType<{
 
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  RTCViewComponent = require("react-native-webrtc").RTCView;
+  RTCViewComponent = require("@stream-io/react-native-webrtc").RTCView;
 } catch {
   RTCViewComponent = null;
 }
@@ -45,10 +47,13 @@ function getInitials(name?: string) {
 export default function VideoCallScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
+    conversationId?: string;
     targetName?: string;
+    targetUserId?: string;
     callMode?: "audio" | "video";
   }>();
   const call = useContext(CallContext);
+  const { state } = useAuth();
 
   useEffect(() => {
     if (!call) {
@@ -84,8 +89,12 @@ export default function VideoCallScreen() {
 
   const showLocalPreview = callMode === "video" && Boolean(call?.localStream);
   const showRemoteVideo = callMode === "video" && remoteStreamUrl;
+  const conversationId = call.conversationId || params.conversationId;
+  const currentUserId = state.user?.userId;
+  const targetUserId = call.otherUser?.id || params.targetUserId;
+  const memberIds = [currentUserId, targetUserId].filter(Boolean) as string[];
 
-  return (
+  const fallbackContent = (
     <SafeAreaView className="flex-1 bg-black">
       <View className="flex-1">
         <View className="absolute top-6 left-0 right-0 z-20 items-center px-6">
@@ -120,6 +129,14 @@ export default function VideoCallScreen() {
           )
         ) : (
           <View className="flex-1 items-center justify-center px-8">
+            {RTCViewComponent && remoteStreamUrl ? (
+              <RTCViewComponent
+                streamURL={remoteStreamUrl}
+                style={{ width: 1, height: 1, opacity: 0 }}
+                objectFit="contain"
+                mirror={false}
+              />
+            ) : null}
             <View className="h-28 w-28 rounded-full bg-neutral-700 items-center justify-center mb-4">
               <Text className="text-white text-3xl font-bold">
                 {getInitials(title)}
@@ -234,5 +251,25 @@ export default function VideoCallScreen() {
         </View>
       </View>
     </SafeAreaView>
+  );
+
+  return (
+    <StreamCallView
+      conversationId={conversationId}
+      callLabel={`Starting call with ${title}...`}
+      mode="direct"
+      memberIds={memberIds}
+      custom={{
+        signalingCallId: call.callId,
+        callType: callMode,
+      }}
+      onLeave={call.endCall}
+      onBack={() => {
+        if (router.canGoBack()) {
+          router.back();
+        }
+      }}
+      fallback={fallbackContent}
+    />
   );
 }

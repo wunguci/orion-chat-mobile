@@ -32,6 +32,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
+      "usesCleartextTraffic": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.orionchatmobile"
     },
@@ -63,7 +64,8 @@
           "cameraPermission": "Ứng dụng cần truy cập camera để chụp ảnh và quay video."
         }
       ],
-      "expo-document-picker"
+      "expo-document-picker",
+      "@stream-io/video-react-native-sdk"
     ],
     "experiments": {
       "typedRoutes": true,

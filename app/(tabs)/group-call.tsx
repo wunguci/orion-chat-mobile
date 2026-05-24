@@ -1,4 +1,6 @@
 import { GroupCallContext } from "@/context/GroupCallContext";
+import StreamCallView from "@/components/call/StreamCallView";
+import { useAuth } from "@/hooks/useAuth";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useContext, useEffect, useMemo } from "react";
@@ -19,7 +21,7 @@ let RTCViewComponent: React.ComponentType<{
 
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  RTCViewComponent = require("react-native-webrtc").RTCView;
+  RTCViewComponent = require("@stream-io/react-native-webrtc").RTCView;
 } catch {
   RTCViewComponent = null;
 }
@@ -55,8 +57,12 @@ const getColumnCount = (count: number) => {
 
 export default function GroupCallScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ callType?: "audio" | "video" }>();
+  const params = useLocalSearchParams<{
+    conversationId?: string;
+    callType?: "audio" | "video";
+  }>();
   const call = useContext(GroupCallContext);
+  const { state } = useAuth();
   const { width } = useWindowDimensions();
 
   useEffect(() => {
@@ -73,12 +79,12 @@ export default function GroupCallScreen() {
     }
   }, [call, call?.status, router]);
 
-  if (!call) {
-    return null;
-  }
-
-  const callMode = call.callType || params.callType || "video";
+  const callMode = call?.callType || params.callType || "video";
   const tiles = useMemo(() => {
+    if (!call) {
+      return [];
+    }
+
     return [
       {
         id: "local",
@@ -99,13 +105,11 @@ export default function GroupCallScreen() {
         isLocal: false,
       })),
     ];
-  }, [
-    call.localStream,
-    call.isVideoEnabled,
-    call.isAudioEnabled,
-    call.isHost,
-    call.participants,
-  ]);
+  }, [call]);
+
+  if (!call) {
+    return null;
+  }
 
   const columnCount = getColumnCount(tiles.length);
   const padding = 16;
@@ -113,8 +117,14 @@ export default function GroupCallScreen() {
   const tileWidth =
     (width - padding * 2 - gap * (columnCount - 1)) / columnCount;
   const tileHeight = tileWidth * 1.2;
+  const conversationId = call.conversationId || params.conversationId;
+  const currentUserId = state.user?.userId;
+  const memberIds = [
+    currentUserId,
+    ...call.participants.map((participant) => participant.id),
+  ].filter(Boolean) as string[];
 
-  return (
+  const fallbackContent = (
     <SafeAreaView className="flex-1 bg-black">
       <View className="absolute -top-20 -left-16 h-56 w-56 rounded-full bg-emerald-500/10" />
       <View className="absolute bottom-0 -right-20 h-72 w-72 rounded-full bg-cyan-500/10" />
@@ -174,6 +184,14 @@ export default function GroupCallScreen() {
                     )
                   ) : (
                     <View className="flex-1 items-center justify-center">
+                      {RTCViewComponent && streamUrl ? (
+                        <RTCViewComponent
+                          streamURL={streamUrl}
+                          style={{ width: 1, height: 1, opacity: 0 }}
+                          objectFit="contain"
+                          mirror={false}
+                        />
+                      ) : null}
                       <View className="h-14 w-14 rounded-full bg-emerald-500/15 items-center justify-center">
                         <Text className="text-emerald-200 text-base font-semibold">
                           {getInitials(tile.name)}
@@ -252,5 +270,25 @@ export default function GroupCallScreen() {
         </View>
       </View>
     </SafeAreaView>
+  );
+
+  return (
+    <StreamCallView
+      conversationId={conversationId}
+      callLabel="Starting group call..."
+      mode="group"
+      memberIds={memberIds}
+      custom={{
+        signalingCallId: call.callId,
+        callType: callMode,
+      }}
+      onLeave={call.leaveGroupCall}
+      onBack={() => {
+        if (router.canGoBack()) {
+          router.back();
+        }
+      }}
+      fallback={fallbackContent}
+    />
   );
 }

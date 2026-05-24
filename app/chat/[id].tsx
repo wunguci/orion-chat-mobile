@@ -7,7 +7,7 @@ import { formatTime, getDiffMinutes, useChat } from '@/hooks/useChat';
 import { useTheme } from '@/hooks/useTheme';
 import { Message } from '@/types/chat';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
     FlatList,
     KeyboardAvoidingView,
@@ -22,6 +22,8 @@ import { generateUniqueId } from '@/utils/generateUniqueId';
 import { chatApi } from '@/services/api/chat';
 import { useNotificationContext } from '@/context/NotificationContext';
 import { useFocusEffect } from 'expo-router';
+import { CallContext } from '@/context/CallContext';
+import { GroupCallContext } from '@/context/GroupCallContext';
 
 function shouldShowAvatar(messages: Message[], index: number): boolean {
     const curr = messages[index];
@@ -47,11 +49,21 @@ export default function ChatScreen() {
         id: string;
         name: string;
         avatarUri?: string;
+        otherUserId?: string;
+        isGroup?: string;
+        participantIds?: string;
     }>();
 
     const router = useRouter();
     const { id, name, avatarUri } = params;
+    const isGroup = params.isGroup === 'true';
+    const participantIds = (params.participantIds || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
     const { colors, colorScheme } = useTheme();
+    const callContext = useContext(CallContext);
+    const groupCallContext = useContext(GroupCallContext);
     const { markConversationNotificationsAsRead } = useNotificationContext();
     const { messages, inputText, setInputText, sendMessage, sendAttachment } =
         useChat(id || '');
@@ -111,6 +123,48 @@ export default function ChatScreen() {
         setForwardVisible(true);
     }, []);
 
+    const handleStartCall = useCallback(
+        async (callType: 'audio' | 'video') => {
+            if (!id) return;
+
+            try {
+                if (isGroup) {
+                    await groupCallContext?.initiateGroupCall(
+                        id,
+                        participantIds,
+                        callType,
+                    );
+                    return;
+                }
+
+                if (!params.otherUserId) {
+                    Alert.alert('Khong the goi', 'Thieu thong tin nguoi nhan');
+                    return;
+                }
+
+                await callContext?.initiateCall(id, params.otherUserId, callType, {
+                    name: name || 'Friend',
+                    avatar: avatarUri,
+                });
+            } catch (error) {
+                Alert.alert(
+                    'Khong the bat dau cuoc goi',
+                    error instanceof Error ? error.message : 'Vui long thu lai sau',
+                );
+            }
+        },
+        [
+            avatarUri,
+            callContext,
+            groupCallContext,
+            id,
+            isGroup,
+            name,
+            params.otherUserId,
+            participantIds,
+        ],
+    );
+
     function shouldShowTimestamp(messages: Message[], index: number): boolean {
         if (index === 0) return true;
 
@@ -167,7 +221,13 @@ export default function ChatScreen() {
             />
 
             {/* Header */}
-            <ChatHeader name={name ?? 'Chat'} avatarUri={avatarUri} isOnline />
+            <ChatHeader
+                name={name ?? 'Chat'}
+                avatarUri={avatarUri}
+                isOnline
+                onAudioCall={() => void handleStartCall('audio')}
+                onVideoCall={() => void handleStartCall('video')}
+            />
 
             {/* Messages */}
             <KeyboardAvoidingView

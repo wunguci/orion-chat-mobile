@@ -1,19 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import { API_BASE_URL, fetchWithTimeout } from '@/config/api';
 
-const resolveBaseUrl = (baseUrl: string) => {
-    if (Platform.OS === 'android' && baseUrl.includes('localhost')) {
-        return baseUrl.replace('localhost', '10.0.2.2');
-    }
-    return baseUrl;
-};
-
-export const API_BASE_URL = resolveBaseUrl(
-    (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000').replace(
-        /\/$/,
-        '',
-    ),
-);
+export { API_BASE_URL };
 
 // Get auth token from storage keys used across the app.
 const getAuthToken = async () => {
@@ -89,7 +77,7 @@ export const profileApi = {
         const url = `${API_BASE_URL}/users/profile`;
 
         try {
-            const response = await fetch(url, {
+            const response = await fetchWithTimeout(url, {
                 method: 'GET',
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -131,7 +119,7 @@ export const profileApi = {
                     ...(updateData.gender && { gender: updateData.gender }),
                 };
 
-                const response = await fetch(url, {
+                const response = await fetchWithTimeout(url, {
                     method: 'PATCH',
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -175,7 +163,7 @@ export const profileApi = {
                 appendFile(formData, 'cover', files.cover);
             }
 
-            const response = await fetch(url, {
+            const response = await fetchWithTimeout(url, {
                 method: 'PATCH',
                 headers: {
                     Authorization: `Bearer ${token}`,

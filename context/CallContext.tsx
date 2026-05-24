@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useWebRTC } from "@/hooks/useWebRTC";
+import { useStreamVideoRuntime } from "@/context/StreamVideoContext";
 import { callSocketService } from "../services/websocket/callSocket";
 import type {
   CallAnswerData,
@@ -60,6 +61,9 @@ const INITIAL_STATE: CallState = {
 export function CallProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { state } = useAuth();
+  const streamVideoRuntime = useStreamVideoRuntime();
+  const streamVideoEnabled =
+    streamVideoRuntime.sdkAvailable && streamVideoRuntime.clientReady;
   const [callState, setCallState] = useState<CallState>(INITIAL_STATE);
   const [incomingCall, setIncomingCall] = useState<IncomingCallData | null>(
     null,
@@ -277,6 +281,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      if (streamVideoEnabled) {
+        return;
+      }
+
       try {
         const offer = await createOffer();
         socket.emit("call:offer", {
@@ -318,6 +326,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
     const onOffer = async (data: CallOfferData) => {
       // Offer for active call: renegotiation/ICE restart.
+      if (streamVideoEnabled) {
+        return;
+      }
+
       if (
         currentCallIdRef.current === data.callId &&
         !incomingCallRef.current
@@ -371,6 +383,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     };
 
     const onAnswer = async (data: CallAnswerData) => {
+      if (streamVideoEnabled) {
+        return;
+      }
+
       try {
         await handleAnswer(data.answer);
       } catch (error) {
@@ -384,6 +400,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     };
 
     const onIceCandidate = async (data: IceCandidateData) => {
+      if (streamVideoEnabled) {
+        return;
+      }
+
       try {
         await addIceCandidate(data.candidate);
       } catch {
@@ -508,6 +528,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     handleOffer,
     handleAnswer,
     addIceCandidate,
+    streamVideoEnabled,
   ]);
 
   const initiateCall = useCallback(
@@ -531,7 +552,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Call socket is not connected");
       }
 
-      if (!isSupported) {
+      if (!streamVideoEnabled && !isSupported) {
         handleUnsupportedRuntime("initiate");
         return;
       }
@@ -551,13 +572,33 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         error: null,
       }));
 
-      initializePeerConnection();
+      if (!streamVideoEnabled) {
+        initializePeerConnection();
 
-      const stream = await getLocalStream(callType === "video", true);
-      setCallState((prev) => ({
-        ...prev,
-        localStream: stream,
-      }));
+        let stream: Awaited<ReturnType<typeof getLocalStream>> | null = null;
+        try {
+          stream = await getLocalStream(callType === "video", true);
+        } catch (error) {
+          if (callType === "video") {
+            stream = await getLocalStream(false, true);
+            setCallState((prev) => ({
+              ...prev,
+              isVideoEnabled: false,
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Cannot access camera, starting with audio only",
+            }));
+          } else {
+            throw error;
+          }
+        }
+
+        setCallState((prev) => ({
+          ...prev,
+          localStream: stream,
+        }));
+      }
 
       socket.emit("call:initiate", {
         conversationId,
@@ -575,6 +616,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       initializePeerConnection,
       getLocalStream,
       isSupported,
+      streamVideoEnabled,
       handleUnsupportedRuntime,
     ],
   );
@@ -583,7 +625,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     const socket = callSocketService.getSocket();
     if (!socket || !incomingCall) return;
 
-    if (!isSupported) {
+    if (!streamVideoEnabled && !isSupported) {
       handleUnsupportedRuntime("accept");
       socket.emit("call:reject", {
         callId: incomingCall.callId,
@@ -597,45 +639,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     acceptedCallIdRef.current = incomingCall.callId;
     acceptedIncomingCallRef.current = incomingCall;
 
-    try {
-      initializePeerConnection();
-    } catch (error) {
-      setCallState((prev) => ({
-        ...prev,
-        status: "failed",
-        error:
-          error instanceof Error
-            ? error.message
-            : "WebRTC initialization failed",
-      }));
-      return;
-    }
-
-    const localSetup = async () => {
+    if (!streamVideoEnabled) {
       try {
-        const stream = await getLocalStream(
-          incomingCall.callType === "video",
-          true,
-        );
-        setCallState((prev) => ({
-          ...prev,
-          localStream: stream,
-        }));
-
-        const pendingOffer = pendingOfferRef.current;
-        if (pendingOffer && pendingOffer.callId === incomingCall.callId) {
-          const answer = await handleOffer(pendingOffer.offer);
-          socket.emit("call:answer", {
-            callId: pendingOffer.callId,
-            callerId: pendingOffer.callerId,
-            answer,
-          });
-
-          acceptedIncomingCallRef.current = null;
-          pendingOfferRef.current = null;
-          setIncomingCall(null);
-          incomingAlertShownRef.current = false;
-        }
+        initializePeerConnection();
       } catch (error) {
         setCallState((prev) => ({
           ...prev,
@@ -643,12 +649,73 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           error:
             error instanceof Error
               ? error.message
-              : "Cannot access camera/microphone",
+              : "WebRTC initialization failed",
         }));
+        return;
       }
-    };
 
-    void localSetup();
+      const localSetup = async () => {
+        try {
+          let stream: Awaited<ReturnType<typeof getLocalStream>> | null = null;
+          try {
+            stream = await getLocalStream(
+              incomingCall.callType === "video",
+              true,
+            );
+          } catch (error) {
+            if (incomingCall.callType !== "video") {
+              throw error;
+            }
+
+            stream = await getLocalStream(false, true);
+            setCallState((prev) => ({
+              ...prev,
+              isVideoEnabled: false,
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Cannot access camera, answering with audio only",
+            }));
+          }
+
+          setCallState((prev) => ({
+            ...prev,
+            localStream: stream,
+          }));
+
+          const pendingOffer = pendingOfferRef.current;
+          if (pendingOffer && pendingOffer.callId === incomingCall.callId) {
+            const answer = await handleOffer(pendingOffer.offer);
+            socket.emit("call:answer", {
+              callId: pendingOffer.callId,
+              callerId: pendingOffer.callerId,
+              answer,
+            });
+
+            acceptedIncomingCallRef.current = null;
+            pendingOfferRef.current = null;
+            setIncomingCall(null);
+            incomingAlertShownRef.current = false;
+          }
+        } catch (error) {
+          setCallState((prev) => ({
+            ...prev,
+            status: "failed",
+            error:
+              error instanceof Error
+                ? error.message
+                : "Cannot access camera/microphone",
+          }));
+        }
+      };
+
+      void localSetup();
+    } else {
+      acceptedIncomingCallRef.current = null;
+      pendingOfferRef.current = null;
+      setIncomingCall(null);
+      incomingAlertShownRef.current = false;
+    }
 
     socket.emit("call:accept", {
       callId: incomingCall.callId,
@@ -675,6 +742,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     handleOffer,
     initializePeerConnection,
     isSupported,
+    streamVideoEnabled,
     handleUnsupportedRuntime,
   ]);
 

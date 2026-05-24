@@ -18,6 +18,7 @@ import { CallProvider } from '@/context/CallContext';
 import { SocketProvider } from '@/context/SocketContext';
 import { NotificationProvider } from '@/context/NotificationContext';
 import { GroupCallProvider } from '@/context/GroupCallContext';
+import { StreamVideoProvider } from '@/context/StreamVideoContext';
 import { useSessionConflictListener } from '@/hooks/useSessionConflictListener';
 import { useAuth } from '@/hooks/useAuth';
 import IncomingGroupCallModal from '@/components/call/IncomingGroupCallModal';
@@ -103,16 +104,18 @@ export default function RootLayout() {
     return (
         <Provider store={store}>
             <AuthProvider>
-                <SocketProvider>
-                    <CallProvider>
-                        <GroupCallProvider>
-                            <NotificationProvider>
-                                <RootLayoutContent />
-                                <IncomingGroupCallModal />
-                            </NotificationProvider>
-                        </GroupCallProvider>
-                    </CallProvider>
-                </SocketProvider>
+                <StreamVideoProvider>
+                    <SocketProvider>
+                        <CallProvider>
+                            <GroupCallProvider>
+                                <NotificationProvider>
+                                    <RootLayoutContent />
+                                    <IncomingGroupCallModal />
+                                </NotificationProvider>
+                            </GroupCallProvider>
+                        </CallProvider>
+                    </SocketProvider>
+                </StreamVideoProvider>
             </AuthProvider>
         </Provider>
     );

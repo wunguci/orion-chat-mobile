@@ -5,7 +5,8 @@ import type {
   RTCIceCandidate,
   RTCPeerConnection,
   RTCSessionDescription,
-} from "react-native-webrtc";
+} from "@stream-io/react-native-webrtc";
+import { getIceConfiguration } from "@/config/webrtcIce";
 import { GroupCallPeerManager } from "../services/groupCallPeerManager";
 
 type WebRTCModule = {
@@ -27,7 +28,8 @@ type WebRTCModule = {
 let webRTCModule: WebRTCModule | null = null;
 
 try {
-  webRTCModule = require("react-native-webrtc") as WebRTCModule;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  webRTCModule = require("@stream-io/react-native-webrtc") as WebRTCModule;
 } catch {
   webRTCModule = null;
 }
@@ -40,43 +42,6 @@ const ensureWebRTCModule = (): WebRTCModule => {
   }
 
   return webRTCModule;
-};
-
-const getIceConfiguration = (): RTCConfiguration => {
-  const turnUrls = process.env.EXPO_PUBLIC_TURN_URLS;
-  const turnUsername = process.env.EXPO_PUBLIC_TURN_USERNAME;
-  const turnCredential = process.env.EXPO_PUBLIC_TURN_CREDENTIAL;
-  const forceRelay = process.env.EXPO_PUBLIC_FORCE_TURN_RELAY === "true";
-
-  const iceServers: RTCIceServer[] = [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-  ];
-
-  if (turnUrls && turnUsername && turnCredential) {
-    const parsedTurnUrls = turnUrls
-      .split(",")
-      .map((item) => item.trim())
-      .filter(
-        (item) =>
-          Boolean(item) &&
-          (item.startsWith("turn:") || item.startsWith("turns:")),
-      );
-
-    if (parsedTurnUrls.length > 0) {
-      iceServers.push({
-        urls: parsedTurnUrls,
-        username: turnUsername,
-        credential: turnCredential,
-      });
-    }
-  }
-
-  return {
-    iceServers,
-    iceCandidatePoolSize: 8,
-    iceTransportPolicy: forceRelay ? "relay" : "all",
-  };
 };
 
 interface UseGroupCallProps {
@@ -98,9 +63,35 @@ export const useGroupCall = ({
     Map<string, RTCIceCandidateInit[]>
   >(new Map());
 
+  const flushPendingIceCandidates = useCallback(async (userId: string) => {
+    const peerConnection = peerManagerRef.current?.getPeerConnection(userId);
+    if (!peerConnection?.remoteDescription) {
+      return;
+    }
+
+    const pendingCandidates = pendingIceCandidatesRef.current.get(userId);
+    if (!pendingCandidates?.length) {
+      return;
+    }
+
+    pendingIceCandidatesRef.current.delete(userId);
+    const { RTCIceCandidate } = ensureWebRTCModule();
+
+    for (const candidate of pendingCandidates) {
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch {
+        // Ignore pending candidate errors
+      }
+    }
+  }, []);
+
   useEffect(() => {
-    if (!peerManagerRef.current) {
-      peerManagerRef.current = new GroupCallPeerManager(getIceConfiguration());
+    if (!peerManagerRef.current && webRTCModule) {
+      peerManagerRef.current = new GroupCallPeerManager(
+        getIceConfiguration(),
+        webRTCModule.RTCPeerConnection,
+      );
     }
   }, []);
 
@@ -121,13 +112,7 @@ export const useGroupCall = ({
               frameRate: 15,
             }
           : false,
-        audio: enableAudio
-          ? {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
-            }
-          : false,
+        audio: enableAudio,
       });
 
       localStreamRef.current = stream;
@@ -143,7 +128,20 @@ export const useGroupCall = ({
       userName: string,
       isInitiator: boolean = false,
     ): Promise<RTCPeerConnection> => {
+      const { RTCPeerConnection } = ensureWebRTCModule();
+
+      if (!peerManagerRef.current) {
+        peerManagerRef.current = new GroupCallPeerManager(
+          getIceConfiguration(),
+          RTCPeerConnection,
+        );
+      }
+
       const peerManager = peerManagerRef.current;
+      const existingPeer = peerManager.getPeerConnection(userId);
+      if (existingPeer) {
+        return existingPeer;
+      }
       if (!peerManager) {
         throw new Error("Peer manager not initialized");
       }
@@ -210,19 +208,6 @@ export const useGroupCall = ({
         peerConnection.addTransceiver("video", { direction: "recvonly" });
       }
 
-      const pendingCandidates = pendingIceCandidatesRef.current.get(userId);
-      if (pendingCandidates) {
-        const { RTCIceCandidate } = ensureWebRTCModule();
-        for (const candidate of pendingCandidates) {
-          try {
-            await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-          } catch {
-            // Ignore pending candidate errors
-          }
-        }
-        pendingIceCandidatesRef.current.delete(userId);
-      }
-
       return peerConnection;
     },
     [onParticipantStream, onParticipantLeft, onIceCandidate, onConnectionStateChange],
@@ -264,6 +249,7 @@ export const useGroupCall = ({
         await peerConnection.setRemoteDescription(
           new RTCSessionDescription(offer),
         );
+        await flushPendingIceCandidates(userId);
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
         return answer;
@@ -271,7 +257,7 @@ export const useGroupCall = ({
         return null;
       }
     },
-    [],
+    [flushPendingIceCandidates],
   );
 
   const handleAnswerFromParticipant = useCallback(
@@ -286,18 +272,19 @@ export const useGroupCall = ({
         await peerConnection.setRemoteDescription(
           new RTCSessionDescription(answer),
         );
+        await flushPendingIceCandidates(userId);
       } catch {
         // Ignore answer errors
       }
     },
-    [],
+    [flushPendingIceCandidates],
   );
 
   const addIceCandidateForParticipant = useCallback(
     async (userId: string, candidate: RTCIceCandidateInit) => {
       const peerConnection = peerManagerRef.current?.getPeerConnection(userId);
 
-      if (!peerConnection) {
+      if (!peerConnection || !peerConnection.remoteDescription) {
         if (!pendingIceCandidatesRef.current.has(userId)) {
           pendingIceCandidatesRef.current.set(userId, []);
         }

@@ -5,14 +5,14 @@ import type {
   LoginResponse,
   ErrorResponse,
 } from "../../types/auth";
-import API_BASE_URL from "../../config/api";
+import { API_BASE_URL, fetchWithTimeout } from "../../config/api";
 
 /**
  * Send OTP to phone number
  */
 export async function sendOtp(phoneNumber: string): Promise<SendOtpResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/auth/send-otp`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -43,7 +43,7 @@ export async function verifyOtp(
   otp: string,
 ): Promise<VerifyOtpResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/auth/verify-otp`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -77,7 +77,7 @@ export async function completeRegister(formData: {
   gender: "male" | "female" | "other";
 }): Promise<RegisterResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/complete-register`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/auth/complete-register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -108,7 +108,7 @@ export async function login(
   password: string,
 ): Promise<LoginResponse> {
     try {
-        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        const response = await fetchWithTimeout(`${API_BASE_URL}/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -166,7 +166,7 @@ export async function logout(token: string): Promise<{ message: string }> {
             token ? `${token.substring(0, 20)}...` : 'NO TOKEN',
         );
 
-        const response = await fetch(`${API_BASE_URL}/auth/logout-with-token`, {
+        const response = await fetchWithTimeout(`${API_BASE_URL}/auth/logout-with-token`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -227,7 +227,7 @@ export async function sendOtpForgetPassword(
   phoneNumber: string,
 ): Promise<SendOtpResponse> {
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${API_BASE_URL}/auth/send-otp-forget-password`,
       {
         method: "POST",
@@ -261,7 +261,7 @@ export async function verifyOtpForgetPassword(
   otp: string,
 ): Promise<VerifyOtpResponse> {
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${API_BASE_URL}/auth/verify-otp-forget-password`,
       {
         method: "POST",
@@ -297,7 +297,7 @@ export async function resetPassword(formData: {
   confirmPassword: string;
 }): Promise<{ success: boolean; message: string; data: any }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/auth/reset-password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
