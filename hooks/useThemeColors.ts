@@ -1,4 +1,3 @@
-import { useColorScheme } from "react-native";
 import { Colors } from "../constants/theme";
 
 /**
@@ -10,6 +9,5 @@ import { Colors } from "../constants/theme";
  * <Text style={{ color: colors.text }}>Hello</Text>
  */
 export function useThemeColors() {
-  const colorScheme = useColorScheme();
-  return Colors[colorScheme ?? "light"];
+  return Colors.light;
 }

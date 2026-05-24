@@ -1,9 +1,5 @@
 import '@/index.css';
-import {
-    DarkTheme,
-    DefaultTheme,
-    ThemeProvider,
-} from '@react-navigation/native';
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -11,7 +7,6 @@ import { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 import { Provider } from 'react-redux';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { store } from '@/store';
 import { AuthProvider } from '@/context/AuthContext';
 import { CallProvider } from '@/context/CallContext';
@@ -31,7 +26,6 @@ SplashScreen.preventAutoHideAsync();
 // };
 
 function RootLayoutContent() {
-    const colorScheme = useColorScheme();
     const router = useRouter();
     const { state } = useAuth();
     const isInitialMount = useRef(true);
@@ -62,16 +56,11 @@ function RootLayoutContent() {
     useSessionConflictListener();
 
     return (
-        <ThemeProvider
-            value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}
-        >
+        <ThemeProvider value={DefaultTheme}>
             <Stack
                 screenOptions={{
                     headerShown: false,
-                    contentStyle: {
-                        backgroundColor:
-                            colorScheme === 'dark' ? '#000' : '#fff',
-                    },
+                    contentStyle: { backgroundColor: '#fff' },
                 }}
             >
                 <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -86,11 +75,15 @@ function RootLayoutContent() {
                     options={{ headerShown: false }}
                 />
                 <Stack.Screen
+                    name="work-hub"
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
                     name="modal"
                     options={{ presentation: 'modal', title: 'Modal' }}
                 />
             </Stack>
-            <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+            <StatusBar style="dark" />
         </ThemeProvider>
     );
 }

@@ -68,10 +68,10 @@ const EXTRA_ITEMS: DrawerItem[] = [
     match: (pathname) => pathname.startsWith("/(tabs)/notes"),
   },
   {
-    href: "/(tabs)/work-hub",
+    href: "/work-hub",
     label: "WorkHub",
     icon: <Briefcase size={20} strokeWidth={2} />,
-    match: (pathname) => pathname.startsWith("/(tabs)/work-hub"),
+    match: (pathname) => pathname.startsWith("/work-hub"),
   },
   {
     href: "/(tabs)/video-call",
@@ -157,7 +157,7 @@ export default function CustomDrawerContent(
         ))}
 
         <View style={styles.divider} />
-        <Text style={styles.sectionLabel}>TINH NANG KHAC</Text>
+        <Text style={styles.sectionLabel}>TÍNH NĂNG KHÁC</Text>
 
         {EXTRA_ITEMS.map((item) => (
           <DrawerRow
