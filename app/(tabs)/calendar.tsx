@@ -34,6 +34,7 @@ export default function CalendarScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<CalendarEvent[]>([]);
   const [participantOptions, setParticipantOptions] = useState<
     ParticipantOption[]
   >([]);
@@ -59,6 +60,8 @@ export default function CalendarScreen() {
         q: searchQuery,
       });
       setEvents(rows);
+      const invites = await calendarApi.getPendingInvites();
+      setPendingInvites(invites);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Cannot load calendar events";
@@ -168,6 +171,20 @@ export default function CalendarScreen() {
       const message =
         error instanceof Error ? error.message : "Cannot save calendar event";
       Alert.alert("Save failed", message);
+    }
+  };
+
+  const handleInviteResponse = async (
+    eventId: string,
+    status: "accepted" | "declined",
+  ) => {
+    try {
+      await calendarApi.respondToInvite(eventId, status);
+      await loadEvents();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Cannot respond to invite";
+      Alert.alert("Invite response", message);
     }
   };
 
@@ -343,6 +360,58 @@ export default function CalendarScreen() {
       {!loading && errorMessage && (
         <View className="mx-4 mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
           <Text className="text-red-600">{errorMessage}</Text>
+        </View>
+      )}
+
+      {!loading && !errorMessage && pendingInvites.length > 0 && (
+        <View className="mx-4 mt-4 rounded-2xl border border-gray-200 bg-white px-4 py-4">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-sm font-semibold text-gray-700">
+              Pending event invites
+            </Text>
+            <View className="rounded-full bg-gray-100 px-2 py-1">
+              <Text className="text-xs font-semibold text-gray-600">
+                {pendingInvites.length}
+              </Text>
+            </View>
+          </View>
+          <View className="mt-3">
+            {pendingInvites.map((invite) => (
+              <View
+                key={invite.id}
+                className="mb-3 rounded-xl border border-gray-200 px-3 py-3"
+              >
+                <Text className="text-sm font-semibold text-gray-primary">
+                  {invite.title}
+                </Text>
+                <Text className="mt-1 text-xs text-gray-text">
+                  {new Date(invite.start).toLocaleString()}
+                </Text>
+                <View className="mt-3 flex-row">
+                  <TouchableOpacity
+                    onPress={() =>
+                      void handleInviteResponse(invite.id, "declined")
+                    }
+                    className="mr-2 rounded-lg border border-gray-300 px-3 py-2"
+                  >
+                    <Text className="text-xs font-semibold text-gray-600">
+                      Decline
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() =>
+                      void handleInviteResponse(invite.id, "accepted")
+                    }
+                    className="rounded-lg bg-green-primary px-3 py-2"
+                  >
+                    <Text className="text-xs font-semibold text-white">
+                      Accept
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
         </View>
       )}
 

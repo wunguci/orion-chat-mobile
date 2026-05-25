@@ -16,6 +16,7 @@ export interface Participant {
   avatar: string;
   userId?: string;
   groupId?: string;
+  status?: "pending" | "accepted" | "declined";
 }
 
 export interface ParticipantOption {
@@ -38,6 +39,11 @@ export interface CalendarEvent {
   notificationMinutes: number;
   isAllDay?: boolean;
   participants?: Participant[];
+  owner?: {
+    userId: string;
+    fullName: string;
+    avatarUrl?: string | null;
+  } | null;
   createdAt?: string;
   updatedAt?: string;
 }
