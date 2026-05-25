@@ -6,12 +6,14 @@ import { Text, TouchableOpacity, View } from "react-native";
 interface Props {
   user: SearchUserItem;
   onAdd: (userId: string) => void;
+  onMessage?: (userId: string) => void;
   isPending?: boolean;
 }
 
 export const SearchUserRow: React.FC<Props> = ({
   user,
   onAdd,
+  onMessage,
   isPending = false,
 }) => {
   return (
@@ -27,15 +29,23 @@ export const SearchUserRow: React.FC<Props> = ({
           </Text>
         </View>
       </View>
-      <TouchableOpacity
-        disabled={isPending}
-        onPress={() => onAdd(user.id)}
-        className="bg-gray-light px-4 py-2 rounded-lg disabled:opacity-70"
-      >
-        <Text className="text-green-primary font-semibold">
-          {isPending ? "Da gui loi moi" : "Add"}
-        </Text>
-      </TouchableOpacity>
+      <View className="flex-row items-center">
+        <TouchableOpacity
+          onPress={() => onMessage?.(user.id)}
+          className="bg-white border border-gray-200 px-3 py-2 rounded-lg mr-2"
+        >
+          <Text className="text-gray-primary font-semibold">Chat</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          disabled={isPending}
+          onPress={() => onAdd(user.id)}
+          className="bg-gray-light px-4 py-2 rounded-lg disabled:opacity-70"
+        >
+          <Text className="text-green-primary font-semibold">
+            {isPending ? "Da gui loi moi" : "Add"}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };

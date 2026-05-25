@@ -352,6 +352,37 @@ export default function Friends() {
     }
   };
 
+  const handleDirectMessageSearch = useCallback(
+    async (user: SearchUserItem) => {
+      try {
+        const conversation = await chatApi.createConversation({
+          receiverId: user.id,
+        });
+
+        const conversationId = conversation?.conversationId;
+        if (!conversationId) {
+          throw new Error("Failed to open conversation");
+        }
+
+        router.push({
+          pathname: "/chat/[id]",
+          params: {
+            id: conversationId,
+            name: user.fullName,
+            avatarUri: user.avatarUrl || "",
+          },
+        });
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Cannot open direct message",
+        );
+      }
+    },
+    [router],
+  );
+
   const openFriendView = useCallback(
     (
       targetUserId: string,
@@ -691,6 +722,7 @@ export default function Friends() {
                 user={user}
                 isPending={pendingSentRequestIds.has(user.id)}
                 onAdd={(userId) => void handleAddFriend(userId)}
+                onMessage={() => void handleDirectMessageSearch(user)}
               />
             ))}
           </View>
