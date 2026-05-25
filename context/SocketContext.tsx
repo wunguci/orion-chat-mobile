@@ -1,4 +1,10 @@
-import React, { createContext, useEffect, useState, ReactNode } from 'react';
+import React, {
+    createContext,
+    useEffect,
+    useRef,
+    useState,
+    ReactNode,
+} from 'react';
 import { Socket } from 'socket.io-client';
 import { presenceSocketService } from '@/services/websocket/presenceSocket';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,19 +24,27 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
     const { state } = useAuth();
     const userId = state.user?.userId;
+    const token = state.token || undefined;
     const [socket, setSocket] = useState<Socket | null>(null);
     const [isConnected, setIsConnected] = useState(false);
+    const lastTokenRef = useRef<string | undefined>(undefined);
 
     useEffect(() => {
-        if (userId) {
+        if (userId && token) {
             console.log(
                 '[SocketProvider] User authenticated, connecting to presence socket',
             );
+            if (lastTokenRef.current && lastTokenRef.current !== token) {
+                presenceSocketService.disconnect();
+            }
+
             const connectedSocket = presenceSocketService.connect(
                 userId,
                 'mobile',
+                token,
             );
             setSocket(connectedSocket);
+            lastTokenRef.current = token;
 
             const handleConnect = () => {
                 console.log('[SocketProvider] Socket connected');
@@ -56,8 +70,9 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({
             presenceSocketService.disconnect();
             setSocket(null);
             setIsConnected(false);
+            lastTokenRef.current = undefined;
         }
-    }, [userId]);
+    }, [userId, token]);
 
     return (
         <SocketContext.Provider value={{ socket, isConnected }}>

@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import {
     Image,
     Linking,
+    Modal,
     Pressable,
     Text,
     TouchableOpacity,
@@ -13,6 +14,7 @@ import {
     Alert,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MessageReactions from './MessageReactions';
 import {
     downloadFileDirectly,
@@ -157,8 +159,29 @@ function VideoBubble({
         return null;
     }
 
+    const videoMimeType = message.fileMimeType || 'video/mp4';
+    const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                html, body { margin: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+                video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+                button { position: fixed; top: 18px; right: 18px; z-index: 2; width: 44px; height: 44px; border-radius: 22px; border: 0; background: rgba(255,255,255,.9); font-size: 28px; }
+            </style>
+        </head>
+        <body>
+            <video controls autoplay playsinline>
+                <source src=${JSON.stringify(videoUri)} type=${JSON.stringify(videoMimeType)}>
+            </video>
+            <button onclick="window.ReactNativeWebView.postMessage('close')">&times;</button>
+        </body>
+        </html>
+    `;
+
     // If showing full video, display WebView with HTML5 video player
-    if (showVideo) {
+    if (false && showVideo) {
         const htmlContent = `
             <!DOCTYPE html>
             <html>
@@ -268,6 +291,31 @@ function VideoBubble({
     // Show thumbnail with play button - similar to screenshot
     return (
         <View style={{ maxWidth: '78%' }}>
+            <Modal
+                visible={showVideo}
+                animationType="fade"
+                presentationStyle="fullScreen"
+                onRequestClose={() => setShowVideo(false)}
+            >
+                <SafeAreaView
+                    edges={['top', 'bottom']}
+                    style={{ flex: 1, backgroundColor: '#000' }}
+                >
+                    <WebView
+                        source={{ html: htmlContent }}
+                        onMessage={(event) => {
+                            if (event.nativeEvent.data === 'close') {
+                                setShowVideo(false);
+                            }
+                        }}
+                        startInLoadingState
+                        style={{ flex: 1, backgroundColor: '#000' }}
+                        mediaPlaybackRequiresUserAction={false}
+                        allowsFullscreenVideo
+                        allowsInlineMediaPlayback
+                    />
+                </SafeAreaView>
+            </Modal>
             <TouchableOpacity
                 onPress={() => {
                     if (!isLongPressing) {

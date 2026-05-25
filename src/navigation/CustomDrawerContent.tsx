@@ -4,9 +4,11 @@ import {
 } from "@react-navigation/drawer";
 import { router, usePathname } from "expo-router";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { whColors } from "@/constants/tailwindColors";
+import { useAuthUser } from "@/hooks/useAuth";
+import { API_BASE_URL } from "@/services/api/profile";
 import {
   MessageCircle,
   Users,
@@ -81,6 +83,24 @@ const EXTRA_ITEMS: DrawerItem[] = [
   },
 ];
 
+const resolveImageUrl = (value?: string | null) => {
+  if (!value) return undefined;
+  if (/^https?:\/\//i.test(value)) return value;
+
+  const normalizedPath = value.startsWith("/") ? value : `/${value}`;
+  return `${API_BASE_URL}${normalizedPath}`;
+};
+
+const getInitials = (name?: string | null) => {
+  const normalized = (name || "User").trim();
+  return normalized
+    .split(/\s+/)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+};
+
 function DrawerRow({
   label,
   icon,
@@ -117,6 +137,10 @@ export default function CustomDrawerContent(
 ) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
+  const { user, loading } = useAuthUser();
+  const displayName = user?.fullName || user?.phoneNumber || "User";
+  const subtitle = user?.phoneNumber || user?.email || "No phone";
+  const avatarUri = resolveImageUrl(user?.avatarUrl);
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + 4 }]}>
@@ -128,11 +152,19 @@ export default function CustomDrawerContent(
         }}
       >
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>HP</Text>
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+          ) : (
+            <Text style={styles.avatarText}>{getInitials(displayName)}</Text>
+          )}
         </View>
         <View>
-          <Text style={styles.userName}>Phan Phước Hiệp</Text>
-          <Text style={styles.userSub}>Xem profile</Text>
+          <Text style={styles.userName} numberOfLines={1}>
+            {loading ? "Loading..." : displayName}
+          </Text>
+          <Text style={styles.userSub} numberOfLines={1}>
+            {loading ? "" : subtitle}
+          </Text>
         </View>
       </TouchableOpacity>
 
@@ -201,6 +233,11 @@ const styles = StyleSheet.create({
     borderColor: whColors.primary,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
   },
   avatarText: {
     color: whColors.primary,

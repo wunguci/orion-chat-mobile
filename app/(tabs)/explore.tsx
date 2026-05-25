@@ -643,8 +643,8 @@ export default function Friends() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <View className="border-b border-gray-200 bg-white px-4 pb-4 flex-row items-center justify-between">
+    <SafeAreaView className="flex-1 bg-white" edges={[]}>
+      <View className="border-b border-gray-200 bg-white px-4 pb-4 pt-4 flex-row items-center justify-between">
         <Text className="text-2xl font-bold text-gray-primary">Friends</Text>
         <TouchableOpacity>
           <Ionicons name="ellipsis-vertical" size={20} color="#505050" />
@@ -670,7 +670,7 @@ export default function Friends() {
               placeholder="Search friends, users..."
               value={searchQuery}
               onChangeText={setSearchQuery}
-              className="flex-1 ml-2 text-base"
+              className="flex-1 py-2 ml-2 text-base"
               placeholderTextColor="#94a3b8"
             />
           </View>

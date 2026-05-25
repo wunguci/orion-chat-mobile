@@ -73,7 +73,8 @@ export default function ChatSearchBar({
                 flexDirection: 'row',
                 alignItems: 'center',
                 paddingHorizontal: 12,
-                paddingVertical: 8,
+                paddingTop: 15,
+                paddingBottom: 8,
                 backgroundColor: colors.background,
                 gap: 10,
             }}

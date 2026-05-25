@@ -99,6 +99,11 @@ export const tokenUtils = {
             USER_KEY,
             LAST_ACTIVITY_KEY,
             REMEMBER_ME_KEY,
+            'token',
+            'accessToken',
+            'userId',
+            'user.id',
+            'user',
         ]);
         console.log('[tokenUtils] All data cleared successfully');
     },

@@ -10,7 +10,7 @@ const PRESENCE_URL = `${SOCKET_BASE_URL}/presence`;
 class PresenceSocketService {
     private socket: Socket | null = null;
 
-    connect(userId: string, platform: string = 'mobile') {
+    connect(userId: string, platform: string = 'mobile', token?: string) {
         if (this.socket?.connected) {
             return this.socket;
         }
@@ -24,6 +24,7 @@ class PresenceSocketService {
 
         this.socket = io(PRESENCE_URL, {
             query: { userId, platform },
+            auth: token ? { token } : undefined,
             transports: ['websocket'],
             forceNew: false,
         });

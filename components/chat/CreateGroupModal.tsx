@@ -15,6 +15,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { friendApi } from '@/services/api/friend';
 import { chatApi } from '@/services/api/chat';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Friend {
     id: string;
@@ -34,6 +35,7 @@ export default function CreateGroupModal({
     onGroupCreated,
 }: CreateGroupModalProps) {
     const { colors } = useTheme();
+    const insets = useSafeAreaInsets();
 
     const [groupName, setGroupName] = useState('');
     const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
@@ -218,12 +220,19 @@ export default function CreateGroupModal({
             transparent={false}
             onRequestClose={resetModal}
         >
-            <View style={{ flex: 1, backgroundColor: colors.background }}>
+            <View
+                style={{
+                    flex: 1,
+                    backgroundColor: colors.background,
+                    paddingTop: Math.max(insets.top, 0),
+                    paddingBottom: insets.bottom,
+                }}
+            >
                 {/* Header */}
                 <View
                     style={{
-                        paddingTop: 12,
                         paddingHorizontal: 16,
+                        paddingTop: 12,
                         paddingBottom: 8,
                         borderBottomWidth: 1,
                         borderBottomColor: colors.border,

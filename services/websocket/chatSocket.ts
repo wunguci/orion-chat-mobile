@@ -1,7 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_BASE_URL from '@/config/api';
-import { is } from 'date-fns/locale';
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
@@ -91,8 +90,9 @@ class ChatSocketService {
         this.isConnecting = true;
 
         try {
-            // Lấy JWT token từ AsyncStorage
+            // Lấy JWT token và userId từ AsyncStorage
             const token = await this.getAuthToken();
+            const userId = await this.getAuthUserId();
             if (!token) {
                 throw new Error('No authentication token found');
             }
@@ -105,6 +105,7 @@ class ChatSocketService {
                     path: '/socket.io',
                     auth: {
                         token,
+                        ...(userId ? { userId } : {}),
                     },
                     reconnection: true,
                     reconnectionDelay: 1000,
@@ -206,20 +207,29 @@ class ChatSocketService {
 
         // Listen tin nhắn mới từ server
         this.socket.on('chat:message_new', (serverData: any) => {
+            const serverMessage = serverData.message || serverData;
             const data: SocketMessage = {
-                conversationId: serverData.conversationId,
+                conversationId:
+                    serverData.conversationId || serverMessage.conversationId,
                 message: {
-                    _id: serverData.message._id,
-                    conversationId: serverData.message.conversationId,
-                    senderBy: serverData.message.senderBy,
-                    senderName: serverData.message.senderName,
-                    senderAvatar: serverData.message.senderAvatar,
-                    content: serverData.message.content,
-                    messageType: serverData.message.messageType,
-                    createdAt: serverData.message.createdAt,
-                    clientMessageId: serverData.message.clientMessageId,
-                    replyToMessageId: serverData.message.replyToMessageId,
+                    _id: serverMessage._id || serverMessage.messageId,
+                    conversationId:
+                        serverMessage.conversationId ||
+                        serverData.conversationId,
+                    senderBy: serverMessage.senderBy,
+                    senderName: serverMessage.senderName,
+                    senderAvatar: serverMessage.senderAvatar,
+                    content: serverMessage.content,
+                    messageType: serverMessage.messageType || serverMessage.type,
+                    createdAt: serverMessage.createdAt || serverMessage.timestamp,
+                    clientMessageId: serverMessage.clientMessageId,
+                    replyToMessageId: serverMessage.replyToMessageId,
                     messageStatus: 'SENT',
+                    mediaUrl: serverMessage.mediaUrl,
+                    fileName: serverMessage.fileName,
+                    fileSize: serverMessage.fileSize,
+                    mimeType: serverMessage.mimeType,
+                    reactions: serverMessage.reactions,
                 },
             };
 
@@ -510,6 +520,7 @@ class ChatSocketService {
         attachmentData?: {
             fileName?: string;
             fileSize?: number;
+            mimeType?: string;
             videoDuration?: number;
         },
     ): void {
@@ -534,6 +545,7 @@ class ChatSocketService {
             content: attachmentData?.fileName || 'Attachment',
             fileName: attachmentData?.fileName,
             fileSize: attachmentData?.fileSize,
+            mimeType: attachmentData?.mimeType,
             videoDuration: attachmentData?.videoDuration,
         };
 
@@ -671,6 +683,18 @@ class ChatSocketService {
         ];
 
         return tokenCandidates.find((item) => !!item) || null;
+    }
+
+    private async getAuthUserId(): Promise<string | null> {
+        try {
+            const rawUser = await AsyncStorage.getItem('auth_user');
+            if (!rawUser) return null;
+            const parsed = JSON.parse(rawUser) as { userId?: string };
+            return parsed.userId || null;
+        } catch (error) {
+            console.warn('[ChatSocket] Unable to read auth_user:', error);
+            return null;
+        }
     }
 }
 

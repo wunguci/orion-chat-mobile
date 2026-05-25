@@ -44,6 +44,17 @@ function shouldShowAvatar(messages: Message[], index: number): boolean {
     return false; // Sender same as previous, hide avatar
 }
 
+function shouldShowSenderName(messages: Message[], index: number): boolean {
+    const curr = messages[index];
+    if (curr.isMine) return false;
+
+    const prev = messages[index - 1];
+    if (!prev) return true;
+    if (prev.isMine) return true;
+
+    return curr.senderId !== prev.senderId;
+}
+
 export default function ChatScreen() {
     const params = useLocalSearchParams<{
         id: string;
@@ -199,7 +210,9 @@ export default function ChatScreen() {
                             : undefined
                     }
                     senderName={
-                        !item.isMine ? item.senderName || name : undefined
+                        shouldShowSenderName(messages, index)
+                            ? item.senderName || name
+                            : undefined
                     }
                     onLongPress={handleMessageLongPress}
                 />

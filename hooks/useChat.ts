@@ -1,7 +1,7 @@
 import { AttachmentAsset, Message, MessageType } from '@/types/chat';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
-import { chatApi, MessageItem } from '@/services/api/chat';
+import { chatApi, ConversationResponse, MessageItem } from '@/services/api/chat';
 import {
     chatSocketService,
     SocketMessage,
@@ -14,6 +14,144 @@ function generateUniqueId(): string {
     const timestamp = Date.now().toString(36);
     const randomStr = Math.random().toString(36).substring(2, 15);
     return `${timestamp}-${randomStr}`;
+}
+
+function getMessageDedupKey(msg: Message): string {
+    const time = new Date(msg.timestamp).getTime();
+
+    // gom các tin nhắn lệch nhau dưới 2 giây
+    const timeBucket = Number.isNaN(time)
+        ? msg.timestamp
+        : Math.floor(time / 2000);
+
+    return [msg.chatId, msg.senderId, msg.text, msg.type, timeBucket].join('|');
+}
+
+function dedupeMessages(messages: Message[]): Message[] {
+    const result: Message[] = [];
+
+    for (const msg of messages) {
+        const msgTime = new Date(msg.timestamp).getTime();
+
+        const existedIndex = result.findIndex((old) => {
+            const oldTime = new Date(old.timestamp).getTime();
+
+            const sameId =
+                msg.id &&
+                old.id &&
+                String(msg.id).trim() === String(old.id).trim();
+
+            const sameContent =
+                String(old.chatId).trim() === String(msg.chatId).trim() &&
+                String(old.senderId).trim() === String(msg.senderId).trim() &&
+                String(old.text).trim() === String(msg.text).trim() &&
+                String(old.type).trim() === String(msg.type).trim();
+
+            const closeTime =
+                !Number.isNaN(oldTime) &&
+                !Number.isNaN(msgTime) &&
+                Math.abs(oldTime - msgTime) < 3000;
+
+            return sameId || (sameContent && closeTime);
+        });
+
+        if (existedIndex !== -1) {
+            result[existedIndex] = {
+                ...result[existedIndex],
+                ...msg,
+                id: msg.id || result[existedIndex].id,
+                senderName: msg.senderName || result[existedIndex].senderName,
+                status: msg.status || result[existedIndex].status,
+            };
+        } else {
+            result.push(msg);
+        }
+    }
+
+    return result.sort(
+        (a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    );
+}
+
+function buildParticipantLookup(conversation?: ConversationResponse | null) {
+    const namesById: Record<string, string> = {};
+    const avatarsById: Record<string, string> = {};
+
+    conversation?.participants?.forEach((participant) => {
+        const userId = String(participant.userId || '').trim();
+        if (!userId) return;
+
+        const fullName = String(participant.fullName || '').trim();
+        if (fullName) {
+            namesById[userId] = fullName;
+        }
+
+        if (participant.avatarUrl) {
+            avatarsById[userId] = participant.avatarUrl;
+        }
+    });
+
+    return { namesById, avatarsById };
+}
+
+function looksLikeId(value?: string, senderId?: string) {
+    const normalized = String(value || '').trim();
+    if (!normalized) return true;
+    if (senderId && normalized === String(senderId).trim()) return true;
+
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        normalized,
+    );
+}
+
+function resolveSenderName(
+    senderId: string,
+    rawName?: string,
+    namesById: Record<string, string> = {},
+) {
+    const name = String(rawName || '').trim();
+    if (name && !looksLikeId(name, senderId)) {
+        return name;
+    }
+
+    return namesById[senderId] || (name && !looksLikeId(name) ? name : 'Unknown');
+}
+
+function buildAttachmentFields(
+    messageType: MessageType,
+    mediaUrl?: string,
+    fileName?: string,
+    mimeType?: string,
+    fileSize?: number,
+): Partial<Message> {
+    if (!mediaUrl) return {};
+
+    if (messageType === 'IMAGE') {
+        return { imageUri: mediaUrl };
+    }
+
+    if (messageType === 'VIDEO' || messageType === 'VIDEO_PREVIEW') {
+        return {
+            videoUri: mediaUrl,
+            fileMimeType: mimeType,
+            ...(messageType === 'VIDEO_PREVIEW' && {
+                videoThumbnailUri: mediaUrl,
+            }),
+        };
+    }
+
+    if (messageType === 'FILE') {
+        return {
+            fileUri: mediaUrl,
+            fileName: fileName || 'File',
+            fileMimeType: mimeType,
+            fileSize,
+            text: fileName || 'File',
+        };
+    }
+
+    return {};
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -64,6 +202,8 @@ export const useChat = (conversationId: string) => {
     useEffect(() => {
         let isMounted = true;
 
+        setCurrentUserId(null);
+
         const bootstrap = async () => {
             // Try to get userId from multiple sources
             const candidates = [
@@ -113,7 +253,7 @@ export const useChat = (conversationId: string) => {
         return () => {
             isMounted = false;
         };
-    }, []);
+    }, [conversationId]);
 
     // ─────────────────────────────────────────────────────────
     // CHAT INITIALIZATION & CLEANUP
@@ -152,16 +292,25 @@ export const useChat = (conversationId: string) => {
 
                 // Tải lịch sử tin nhắn từ API
                 //console.log("[useChat] Loading messages from API...");
-                const messagesFromApi = await chatApi.getMessages(
-                    conversationId,
-                    50,
-                    0,
-                );
+                const [messagesFromApi, conversation] = await Promise.all([
+                    chatApi.getMessages(conversationId, 50, 0),
+                    chatApi
+                        .getConversation(conversationId)
+                        .catch(() => null),
+                ]);
+
+                const participantLookup = buildParticipantLookup(conversation);
 
                 if (!isMounted) return;
 
                 const formattedMessages = (messagesFromApi.items || []).map(
-                    (msg) => convertApiMessageToUIMessage(msg, currentUserId),
+                    (msg) =>
+                        convertApiMessageToUIMessage(
+                            msg,
+                            currentUserId,
+                            participantLookup.namesById,
+                            participantLookup.avatarsById,
+                        ),
                 );
 
                 // Sắp xếp messages: cũ → mới
@@ -179,7 +328,7 @@ export const useChat = (conversationId: string) => {
 
                 setState((prev) => ({
                     ...prev,
-                    messages: sortedMessages,
+                    messages: dedupeMessages(sortedMessages),
                     isLoading: false,
                 }));
 
@@ -192,77 +341,95 @@ export const useChat = (conversationId: string) => {
                 const handleNewMessage = (socketMsg: SocketMessage) => {
                     if (!isMounted) return;
 
-                    // Thêm vào danh sách tin nhắn
                     setState((prev) => {
-                        if (socketMsg.message.clientMessageId) {
-                            const index = prev.messages.findIndex(
-                                (m) =>
-                                    m.id === socketMsg.message.clientMessageId,
+                        const incomingServerId = String(
+                            socketMsg.message._id || '',
+                        ).trim();
+                        const incomingClientId = String(
+                            socketMsg.message.clientMessageId || '',
+                        ).trim();
+
+                        const senderId = String(
+                            socketMsg.message.senderBy || '',
+                        ).trim();
+                        const currentId = String(currentUserId || '').trim();
+                        const content = String(
+                            socketMsg.message.content || '',
+                        ).trim();
+                        const createdAt = socketMsg.message.createdAt;
+
+                        const exists = prev.messages.some((m) => {
+                            const sameId =
+                                incomingServerId &&
+                                String(m.id).trim() === incomingServerId;
+
+                            const sameClientId =
+                                incomingClientId &&
+                                String(m.id).trim() === incomingClientId;
+
+                            const sameSender =
+                                String(m.senderId).trim() === senderId;
+
+                            const sameText =
+                                String(m.text || '').trim() === content;
+
+                            const oldTime = new Date(m.timestamp).getTime();
+                            const newTime = new Date(createdAt).getTime();
+
+                            const closeTime =
+                                !Number.isNaN(oldTime) &&
+                                !Number.isNaN(newTime) &&
+                                Math.abs(oldTime - newTime) < 5000;
+
+                            return (
+                                sameId ||
+                                sameClientId ||
+                                (sameSender && sameText && closeTime)
                             );
+                        });
 
-                            if (index !== -1) {
-                                const updateMsg = [...prev.messages];
-                                updateMsg[index] = {
-                                    ...updateMsg[index],
-                                    id: socketMsg.message._id,
-                                    status: 'read',
-                                };
-                                return {
-                                    ...prev,
-                                    messages: updateMsg,
-                                };
-                            }
-                        }
-
-                        // Kiểm tra đã tồn tại chưa (tránh duplicate)
-                        const exists = prev.messages.some(
-                            (m) => m.id === socketMsg.message._id,
-                        );
                         if (exists) {
                             return prev;
                         }
 
-                        const messageType =
-                            (socketMsg.message.messageType as MessageType) ||
-                            'TEXT';
-
-                        // Normalize sender ID for comparison
-                        const senderIdFromSocket = String(
-                            socketMsg.message.senderBy || '',
-                        ).trim();
-                        const currentUserIdStr = String(
-                            currentUserId || '',
-                        ).trim();
+                        const senderName = resolveSenderName(
+                            senderId,
+                            socketMsg.message.senderName,
+                            participantLookup.namesById,
+                        );
+                        const normalizedType = String(
+                            socketMsg.message.messageType || 'TEXT',
+                        ).toUpperCase() as MessageType;
 
                         return {
                             ...prev,
                             messages: [
                                 ...prev.messages,
                                 {
-                                    id: socketMsg.message._id,
+                                    id: incomingServerId || incomingClientId,
                                     chatId: conversationId,
-                                    senderId: senderIdFromSocket,
-                                    senderName:
-                                        socketMsg.message.senderName ||
-                                        'Unknown',
+                                    senderId,
+                                    senderName,
                                     senderAvatar:
                                         socketMsg.message.senderAvatar ||
+                                        participantLookup.avatarsById[
+                                            senderId
+                                        ] ||
                                         undefined,
-                                    type: messageType,
+                                    type: normalizedType,
                                     text: socketMsg.message.content,
-                                    timestamp: socketMsg.message.createdAt,
-                                    isMine:
-                                        senderIdFromSocket ===
-                                            currentUserIdStr &&
-                                        currentUserIdStr.length > 0,
+                                    timestamp: createdAt,
+                                    isMine: senderId === currentId,
                                     status: 'read',
-
-                                    fileName: socketMsg.message.fileName,
-                                    fileSize: socketMsg.message.fileSize,
-                                    fileMimeType: socketMsg.message.mimeType,
-                                    mediaUrl: socketMsg.message.mediaUrl,
                                     reactions:
                                         socketMsg.message.reactions || [],
+                                    ...buildAttachmentFields(
+                                        normalizedType,
+                                        socketMsg.message.mediaUrl,
+                                        socketMsg.message.fileName,
+                                        socketMsg.message.mimeType,
+                                        socketMsg.message.fileSize,
+                                    ),
                                 },
                             ],
                         };
@@ -496,6 +663,7 @@ export const useChat = (conversationId: string) => {
                     ...(type === 'VIDEO' && {
                         videoUri: asset.uri,
                         videoDuration: asset.duration,
+                        fileMimeType: asset.mimeType,
                     }),
                     ...(type === 'FILE' && {
                         fileUri: asset.uri,
@@ -540,6 +708,13 @@ export const useChat = (conversationId: string) => {
                                         ...msg,
                                         id: ackData.messageId,
                                         status: 'read',
+                                        ...buildAttachmentFields(
+                                            type,
+                                            mediaUrl,
+                                            asset.name,
+                                            asset.mimeType,
+                                            asset.size,
+                                        ),
                                     };
                                 }
                                 return msg;
@@ -549,6 +724,7 @@ export const useChat = (conversationId: string) => {
                     {
                         fileName: asset.name,
                         fileSize: asset.size,
+                        mimeType: asset.mimeType,
                         videoDuration: asset.duration,
                     },
                 );
@@ -616,6 +792,8 @@ export const useChat = (conversationId: string) => {
 function convertApiMessageToUIMessage(
     apiMsg: MessageItem,
     currentUserId: string,
+    namesById: Record<string, string> = {},
+    avatarsById: Record<string, string> = {},
 ): Message {
     // Normalize messageType to uppercase for consistency with MessageType enum
     const normalizedType = String(apiMsg.messageType || 'TEXT').toUpperCase();
@@ -628,12 +806,18 @@ function convertApiMessageToUIMessage(
     // Debug log to check if comparison works
     const isMine = senderId === userId;
 
+    const resolvedId =
+        apiMsg._id ||
+        (apiMsg as { id?: string }).id ||
+        apiMsg.clientMessageId ||
+        `${senderId}-${apiMsg.createdAt || Date.now()}`;
+
     const baseMessage: Message = {
-        id: apiMsg._id,
+        id: resolvedId,
         chatId: apiMsg.conversationId,
         senderId: senderId,
-        senderName: apiMsg.senderName || 'Unknown',
-        senderAvatar: apiMsg.senderAvatar || undefined,
+        senderName: resolveSenderName(senderId, apiMsg.senderName, namesById),
+        senderAvatar: apiMsg.senderAvatar || avatarsById[senderId] || undefined,
         type: messageType,
         text: apiMsg.content,
         timestamp: apiMsg.createdAt || '',

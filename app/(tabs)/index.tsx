@@ -100,8 +100,7 @@ const convertConversationToChatItem = (
         unread: unreadByConversation[conversation.conversationId] || 0,
         isGroup,
         isMuted: conversation.myIsHidden || false,
-        isSentByMe:
-            !!currentUserId && lastMessage?.senderId === currentUserId,
+        isSentByMe: !!currentUserId && lastMessage?.senderId === currentUserId,
         isRead: true,
         avatarUri,
         avatarUris,
@@ -164,7 +163,17 @@ export default function ChatsScreen() {
                 err instanceof Error
                     ? err.message
                     : 'Failed to load conversations';
-            setError(errorMessage);
+            const lowerMessage = errorMessage.toLowerCase();
+            const isSessionConflict =
+                lowerMessage.includes('phiên làm việc') ||
+                lowerMessage.includes('phien lam viec') ||
+                lowerMessage.includes('unauthorized') ||
+                (lowerMessage.includes('statuscode') &&
+                    lowerMessage.includes('401'));
+
+            if (!isSessionConflict) {
+                setError(errorMessage);
+            }
             console.error('Error loading conversations:', err);
             setLoading(false);
         }
@@ -224,7 +233,7 @@ export default function ChatsScreen() {
     return (
         <SafeAreaView
             style={{ flex: 1, backgroundColor: colors.background }}
-            edges={['top']}
+            edges={[]}
         >
             <StatusBar
                 barStyle={

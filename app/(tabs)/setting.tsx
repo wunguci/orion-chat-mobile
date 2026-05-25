@@ -82,13 +82,6 @@ export default function Setting() {
 
     return (
         <View className="flex-1 bg-gray-50">
-            {/* Header */}
-            <View className="border-b border-gray-200 bg-white px-4 pb-4 pt-12">
-                <Text className="text-2xl font-bold text-orange-primary">
-                    Cài đặt
-                </Text>
-            </View>
-
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
                 {/* Profile Section */}
                 <View className="mt-4 bg-white px-4 py-6">

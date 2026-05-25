@@ -3,6 +3,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import { AuthState, User } from '../types/auth';
 import { tokenUtils } from '../utils/tokenUtils';
 import { login as apiLogin, logout as apiLogout } from '../services/api/auth';
+import { chatSocketService } from '../services/websocket/chatSocket';
 import {
     profileApi,
     UpdateProfileDto,
@@ -312,6 +313,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             );
             // Clear all stored data including tokens
             await tokenUtils.clearAll();
+
+            // Disconnect chat socket to avoid stale session usage
+            chatSocketService.disconnect();
 
             // Clear session check interval
             if (sessionCheckIntervalRef.current) {
