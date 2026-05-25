@@ -83,6 +83,8 @@ export interface ConversationResponse {
     createdAt?: string;
     myRole?: string;
     myJoinedAt?: string;
+    myIsPinned?: boolean;
+    myPinnedAt?: string | null;
     myIsHidden?: boolean; // Có phải tôi đã ẩn cuộc trò chuyện này không?
     myIsBlocked?: boolean; // Có phải tôi đã chặn cuộc trò chuyện này không?
     myBlockedBy?: string[]; // Danh sách userId những người đã chặn tôi (dành cho group chat)
@@ -106,6 +108,71 @@ export interface ConversationResponse {
         role?: string;
         joinedAt?: string;
     }[];
+}
+
+export interface ConversationMediaItem {
+    _id?: string;
+    messageId?: string;
+    clientMessageId?: string;
+    conversationId?: string;
+    senderBy?: string;
+    senderName?: string;
+    senderAvatar?: string;
+    content?: string;
+    messageType?: string;
+    mediaUrl?: string;
+    fileName?: string;
+    fileSize?: number;
+    mimeType?: string;
+    fileCategory?: 'image' | 'video' | 'audio' | 'file';
+    createdAt?: string;
+    isRevoked?: boolean;
+}
+
+export interface GroupMemberItem {
+    userId: string;
+    fullName: string | null;
+    phoneNumber?: string | null;
+    avatarUrl: string | null;
+    role: 'admin' | 'co-admin' | 'member';
+    joinedAt: string;
+    isMe: boolean;
+}
+
+export interface UpdateGroupNameResponse {
+    groupId: string;
+    groupName: string;
+    updatedBy: string;
+    updatedAt: string;
+}
+
+export interface UpdateGroupAvatarResponse {
+    groupId: string;
+    groupAvatar: string;
+    updatedBy: string;
+    updatedAt: string;
+}
+
+export interface GroupDetailResponse {
+    groupId: string;
+    joinRequireApproval: boolean;
+    memberCount: number;
+    memberLimit: number;
+    isMember: boolean;
+    myJoinRequestStatus: 'none' | 'pending' | 'approved' | 'rejected';
+    myRole?: 'leader' | 'deputy' | 'member' | 'guest' | 'admin' | 'co-admin';
+    status?: 'active' | 'dissolved';
+}
+
+export interface GroupJoinRequest {
+    requestId: string;
+    status: 'pending' | 'approved' | 'rejected';
+    message?: string;
+    createdAt: string;
+    requester: {
+        userId: string;
+        fullName?: string;
+    };
 }
 
 /**
@@ -260,6 +327,254 @@ export const chatApi = {
             },
         );
         return toJson<{ success: boolean; conversationId: string }>(response);
+    },
+
+    async pinConversation(conversationId: string) {
+        const response = await authFetch(
+            buildUrl(`/conversations/${conversationId}/pin`),
+            {
+                method: 'POST',
+            },
+        );
+        return toJson<any>(response);
+    },
+
+    async unpinConversation(conversationId: string) {
+        const response = await authFetch(
+            buildUrl(`/conversations/${conversationId}/unpin`),
+            {
+                method: 'POST',
+            },
+        );
+        return toJson<any>(response);
+    },
+
+    async clearConversationHistory(conversationId: string) {
+        const response = await authFetch(
+            buildUrl(`/conversations/${conversationId}/clear-history`),
+            {
+                method: 'POST',
+            },
+        );
+        return toJson<any>(response);
+    },
+
+    async blockUser(conversationId: string) {
+        const response = await authFetch(
+            buildUrl(`/conversations/${conversationId}/block`),
+            {
+                method: 'POST',
+            },
+        );
+        return toJson<any>(response);
+    },
+
+    async leaveConversation(conversationId: string) {
+        const response = await authFetch(
+            buildUrl(`/conversations/${conversationId}/leave`),
+            {
+                method: 'POST',
+            },
+        );
+        return toJson<any>(response);
+    },
+
+    async updateAutoDeleteDuration(
+        conversationId: string,
+        autoDeleteDuration: number,
+    ) {
+        const response = await authFetch(
+            buildUrl(`/conversations/${conversationId}/auto-delete-duration`),
+            {
+                method: 'PATCH',
+                body: JSON.stringify({ autoDeleteDuration }),
+            },
+        );
+        return toJson<any>(response);
+    },
+
+    async hideConversation(conversationId: string, password: string) {
+        const response = await authFetch(
+            buildUrl(`/conversations/${conversationId}/hide`),
+            {
+                method: 'POST',
+                body: JSON.stringify({ password }),
+            },
+        );
+        return toJson<any>(response);
+    },
+
+    async unhideConversation(conversationId: string, password: string) {
+        const response = await authFetch(
+            buildUrl(`/conversations/${conversationId}/reveal`),
+            {
+                method: 'POST',
+                body: JSON.stringify({ password }),
+            },
+        );
+        return toJson<any>(response);
+    },
+
+    async unblockUser(conversationId: string) {
+        const response = await authFetch(
+            buildUrl(`/conversations/${conversationId}/unblock`),
+            {
+                method: 'POST',
+            },
+        );
+        return toJson<any>(response);
+    },
+
+    async getBlockStatus(conversationId: string) {
+        const response = await authFetch(
+            buildUrl(`/conversations/${conversationId}/block-status`),
+        );
+        return toJson<{
+            isBlocked?: boolean;
+            iAmBlocked?: boolean;
+            iAmTheBlocker?: boolean;
+            canUnblock?: boolean;
+            blockedBy?: string;
+            blockedAt?: string;
+            conversationId?: string;
+            otherUserId?: string;
+        }>(response);
+    },
+
+    async getConversationMedia(conversationId: string, cursor?: string, limit = 30) {
+        const response = await authFetch(
+            buildUrl(`/conversations/${conversationId}/media`, {
+                cursor,
+                limit: limit.toString(),
+            }),
+        );
+        return toJson<{
+            items: ConversationMediaItem[];
+            nextCursor: string | null;
+        }>(response);
+    },
+
+    async getGroupMembers(groupId: string) {
+        const response = await authFetch(buildUrl(`/groups/${groupId}/members`));
+        return toJson<{ items: GroupMemberItem[] }>(response);
+    },
+
+    async getGroupDetail(groupId: string) {
+        const response = await authFetch(buildUrl(`/groups/${groupId}`));
+        return toJson<GroupDetailResponse>(response);
+    },
+
+    async getGroupJoinRequests(groupId: string) {
+        const response = await authFetch(
+            buildUrl(`/groups/${groupId}/join-requests`),
+        );
+        return toJson<GroupJoinRequest[] | { items?: GroupJoinRequest[] }>(
+            response,
+        );
+    },
+
+    async approveGroupJoinRequest(groupId: string, requestId: string) {
+        const response = await authFetch(
+            buildUrl(`/groups/${groupId}/join-requests/${requestId}/approve`),
+            {
+                method: 'POST',
+            },
+        );
+        return toJson<any>(response);
+    },
+
+    async rejectGroupJoinRequest(groupId: string, requestId: string) {
+        const response = await authFetch(
+            buildUrl(`/groups/${groupId}/join-requests/${requestId}/reject`),
+            {
+                method: 'POST',
+            },
+        );
+        return toJson<any>(response);
+    },
+
+    async updateGroupAutoDelete(groupId: string, autoDeleteDuration: number) {
+        const response = await authFetch(
+            buildUrl(`/groups/${groupId}/settings/auto-delete`),
+            {
+                method: 'PATCH',
+                body: JSON.stringify({ autoDeleteDuration }),
+            },
+        );
+        return toJson<any>(response);
+    },
+
+    async updateGroupJoinApproval(
+        groupId: string,
+        joinRequireApproval: boolean,
+    ) {
+        const response = await authFetch(
+            buildUrl(`/groups/${groupId}/settings/join-approval`),
+            {
+                method: 'PATCH',
+                body: JSON.stringify({ joinRequireApproval }),
+            },
+        );
+        return toJson<any>(response);
+    },
+
+    async updateGroupName(groupId: string, groupName: string) {
+        const response = await authFetch(buildUrl(`/groups/${groupId}/name`), {
+            method: 'PATCH',
+            body: JSON.stringify({ groupName }),
+        });
+        return toJson<UpdateGroupNameResponse>(response);
+    },
+
+    async updateGroupAvatar(groupId: string, formData: FormData) {
+        const response = await authFetch(buildUrl(`/groups/${groupId}/avatar`), {
+            method: 'PATCH',
+            body: formData,
+        });
+        return toJson<UpdateGroupAvatarResponse>(response);
+    },
+
+    async removeGroupMember(groupId: string, userId: string) {
+        const response = await authFetch(
+            buildUrl(`/groups/${groupId}/members/${userId}`),
+            {
+                method: 'DELETE',
+            },
+        );
+        return toJson<any>(response);
+    },
+
+    async updateGroupMemberRole(
+        groupId: string,
+        userId: string,
+        role: 'co-admin' | 'member',
+    ) {
+        const response = await authFetch(
+            buildUrl(`/groups/${groupId}/members/${userId}/role`),
+            {
+                method: 'PATCH',
+                body: JSON.stringify({ role }),
+            },
+        );
+        return toJson<any>(response);
+    },
+
+    async leaveGroup(groupId: string, newAdminUserId?: string) {
+        const response = await authFetch(buildUrl(`/groups/${groupId}/leave`), {
+            method: 'POST',
+            body: JSON.stringify({ newAdminUserId }),
+        });
+        return toJson<any>(response);
+    },
+
+    async dissolveGroup(groupId: string) {
+        const response = await authFetch(
+            buildUrl(`/groups/${groupId}/dissolve`),
+            {
+                method: 'POST',
+            },
+        );
+        return toJson<any>(response);
     },
 
     /**

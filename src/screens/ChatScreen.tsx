@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ChatItem } from '@/types/chat';
 import { chatApi, ConversationResponse } from '@/services/api/chat';
 import { chatSocketService } from '@/services/websocket/chatSocket';
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import {
     FlatList,
     StatusBar,
@@ -16,6 +16,7 @@ import {
     Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Swipeable } from 'react-native-gesture-handler';
 
 /**
  * Chuyển đổi ConversationResponse thành ChatItem
@@ -97,6 +98,8 @@ const convertConversationToChatItem = (
         unread: 0, // TODO: Lấy từ API nếu có
         isGroup,
         isMuted: conversation.myIsHidden || false,
+        isPinned: conversation.myIsPinned || false,
+        pinnedAt: conversation.myPinnedAt || undefined,
         isSentByMe:
             lastMessage?.senderId === conversation.participants[0]?.userId ||
             false,
@@ -118,6 +121,7 @@ export default function ChatsScreen() {
     const [conversations, setConversations] = useState<ChatItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const openedSwipeableRef = useRef<Swipeable | null>(null);
 
     // Fetch conversations when component mounts
     useEffect(() => {
@@ -230,6 +234,86 @@ export default function ChatsScreen() {
         );
     };
 
+    const handleTogglePinConversation = async (item: ChatItem) => {
+        const nextPinned = !item.isPinned;
+        setConversations((prev) =>
+            prev.map((conversation) =>
+                conversation.id === item.id
+                    ? {
+                          ...conversation,
+                          isPinned: nextPinned,
+                          pinnedAt: nextPinned
+                              ? new Date().toISOString()
+                              : undefined,
+                      }
+                    : conversation,
+            ),
+        );
+
+        try {
+            if (nextPinned) {
+                await chatApi.pinConversation(item.id);
+            } else {
+                await chatApi.unpinConversation(item.id);
+            }
+        } catch (err) {
+            Alert.alert(
+                'Khong the cap nhat ghim',
+                err instanceof Error ? err.message : 'Vui long thu lai sau',
+            );
+            setConversations((prev) =>
+                prev.map((conversation) =>
+                    conversation.id === item.id
+                        ? {
+                              ...conversation,
+                              isPinned: item.isPinned,
+                              pinnedAt: item.pinnedAt,
+                          }
+                        : conversation,
+                ),
+            );
+        }
+    };
+
+    const handleClearConversationHistory = (item: ChatItem) => {
+        Alert.alert('Xoa lich su', `Xoa lich su hoi thoai voi ${item.name}?`, [
+            { text: 'Huy', style: 'cancel' },
+            {
+                text: 'Xoa',
+                style: 'destructive',
+                onPress: async () => {
+                    try {
+                        await chatApi.clearConversationHistory(item.id);
+                        setConversations((prev) =>
+                            prev.map((conversation) =>
+                                conversation.id === item.id
+                                    ? {
+                                          ...conversation,
+                                          lastMessage: 'No messages yet',
+                                      }
+                                    : conversation,
+                            ),
+                        );
+                    } catch (err) {
+                        Alert.alert(
+                            'Khong the xoa lich su',
+                            err instanceof Error
+                                ? err.message
+                                : 'Vui long thu lai sau',
+                        );
+                    }
+                },
+            },
+        ]);
+    };
+
+    const handleSwipeOpen = useCallback((_: string, ref: Swipeable | null) => {
+        if (openedSwipeableRef.current && openedSwipeableRef.current !== ref) {
+            openedSwipeableRef.current.close();
+        }
+        openedSwipeableRef.current = ref;
+    }, []);
+
     const filteredChats = useMemo(() => {
         let list = conversations;
 
@@ -328,6 +412,10 @@ export default function ChatsScreen() {
                         <ChatListItem
                             item={item}
                             onLongPress={handleDeleteConversation}
+                            onTogglePin={handleTogglePinConversation}
+                            onClearHistory={handleClearConversationHistory}
+                            onDelete={handleDeleteConversation}
+                            onSwipeOpen={handleSwipeOpen}
                         />
                     )}
                     ItemSeparatorComponent={() => (

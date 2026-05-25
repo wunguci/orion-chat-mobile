@@ -3,6 +3,7 @@ import MessageBubble from '@/components/chat/MessageBubble';
 import MessageInput from '@/components/chat/MessageInput';
 import MessageTimestamp from '@/components/chat/MessageTimestamp';
 import MessageActionMenu from '@/components/chat/MessageActionMenu';
+import ConversationInfoModal from '@/components/chat/ConversationInfoModal';
 import { formatTime, getDiffMinutes, useChat } from '@/hooks/useChat';
 import { useTheme } from '@/hooks/useTheme';
 import { Message } from '@/types/chat';
@@ -90,6 +91,7 @@ export default function ChatScreen() {
         null,
     );
     const [showActionMenu, setShowActionMenu] = useState(false);
+    const [infoVisible, setInfoVisible] = useState(false);
 
     useEffect(() => {
         if (!id) {
@@ -240,6 +242,7 @@ export default function ChatScreen() {
                 isOnline
                 onAudioCall={() => void handleStartCall('audio')}
                 onVideoCall={() => void handleStartCall('video')}
+                onMenuPress={() => setInfoVisible(true)}
             />
 
             {/* Messages */}
@@ -286,6 +289,15 @@ export default function ChatScreen() {
                     onMessageRecalled={handleMessageRecalled}
                 />
             )}
+            <ConversationInfoModal
+                visible={infoVisible}
+                conversationId={id || ''}
+                name={name || 'Chat'}
+                avatarUri={avatarUri}
+                isGroup={isGroup}
+                onClose={() => setInfoVisible(false)}
+                onConversationDeleted={() => router.back()}
+            />
             {forwardMessageId && (
                 <ForwardConversationModal
                     visible={forwardVisible}

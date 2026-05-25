@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 import { Provider } from 'react-redux';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { store } from '@/store';
 import { AuthProvider } from '@/context/AuthContext';
@@ -95,21 +96,23 @@ export default function RootLayout() {
     }, []);
 
     return (
-        <Provider store={store}>
-            <AuthProvider>
-                <StreamVideoProvider>
-                    <SocketProvider>
-                        <CallProvider>
-                            <GroupCallProvider>
-                                <NotificationProvider>
-                                    <RootLayoutContent />
-                                    <IncomingGroupCallModal />
-                                </NotificationProvider>
-                            </GroupCallProvider>
-                        </CallProvider>
-                    </SocketProvider>
-                </StreamVideoProvider>
-            </AuthProvider>
-        </Provider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <Provider store={store}>
+                <AuthProvider>
+                    <StreamVideoProvider>
+                        <SocketProvider>
+                            <CallProvider>
+                                <GroupCallProvider>
+                                    <NotificationProvider>
+                                        <RootLayoutContent />
+                                        <IncomingGroupCallModal />
+                                    </NotificationProvider>
+                                </GroupCallProvider>
+                            </CallProvider>
+                        </SocketProvider>
+                    </StreamVideoProvider>
+                </AuthProvider>
+            </Provider>
+        </GestureHandlerRootView>
     );
 }

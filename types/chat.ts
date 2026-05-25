@@ -6,6 +6,8 @@ export type ChatItem = {
     unread: number;
     isGroup: boolean;
     isMuted: boolean;
+    isPinned?: boolean;
+    pinnedAt?: string;
     isSentByMe: boolean;
     isRead: boolean; // only relevant when isSentByMe = true
     avatarUri?: string; // single avatar

@@ -2,20 +2,34 @@ import { useTheme } from '@/hooks/useTheme';
 import { ChatItem } from '@/types/chat';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useRef } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import ChatAvatar from './ChatAvatar';
 
 interface ChatListItemProps {
     item: ChatItem;
     onPress?: (item: ChatItem) => void;
     onLongPress?: (item: ChatItem) => void;
+    onTogglePin?: (item: ChatItem) => void;
+    onClearHistory?: (item: ChatItem) => void;
+    onDelete?: (item: ChatItem) => void;
+    onSwipeOpen?: (id: string, ref: Swipeable | null) => void;
 }
 
 const UNREAD_COLOR = '#00B14F';
 
-export default function ChatListItem({ item, onPress, onLongPress }: ChatListItemProps) {
+export default function ChatListItem({
+    item,
+    onPress,
+    onLongPress,
+    onTogglePin,
+    onClearHistory,
+    onDelete,
+    onSwipeOpen,
+}: ChatListItemProps) {
     const { colors } = useTheme();
+    const swipeableRef = useRef<Swipeable | null>(null);
 
     const renderRightMeta = () => {
         if (item.unread > 0) {
@@ -71,6 +85,38 @@ export default function ChatListItem({ item, onPress, onLongPress }: ChatListIte
         return null;
     };
 
+    const renderRightActions = () => (
+        <View style={{ flexDirection: 'row', backgroundColor: colors.background }}>
+            <SwipeAction
+                label={item.isPinned ? 'Bỏ ghim' : 'Ghim'}
+                icon={item.isPinned ? 'pin-off' : 'pin'}
+                backgroundColor="#f59e0b"
+                onPress={() => {
+                    swipeableRef.current?.close();
+                    onTogglePin?.(item);
+                }}
+            />
+            <SwipeAction
+                label="Xóa lịch sử"
+                icon="broom"
+                backgroundColor="#64748b"
+                onPress={() => {
+                    swipeableRef.current?.close();
+                    onClearHistory?.(item);
+                }}
+            />
+            <SwipeAction
+                label="Xóa"
+                icon="delete-outline"
+                backgroundColor="#ef4444"
+                onPress={() => {
+                    swipeableRef.current?.close();
+                    onDelete?.(item);
+                }}
+            />
+        </View>
+    );
+
     const handlePress = () => {
         if (onPress) {
             onPress(item);
@@ -90,6 +136,14 @@ export default function ChatListItem({ item, onPress, onLongPress }: ChatListIte
     };
 
     return (
+        <Swipeable
+            ref={swipeableRef}
+            renderRightActions={renderRightActions}
+            overshootRight={false}
+            friction={2}
+            rightThreshold={40}
+            onSwipeableWillOpen={() => onSwipeOpen?.(item.id, swipeableRef.current)}
+        >
         <TouchableOpacity
             onPress={handlePress}
             onLongPress={() => onLongPress?.(item)}
@@ -132,6 +186,14 @@ export default function ChatListItem({ item, onPress, onLongPress }: ChatListIte
                     >
                         {item.name}
                     </Text>
+                    {item.isPinned ? (
+                        <MaterialCommunityIcons
+                            name="pin"
+                            size={14}
+                            color={colors.primary}
+                            style={{ marginRight: 6 }}
+                        />
+                    ) : null}
                     <Text style={{ fontSize: 12, color: colors.textSecondary }}>
                         {item.time}
                     </Text>
@@ -164,6 +226,46 @@ export default function ChatListItem({ item, onPress, onLongPress }: ChatListIte
                     {renderRightMeta()}
                 </View>
             </View>
+        </TouchableOpacity>
+        </Swipeable>
+    );
+}
+
+function SwipeAction({
+    label,
+    icon,
+    backgroundColor,
+    onPress,
+}: {
+    label: string;
+    icon: keyof typeof MaterialCommunityIcons.glyphMap;
+    backgroundColor: string;
+    onPress: () => void;
+}) {
+    return (
+        <TouchableOpacity
+            onPress={onPress}
+            activeOpacity={0.85}
+            style={{
+                width: 78,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor,
+                gap: 4,
+            }}
+        >
+            <MaterialCommunityIcons name={icon} size={20} color="#fff" />
+            <Text
+                style={{
+                    color: '#fff',
+                    fontSize: 11,
+                    fontWeight: '700',
+                    textAlign: 'center',
+                }}
+                numberOfLines={2}
+            >
+                {label}
+            </Text>
         </TouchableOpacity>
     );
 }

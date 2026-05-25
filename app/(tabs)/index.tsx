@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGroupCreation } from '@/hooks/useGroupCreation';
 import { ChatItem } from '@/types/chat';
 import { chatApi, ConversationResponse } from '@/services/api/chat';
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useNotificationContext } from '@/context/NotificationContext';
 import {
     FlatList,
@@ -15,9 +15,11 @@ import {
     View,
     ActivityIndicator,
     Text,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
+import { Swipeable } from 'react-native-gesture-handler';
 
 /**
  * Chuyển đổi ConversationResponse thành ChatItem
@@ -100,6 +102,8 @@ const convertConversationToChatItem = (
         unread: unreadByConversation[conversation.conversationId] || 0,
         isGroup,
         isMuted: conversation.myIsHidden || false,
+        isPinned: conversation.myIsPinned || false,
+        pinnedAt: conversation.myPinnedAt || undefined,
         isSentByMe: !!currentUserId && lastMessage?.senderId === currentUserId,
         isRead: true,
         avatarUri,
@@ -118,6 +122,7 @@ export default function ChatsScreen() {
     const [conversations, setConversations] = useState<ChatItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const openedSwipeableRef = useRef<Swipeable | null>(null);
 
     const loadConversations = useCallback(async () => {
         if (!authState.user?.userId) {
@@ -149,8 +154,19 @@ export default function ChatsScreen() {
                     ),
             );
 
-            // SORT: Conversations with latest message first
+            // SORT: pinned conversations first, then latest message first
             const sortedItems = chatItems.sort((a, b) => {
+                if (!!a.isPinned !== !!b.isPinned) {
+                    return a.isPinned ? -1 : 1;
+                }
+
+                if (a.isPinned && b.isPinned) {
+                    return (
+                        new Date(b.pinnedAt || 0).getTime() -
+                        new Date(a.pinnedAt || 0).getTime()
+                    );
+                }
+
                 const timeA = a.time ? new Date(a.time).getTime() : 0;
                 const timeB = b.time ? new Date(b.time).getTime() : 0;
                 return timeB - timeA; // Newest first
@@ -229,6 +245,112 @@ export default function ChatsScreen() {
 
         return list;
     }, [search, activeTab, conversations]);
+
+    const handleTogglePinConversation = useCallback(async (item: ChatItem) => {
+        const nextPinned = !item.isPinned;
+        const nextPinnedAt = nextPinned ? new Date().toISOString() : undefined;
+
+        setConversations((prev) =>
+            prev
+                .map((conversation) =>
+                    conversation.id === item.id
+                        ? {
+                              ...conversation,
+                              isPinned: nextPinned,
+                              pinnedAt: nextPinnedAt,
+                          }
+                        : conversation,
+                )
+                .sort((a, b) => {
+                    if (!!a.isPinned !== !!b.isPinned) {
+                        return a.isPinned ? -1 : 1;
+                    }
+                    if (a.isPinned && b.isPinned) {
+                        return (
+                            new Date(b.pinnedAt || 0).getTime() -
+                            new Date(a.pinnedAt || 0).getTime()
+                        );
+                    }
+                    return 0;
+                }),
+        );
+
+        try {
+            if (nextPinned) {
+                await chatApi.pinConversation(item.id);
+            } else {
+                await chatApi.unpinConversation(item.id);
+            }
+            await loadConversations();
+        } catch (err) {
+            Alert.alert(
+                'Không thể cập nhật ghim',
+                err instanceof Error ? err.message : 'Vui lòng thử lại sau',
+            );
+            await loadConversations();
+        }
+    }, [loadConversations]);
+
+    const handleClearConversationHistory = useCallback((item: ChatItem) => {
+        Alert.alert(
+            'Xóa lịch sử',
+            `Xóa lịch sử hội thoại với ${item.name}?`,
+            [
+                { text: 'Hủy', style: 'cancel' },
+                {
+                    text: 'Xóa',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await chatApi.clearConversationHistory(item.id);
+                            await loadConversations();
+                        } catch (err) {
+                            Alert.alert(
+                                'Không thể xóa lịch sử',
+                                err instanceof Error
+                                    ? err.message
+                                    : 'Vui lòng thử lại sau',
+                            );
+                        }
+                    },
+                },
+            ],
+        );
+    }, [loadConversations]);
+
+    const handleDeleteConversation = useCallback((item: ChatItem) => {
+        Alert.alert('Xóa hội thoại', `Xóa hội thoại với ${item.name}?`, [
+            { text: 'Hủy', style: 'cancel' },
+            {
+                text: 'Xóa',
+                style: 'destructive',
+                onPress: async () => {
+                    try {
+                        await chatApi.deleteConversation(item.id);
+                        setConversations((prev) =>
+                            prev.filter(
+                                (conversation) => conversation.id !== item.id,
+                            ),
+                        );
+                    } catch (err) {
+                        Alert.alert(
+                            'Không thể xóa',
+                            err instanceof Error
+                                ? err.message
+                                : 'Vui lòng thử lại sau',
+                        );
+                    }
+                },
+            },
+        ]);
+    }, []);
+
+    const handleSwipeOpen = useCallback((_: string, ref: Swipeable | null) => {
+        if (openedSwipeableRef.current && openedSwipeableRef.current !== ref) {
+            openedSwipeableRef.current.close();
+        }
+        openedSwipeableRef.current = ref;
+    }, []);
 
     return (
         <SafeAreaView
@@ -309,7 +431,15 @@ export default function ChatsScreen() {
                 <FlatList
                     data={filteredChats}
                     keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => <ChatListItem item={item} />}
+                    renderItem={({ item }) => (
+                        <ChatListItem
+                            item={item}
+                            onTogglePin={handleTogglePinConversation}
+                            onClearHistory={handleClearConversationHistory}
+                            onDelete={handleDeleteConversation}
+                            onSwipeOpen={handleSwipeOpen}
+                        />
+                    )}
                     ItemSeparatorComponent={() => (
                         <View
                             style={{
