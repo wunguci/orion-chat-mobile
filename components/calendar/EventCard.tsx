@@ -6,6 +6,7 @@ import { Image, Text, TouchableOpacity, View } from "react-native";
 interface EventCardProps {
   event: CalendarEvent;
   onPress: () => void;
+  compact?: boolean;
 }
 
 const namedColorToHex: Record<string, string> = {
@@ -40,31 +41,43 @@ const toRgba = (hex: string, alpha: number) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-export default function EventCard({ event, onPress }: EventCardProps) {
+export default function EventCard({
+  event,
+  onPress,
+  compact = false,
+}: EventCardProps) {
   const eventColor = resolveEventColor(event.color);
 
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.8}
-      className="rounded-lg border-l-4 p-3 mb-2"
+      className={`rounded-lg border-l-4 mb-2 ${compact ? "p-2" : "p-3"}`}
       style={{
         borderLeftColor: eventColor,
         backgroundColor: toRgba(eventColor, 0.16),
       }}
     >
       {/* title */}
-      <Text className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+      <Text
+        numberOfLines={1}
+        ellipsizeMode="tail"
+        className={`font-semibold text-gray-900 dark:text-white mb-1 ${compact ? "text-xs" : "text-sm"}`}
+      >
         {event.title}
       </Text>
 
       {/* time */}
-      <Text className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+      <Text
+        numberOfLines={1}
+        ellipsizeMode="tail"
+        className={`text-gray-600 dark:text-gray-400 mb-2 ${compact ? "text-[10px]" : "text-xs"}`}
+      >
         {formatTime(new Date(event.start))} - {formatTime(new Date(event.end))}
       </Text>
 
       {/* location */}
-      {event.location && (
+      {!compact && event.location && (
         <View className="flex-row items-center mb-2">
           <Ionicons name="location-outline" size={12} color="#0D9488" />
           <Text className="text-xs text-green-primary ml-1">
@@ -74,7 +87,7 @@ export default function EventCard({ event, onPress }: EventCardProps) {
       )}
 
       {/* participants */}
-      {event.participants && event.participants.length > 0 && (
+      {!compact && event.participants && event.participants.length > 0 && (
         <View className="flex-row items-center">
           <View className="flex-row">
             {event.participants.slice(0, 3).map((p, index) => (
