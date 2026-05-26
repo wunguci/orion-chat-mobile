@@ -42,7 +42,7 @@ export const SearchUserRow: React.FC<Props> = ({
           className="bg-gray-light px-4 py-2 rounded-lg disabled:opacity-70"
         >
           <Text className="text-green-primary font-semibold">
-            {isPending ? "Da gui loi moi" : "Add"}
+            {isPending ? "Request sent" : "Add"}
           </Text>
         </TouchableOpacity>
       </View>

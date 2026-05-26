@@ -19,12 +19,14 @@ interface DropdownItem {
 interface ChatSearchBarProps {
     value: string;
     onChangeText: (text: string) => void;
+    onAddFriendsPress?: () => void;
     onCreateGroupPress?: () => void;
 }
 
 export default function ChatSearchBar({
     value,
     onChangeText,
+    onAddFriendsPress,
     onCreateGroupPress,
 }: ChatSearchBarProps) {
     const { colors } = useTheme();
@@ -42,7 +44,10 @@ export default function ChatSearchBar({
                     color={colors.text}
                 />
             ),
-            onPress: () => setMenuVisible(false),
+            onPress: () => {
+                setMenuVisible(false);
+                onAddFriendsPress?.();
+            },
         },
         {
             label: 'Create Group',

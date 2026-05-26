@@ -1,8 +1,10 @@
 import { Avatar } from "@/components/common/Avatar";
+import { API_BASE_URL } from "@/config/api";
 import type { FriendProfileItem } from "@/types/friend";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -31,7 +33,23 @@ const formatDate = (value?: string | null) => {
   if (!value) return "Not updated";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Not updated";
-  return date.toLocaleDateString("vi-VN");
+  return date.toLocaleDateString("en-US");
+};
+
+const toAbsoluteUrl = (url?: string | null) => {
+  if (!url) return undefined;
+  if (
+    url.startsWith("http://") ||
+    url.startsWith("https://") ||
+    url.startsWith("data:") ||
+    url.startsWith("blob:")
+  ) {
+    return url;
+  }
+
+  const base = API_BASE_URL.replace(/\/$/, "");
+  const path = url.startsWith("/") ? url : `/${url}`;
+  return `${base}${path}`;
 };
 
 export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({
@@ -49,6 +67,8 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({
 }) => {
   if (!visible || !profile) return null;
 
+  const coverUri = toAbsoluteUrl(profile.coverImage);
+
   return (
     <Modal
       visible={visible}
@@ -61,7 +81,15 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({
           className="my-auto max-h-[90%] overflow-hidden rounded-2xl bg-white"
           onPress={(event) => event.stopPropagation()}
         >
-          <View className="h-28 bg-green-primary" />
+          {coverUri ? (
+            <Image
+              source={{ uri: coverUri }}
+              className="h-28 w-full"
+              resizeMode="cover"
+            />
+          ) : (
+            <View className="h-28 bg-green-primary" />
+          )}
 
           <TouchableOpacity
             onPress={onClose}
@@ -112,7 +140,7 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({
                   <Ionicons name="person-add" size={16} color="#fff" />
                   <Text className="ml-2 font-semibold text-white">
                     {hasPendingRequest
-                      ? "Da gui loi moi"
+                      ? "Request sent"
                       : isSendingAddFriend
                         ? "Sending..."
                         : "Add Friend"}

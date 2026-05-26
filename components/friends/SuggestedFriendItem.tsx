@@ -1,10 +1,10 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Avatar } from "@/components/common/Avatar";
-import { SuggestedFriend } from "@/types/user";
+import type { SuggestedFriendItem } from "@/types/friend";
 
 interface Props {
-  friend: SuggestedFriend;
+  friend: SuggestedFriendItem;
   onAdd: (id: string) => void;
 }
 
@@ -19,7 +19,7 @@ export const SuggestedFriendItem: React.FC<Props> = ({ friend, onAdd }) => {
             {friend.name}
           </Text>
           <Text className="text-sm text-gray-text mt-0.5" numberOfLines={1}>
-            {friend.jobTitle}
+            {friend.mutualGroupCount} mutual groups
           </Text>
         </View>
       </View>

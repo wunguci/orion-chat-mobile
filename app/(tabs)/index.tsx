@@ -2,6 +2,7 @@ import ChatListItem from '@/components/chat/ChatListItem';
 import ChatSearchBar from '@/components/chat/ChatSearchBar';
 import ChatTabFilter, { ChatTab } from '@/components/chat/ChatTabFilter';
 import CreateGroupModal from '@/components/chat/CreateGroupModal';
+import AddFriendsModal from '@/components/chat/AddFriendsModal';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useGroupCreation } from '@/hooks/useGroupCreation';
@@ -18,7 +19,7 @@ import {
     Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Swipeable } from 'react-native-gesture-handler';
 
 /**
@@ -114,9 +115,11 @@ const convertConversationToChatItem = (
 export default function ChatsScreen() {
     const { colors, colorScheme } = useTheme();
     const { state: authState } = useAuth();
+    const router = useRouter();
     const { unreadByConversation } = useNotificationContext();
     const { modalVisible, openModal, closeModal, handleGroupCreated } =
         useGroupCreation();
+    const [addFriendsVisible, setAddFriendsVisible] = useState(false);
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState<ChatTab>('all');
     const [conversations, setConversations] = useState<ChatItem[]>([]);
@@ -369,6 +372,7 @@ export default function ChatsScreen() {
                 value={search}
                 onChangeText={setSearch}
                 onCreateGroupPress={openModal}
+                onAddFriendsPress={() => setAddFriendsVisible(true)}
             />
 
             {/* Tab filter */}
@@ -458,6 +462,11 @@ export default function ChatsScreen() {
                 visible={modalVisible}
                 onClose={closeModal}
                 onGroupCreated={handleGroupCreated}
+            />
+            <AddFriendsModal
+                visible={addFriendsVisible}
+                currentUserId={authState.user?.userId}
+                onClose={() => setAddFriendsVisible(false)}
             />
         </SafeAreaView>
     );

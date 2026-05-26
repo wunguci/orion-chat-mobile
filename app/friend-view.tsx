@@ -1,4 +1,5 @@
 import { Avatar } from "@/components/common/Avatar";
+import { API_BASE_URL } from "@/config/api";
 import { CallContext } from "@/context/CallContext";
 import { chatApi } from "@/services/api/chat";
 import { friendApi } from "@/services/api/friend";
@@ -15,6 +16,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -27,7 +29,23 @@ const formatDate = (value?: string | null) => {
   if (!value) return "Not updated";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Not updated";
-  return date.toLocaleDateString("vi-VN");
+  return date.toLocaleDateString("en-US");
+};
+
+const toAbsoluteUrl = (url?: string | null) => {
+  if (!url) return undefined;
+  if (
+    url.startsWith("http://") ||
+    url.startsWith("https://") ||
+    url.startsWith("data:") ||
+    url.startsWith("blob:")
+  ) {
+    return url;
+  }
+
+  const base = API_BASE_URL.replace(/\/$/, "");
+  const path = url.startsWith("/") ? url : `/${url}`;
+  return `${base}${path}`;
 };
 
 export default function FriendViewScreen() {
@@ -152,12 +170,12 @@ export default function FriendViewScreen() {
   };
 
   /**
-   * Xử lý khi nhấn nút Chat
+   * Handle the Chat button
    *
-   * Luồng:
-   * 1. Gọi API POST /conversations/private tạo conversation
-   * 2. Nhận conversationId từ server
-   * 3. Điều hướng tới màn hình chat /chat/[id] với conversationId
+   * Flow:
+   * 1. Call POST /conversations/private to create or reuse a conversation
+   * 2. Receive conversationId from server
+   * 3. Navigate to /chat/[id] with conversationId
    */
   const handleChat = async () => {
     if (!profile || !currentUserId) return;
@@ -195,8 +213,8 @@ export default function FriendViewScreen() {
     } catch (error) {
       console.error("[FriendView] Chat error:", error);
       Alert.alert(
-        "Tao Conversation",
-        error instanceof Error ? error.message : "Khong the mo chat",
+        "Conversation",
+        error instanceof Error ? error.message : "Cannot open chat",
       );
     }
   };
@@ -293,7 +311,15 @@ export default function FriendViewScreen() {
           className="flex-1"
           contentContainerStyle={{ paddingBottom: 24 }}
         >
-          <View className="h-32 bg-green-primary" />
+          {profile.coverImage ? (
+            <Image
+              source={{ uri: toAbsoluteUrl(profile.coverImage) }}
+              className="h-32 w-full"
+              resizeMode="cover"
+            />
+          ) : (
+            <View className="h-32 bg-green-primary" />
+          )}
 
           <View className="-mt-12 px-4">
             <View className="mb-4 self-start rounded-full border-4 border-white bg-white">
@@ -333,7 +359,7 @@ export default function FriendViewScreen() {
                   <Ionicons name="person-add" size={16} color="#fff" />
                   <Text className="ml-2 font-semibold text-white">
                     {hasPendingRequest
-                      ? "Da gui loi moi"
+                      ? "Request sent"
                       : isSendingAddFriend
                         ? "Sending..."
                         : "Add Friend"}
