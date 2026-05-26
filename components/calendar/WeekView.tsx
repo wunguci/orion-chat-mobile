@@ -21,8 +21,8 @@ export default function WeekView({
   const dayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
   const HOUR_HEIGHT = 80;
-  const START_HOUR = 8;
-  const END_HOUR = 17;
+  const START_HOUR = 0;
+  const END_HOUR = 23;
 
   const hours = Array.from(
     { length: END_HOUR - START_HOUR + 1 },
@@ -52,22 +52,22 @@ export default function WeekView({
     <View className="flex-1 bg-white">
       {/* week header */}
       <View className="flex-row bg-white border-b border-gray-200">
-        <View className="w-16" />
+        <View className="w-14" />
         {weekDates.map((d, index) => {
           const isToday = new Date().toDateString() === d.toDateString();
 
           return (
-            <View key={index} className="flex-1 items-center py-3">
-              <Text className="text-xs text-gray-500 mb-1">
+            <View key={index} className="flex-1 items-center py-2">
+              <Text className="text-[10px] font-medium tracking-wide text-gray-500 mb-1">
                 {dayNames[index]}
               </Text>
               <View
-                className={`w-10 h-10 items-center justify-center rounded-lg ${
+                className={`w-9 h-9 items-center justify-center rounded-lg ${
                   isToday ? "bg-green-primary" : ""
                 }`}
               >
                 <Text
-                  className={`text-lg font-semibold ${
+                  className={`text-sm font-semibold ${
                     isToday ? "text-white" : "text-gray-900"
                   }`}
                 >
@@ -82,7 +82,7 @@ export default function WeekView({
       <ScrollView>
         <View className="flex-row">
           {/* time col */}
-          <View className="w-16 border-r border-gray-200">
+          <View className="w-14 border-r border-gray-200">
             {hours.map((hour) => {
               const displayHour = hour % 12 || 12;
               const ampm = hour >= 12 ? "PM" : "AM";
@@ -91,10 +91,16 @@ export default function WeekView({
                 <View
                   key={hour}
                   style={{ height: HOUR_HEIGHT }}
-                  className="border-b border-gray-200 pt-1 pr-2"
+                  className="border-b border-gray-200 pt-1 pr-1"
                 >
-                  <Text className="text-xs text-gray-400 text-right">
-                    {displayHour.toString().padStart(2, "0")} {ampm}
+                  <Text className="text-[10px] text-gray-400 text-right">
+                    {hour === 0
+                      ? "12 AM"
+                      : hour < 12
+                        ? `${displayHour} AM`
+                        : hour === 12
+                          ? "12 PM"
+                          : `${displayHour} PM`}
                   </Text>
                 </View>
               );
@@ -136,15 +142,17 @@ export default function WeekView({
                         key={event.id}
                         style={{
                           position: "absolute",
-                          top: top,
-                          left: 4,
-                          right: 4,
-                          height: Math.max(height, 60),
+                          top: Math.max(top + 2, 2),
+                          left: 3,
+                          right: 3,
+                          height: Math.max(height, 40),
+                          overflow: "hidden",
                         }}
                       >
                         <EventCard
                           event={event}
                           onPress={() => onEventPress(event)}
+                          compact
                         />
                       </View>
                     );

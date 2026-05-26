@@ -43,6 +43,7 @@ export default function CalendarScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingParticipants, setLoadingParticipants] = useState(false);
+  const [showPendingInvites, setShowPendingInvites] = useState(false);
   const searchInputRef = useRef<TextInput | null>(null);
   const [editorState, setEditorState] = useState<{
     open: boolean;
@@ -100,6 +101,12 @@ export default function CalendarScreen() {
       setLoadingParticipants(false);
     }
   }, [participantOptions.length]);
+
+  useEffect(() => {
+    if (pendingInvites.length === 0) {
+      setShowPendingInvites(false);
+    }
+  }, [pendingInvites.length]);
 
   const handleEventPress = (event: CalendarEvent) => {
     void loadParticipantOptions();
@@ -364,54 +371,76 @@ export default function CalendarScreen() {
       )}
 
       {!loading && !errorMessage && pendingInvites.length > 0 && (
-        <View className="mx-4 mt-4 rounded-2xl border border-gray-200 bg-white px-4 py-4">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-sm font-semibold text-gray-700">
-              Pending event invites
-            </Text>
-            <View className="rounded-full bg-gray-100 px-2 py-1">
-              <Text className="text-xs font-semibold text-gray-600">
-                {pendingInvites.length}
+        <View className="mx-4 mt-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+          <TouchableOpacity
+            onPress={() => setShowPendingInvites((prev) => !prev)}
+            className="flex-row items-center justify-between"
+            activeOpacity={0.8}
+          >
+            <View className="flex-row items-center gap-2">
+              <Text className="text-sm font-semibold text-gray-800">
+                Pending event invites
               </Text>
-            </View>
-          </View>
-          <View className="mt-3">
-            {pendingInvites.map((invite) => (
-              <View
-                key={invite.id}
-                className="mb-3 rounded-xl border border-gray-200 px-3 py-3"
-              >
-                <Text className="text-sm font-semibold text-gray-primary">
-                  {invite.title}
+              <View className="rounded-full bg-gray-100 px-2 py-0.5">
+                <Text className="text-[11px] font-semibold text-gray-600">
+                  {pendingInvites.length}
                 </Text>
-                <Text className="mt-1 text-xs text-gray-text">
-                  {new Date(invite.start).toLocaleString()}
-                </Text>
-                <View className="mt-3 flex-row">
-                  <TouchableOpacity
-                    onPress={() =>
-                      void handleInviteResponse(invite.id, "declined")
-                    }
-                    className="mr-2 rounded-lg border border-gray-300 px-3 py-2"
-                  >
-                    <Text className="text-xs font-semibold text-gray-600">
-                      Decline
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() =>
-                      void handleInviteResponse(invite.id, "accepted")
-                    }
-                    className="rounded-lg bg-green-primary px-3 py-2"
-                  >
-                    <Text className="text-xs font-semibold text-white">
-                      Accept
-                    </Text>
-                  </TouchableOpacity>
-                </View>
               </View>
-            ))}
-          </View>
+            </View>
+            <Ionicons
+              name={showPendingInvites ? "chevron-up" : "chevron-down"}
+              size={16}
+              color="#6B7280"
+            />
+          </TouchableOpacity>
+
+          {showPendingInvites && (
+            <View className="mt-3 space-y-2">
+              {pendingInvites.map((invite) => (
+                <View
+                  key={invite.id}
+                  className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-3"
+                >
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    className="text-sm font-semibold text-gray-primary"
+                  >
+                    {invite.title}
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    className="mt-1 text-[11px] text-gray-text"
+                  >
+                    {new Date(invite.start).toLocaleString()}
+                  </Text>
+                  <View className="mt-3 flex-row justify-end gap-2">
+                    <TouchableOpacity
+                      onPress={() =>
+                        void handleInviteResponse(invite.id, "declined")
+                      }
+                      className="rounded-lg border border-gray-300 px-3 py-2"
+                    >
+                      <Text className="text-xs font-semibold text-gray-600">
+                        Decline
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() =>
+                        void handleInviteResponse(invite.id, "accepted")
+                      }
+                      className="rounded-lg bg-green-primary px-3 py-2"
+                    >
+                      <Text className="text-xs font-semibold text-white">
+                        Accept
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       )}
 
