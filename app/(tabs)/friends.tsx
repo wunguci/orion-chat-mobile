@@ -786,7 +786,7 @@ export default function Friends() {
                 >
                   <Text className="text-green-primary font-semibold">
                     {pendingSentRequestIds.has(friend.id)
-                      ? "Da gui loi moi"
+                      ? "Request sent"
                       : "Add"}
                   </Text>
                 </TouchableOpacity>
