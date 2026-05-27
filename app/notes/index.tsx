@@ -12,11 +12,14 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
-  SafeAreaView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Menu } from "lucide-react-native";
+import { useSlideMenu } from "@/context/SlideMenuContext";
 
 const formatTimestamp = (value: string) => {
   const date = new Date(value);
@@ -43,6 +46,8 @@ const formatTimestamp = (value: string) => {
 
 export default function NotesScreen() {
   const router = useRouter();
+  const { openMenu } = useSlideMenu();
+  const insets = useSafeAreaInsets();
 
   const [notes, setNotes] = useState<Note[]>([]);
   const [categories, setCategories] = useState<NoteCategory[]>([]);
@@ -134,9 +139,36 @@ export default function NotesScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-row items-center justify-between border-b border-gray-200 bg-white px-4 pb-4 pt-12">
-        <Text className="text-2xl font-bold text-gray-primary">Notes</Text>
+    <SafeAreaView className="flex-1 bg-white" edges={[]}>
+      {/* Header */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: 12,
+          paddingTop: insets.top + 10,
+          paddingBottom: 2,
+          backgroundColor: "#fff",
+          borderBottomWidth: 0,
+          borderBottomColor: "#e5e7eb",
+        }}
+      >
+        <TouchableOpacity
+          onPress={openMenu}
+          activeOpacity={0.7}
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 10,
+            backgroundColor: "#ccfbf1",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Menu size={20} color="#0d9488" strokeWidth={2.5} />
+        </TouchableOpacity>
+        <Text style={{ fontSize: 17, fontWeight: "700", color: "#1e293b" }}>Notes</Text>
         <TouchableOpacity>
           <Ionicons name="ellipsis-vertical" size={20} color="#505050" />
         </TouchableOpacity>

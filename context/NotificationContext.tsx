@@ -286,7 +286,7 @@ export function NotificationProvider({
 
       if (item.type === "friend_request") {
         router.push({
-          pathname: "/(tabs)/(main)/explore",
+          pathname: "/(tabs)/friends",
           params: { activeCategory: "requests" },
         });
         return;
@@ -294,29 +294,29 @@ export function NotificationProvider({
 
       if (item.type === "group_invite") {
         router.push({
-          pathname: "/(tabs)/(main)/explore",
+          pathname: "/(tabs)/friends",
           params: { activeCategory: "group_invites" },
         });
         return;
       }
 
       if (item.type === "event_invite" || item.type === "event_reminder") {
-        router.push("/(tabs)/(main)/calendar");
+        router.push("/(tabs)/calendar");
         return;
       }
 
       if (item.link?.startsWith("/friends")) {
-        router.push("/(tabs)/(main)/explore");
+        router.push("/(tabs)/friends");
         return;
       }
 
       if (item.link?.startsWith("/calendar")) {
-        router.push("/(tabs)/(main)/calendar");
+        router.push("/(tabs)/calendar");
         return;
       }
 
       if (item.link?.startsWith("/chat")) {
-        router.push("/(tabs)/(main)");
+        router.push("/(tabs)");
       }
     },
     [markAsRead, markConversationNotificationsAsRead, router],

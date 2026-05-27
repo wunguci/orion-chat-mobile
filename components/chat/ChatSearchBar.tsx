@@ -9,6 +9,10 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Menu } from 'lucide-react-native';
+import { useSlideMenu } from '@/context/SlideMenuContext';
+import { whColors } from '@/constants/tailwindColors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface DropdownItem {
     label: string;
@@ -30,6 +34,8 @@ export default function ChatSearchBar({
     onCreateGroupPress,
 }: ChatSearchBarProps) {
     const { colors } = useTheme();
+    const { openMenu } = useSlideMenu();
+    const insets = useSafeAreaInsets();
     const [menuVisible, setMenuVisible] = useState(false);
     const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
     const plusRef = React.useRef<View>(null);
@@ -65,7 +71,7 @@ export default function ChatSearchBar({
         },
     ];
 
-    const openMenu = () => {
+    const openDropdown = () => {
         plusRef.current?.measureInWindow((x, y, width, height) => {
             setMenuPos({ top: y + height + 4, right: 12 });
             setMenuVisible(true);
@@ -78,12 +84,27 @@ export default function ChatSearchBar({
                 flexDirection: 'row',
                 alignItems: 'center',
                 paddingHorizontal: 12,
-                paddingTop: 15,
+                paddingTop: insets.top + 10,
                 paddingBottom: 8,
                 backgroundColor: colors.background,
                 gap: 10,
             }}
         >
+            {/* Hamburger menu button */}
+            <TouchableOpacity
+                onPress={openMenu}
+                activeOpacity={0.7}
+                style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 10,
+                    backgroundColor: whColors.bgHeavy,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                }}
+            >
+                <Menu size={20} color={whColors.primary} strokeWidth={2.5} />
+            </TouchableOpacity>
             {/* Search bar */}
             <View
                 style={{
@@ -121,7 +142,7 @@ export default function ChatSearchBar({
             </TouchableOpacity>
 
             {/* Plus button */}
-            <TouchableOpacity onPress={openMenu} ref={plusRef as any}>
+            <TouchableOpacity onPress={openDropdown} ref={plusRef as any}>
                 <Ionicons name="add" size={26} color={colors.text} />
             </TouchableOpacity>
 

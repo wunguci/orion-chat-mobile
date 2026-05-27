@@ -4,6 +4,7 @@ import { whColors } from "@/constants/tailwindColors";
 import { calendarApi } from "@/services/api/calendar";
 import { CalendarEvent, ParticipantOption, ViewMode } from "@/types/calendar";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import DayView from "@/components/calendar/DayView";
 import MonthView from "@/components/calendar/MonthView";
@@ -12,11 +13,12 @@ import YearView from "@/components/calendar/YearView";
 import FloatingActionButton from "@/components/common/FloatingActionButton";
 import { formatDate } from "@/utils/calendar";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { Menu } from "lucide-react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { useSlideMenu } from "@/context/SlideMenuContext";
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -30,7 +32,8 @@ import {
 } from "react-native";
 
 export default function CalendarScreen() {
-  const navigation = useNavigation();
+  const { openMenu } = useSlideMenu();
+  const insets = useSafeAreaInsets();
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -231,18 +234,92 @@ export default function CalendarScreen() {
     }
   }, [currentDate, viewMode]);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      title: getHeaderTitle(),
-      headerRight: () => (
-        <View
+  return (
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: "#fff" }}
+      edges={[]}
+    >
+      {/* ── Custom header ── */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: 12,
+          paddingTop: insets.top + 10,
+          paddingBottom: 10,
+          backgroundColor: "#fff",
+          borderBottomWidth: 1,
+          borderBottomColor: whColors.borderLight,
+        }}
+      >
+        {/* Left: hamburger */}
+        <TouchableOpacity
+          onPress={openMenu}
+          activeOpacity={0.7}
           style={{
-            flexDirection: "row",
+            width: 38,
+            height: 38,
+            borderRadius: 10,
+            backgroundColor: whColors.bgHeavy,
             alignItems: "center",
-            marginRight: 10,
-            gap: 6,
+            justifyContent: "center",
           }}
         >
+          <Menu size={20} color={whColors.primary} strokeWidth={2.5} />
+        </TouchableOpacity>
+
+        {/* Center: prev / TODAY / next */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <TouchableOpacity
+            onPress={() => navigateDate("prev")}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: whColors.bgMedium,
+              borderWidth: 1,
+              borderColor: whColors.borderLight,
+            }}
+          >
+            <Ionicons name="chevron-back" size={16} color={whColors.textPrimary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setCurrentDate(new Date())}
+            style={{
+              backgroundColor: "#1f2937",
+              borderRadius: 8,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700", letterSpacing: 0.8 }}>
+              TODAY
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigateDate("next")}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: whColors.bgMedium,
+              borderWidth: 1,
+              borderColor: whColors.borderLight,
+            }}
+          >
+            <Ionicons name="chevron-forward" size={16} color={whColors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Right: search + menu */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <TouchableOpacity
             onPress={() => setShowSearch((prev) => !prev)}
             style={{
@@ -259,7 +336,7 @@ export default function CalendarScreen() {
           >
             <Ionicons
               name={showSearch ? "close" : "search"}
-              size={18}
+              size={17}
               color={whColors.primary}
             />
           </TouchableOpacity>
@@ -278,111 +355,70 @@ export default function CalendarScreen() {
             }}
             activeOpacity={0.8}
           >
-            <Ionicons
-              name="ellipsis-vertical"
-              size={16}
-              color={whColors.primary}
-            />
+            <Ionicons name="ellipsis-vertical" size={16} color={whColors.primary} />
           </TouchableOpacity>
         </View>
-      ),
-    });
-  }, [
-    navigation,
-    viewMode,
-    currentDate,
-    showSearch,
-    getHeaderTitle,
-    openDateMenu,
-  ]);
+      </View>
 
-  return (
-    <SafeAreaView
-      className="flex-1 bg-white"
-      edges={["left", "right", "bottom"]}
-    >
       {showSearch && (
-        <View className="border-b border-gray-200 bg-white px-4 py-3">
+        <View style={{ borderBottomWidth: 1, borderBottomColor: "#e5e7eb", backgroundColor: "#fff", padding: 12 }}>
           <TextInput
             ref={searchInputRef}
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Search events, location, description"
-            className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-base text-gray-900"
+            style={{
+              borderWidth: 1,
+              borderColor: "#d1d5db",
+              borderRadius: 12,
+              backgroundColor: "#f9fafb",
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              fontSize: 14,
+              color: "#111827",
+            }}
             autoCapitalize="none"
             returnKeyType="search"
-            onSubmitEditing={() => {
-              void loadEvents();
-            }}
+            onSubmitEditing={() => { void loadEvents(); }}
           />
-          <View className="mt-3 flex-row">
+          <View style={{ marginTop: 10, flexDirection: "row" }}>
             <TouchableOpacity
-              onPress={() => {
-                setSearchQuery("");
-                void loadEvents();
-              }}
-              className="rounded-lg border border-gray-300 px-3 py-2"
+              onPress={() => { setSearchQuery(""); void loadEvents(); }}
+              style={{ borderWidth: 1, borderColor: "#d1d5db", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 }}
             >
-              <Text className="text-sm text-gray-700">Clear</Text>
+              <Text style={{ fontSize: 13, color: "#374151" }}>Clear</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      <View className="border-b border-gray-200 bg-white px-4 py-3">
-        <View className="flex-row items-center justify-between">
-          <TouchableOpacity
-            onPress={() => navigateDate("prev")}
-            className="h-9 w-9 items-center justify-center rounded-lg border border-gray-300"
-          >
-            <Ionicons name="chevron-back" size={18} color="#374151" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setCurrentDate(new Date())}
-            className="rounded-lg bg-gray-900 px-4 py-2"
-          >
-            <Text className="text-xs font-semibold uppercase tracking-wider text-white">
-              Today
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => navigateDate("next")}
-            className="h-9 w-9 items-center justify-center rounded-lg border border-gray-300"
-          >
-            <Ionicons name="chevron-forward" size={18} color="#374151" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
       <ViewModeTabs activeView={viewMode} onChange={setViewMode} />
 
       {loading && (
-        <View className="flex-1 items-center justify-center bg-white">
-          <ActivityIndicator size="large" color="#00B14F" />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" }}>
+          <ActivityIndicator size="large" color={whColors.primary} />
         </View>
       )}
 
       {!loading && errorMessage && (
-        <View className="mx-4 mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-          <Text className="text-red-600">{errorMessage}</Text>
+        <View style={{ margin: 16, borderWidth: 1, borderColor: "#fecaca", backgroundColor: "#fef2f2", borderRadius: 12, padding: 12 }}>
+          <Text style={{ color: "#dc2626" }}>{errorMessage}</Text>
         </View>
       )}
 
       {!loading && !errorMessage && pendingInvites.length > 0 && (
-        <View className="mx-4 mt-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+        <View style={{ margin: 16, borderWidth: 1, borderColor: "#e5e7eb", backgroundColor: "#fff", borderRadius: 16, padding: 12 }}>
           <TouchableOpacity
             onPress={() => setShowPendingInvites((prev) => !prev)}
-            className="flex-row items-center justify-between"
+            style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
             activeOpacity={0.8}
           >
-            <View className="flex-row items-center gap-2">
-              <Text className="text-sm font-semibold text-gray-800">
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: "#1f2937" }}>
                 Pending event invites
               </Text>
-              <View className="rounded-full bg-gray-100 px-2 py-0.5">
-                <Text className="text-[11px] font-semibold text-gray-600">
+              <View style={{ backgroundColor: "#f3f4f6", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                <Text style={{ fontSize: 11, fontWeight: "600", color: "#4b5563" }}>
                   {pendingInvites.length}
                 </Text>
               </View>
@@ -395,46 +431,30 @@ export default function CalendarScreen() {
           </TouchableOpacity>
 
           {showPendingInvites && (
-            <View className="mt-3 space-y-2">
+            <View style={{ marginTop: 12, gap: 8 }}>
               {pendingInvites.map((invite) => (
                 <View
                   key={invite.id}
-                  className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-3"
+                  style={{ borderWidth: 1, borderColor: "#e5e7eb", backgroundColor: "#f9fafb", borderRadius: 12, padding: 12 }}
                 >
-                  <Text
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                    className="text-sm font-semibold text-gray-primary"
-                  >
+                  <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "600", color: "#1e293b" }}>
                     {invite.title}
                   </Text>
-                  <Text
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                    className="mt-1 text-[11px] text-gray-text"
-                  >
+                  <Text numberOfLines={1} style={{ marginTop: 3, fontSize: 11, color: "#6b7280" }}>
                     {new Date(invite.start).toLocaleString()}
                   </Text>
-                  <View className="mt-3 flex-row justify-end gap-2">
+                  <View style={{ marginTop: 10, flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
                     <TouchableOpacity
-                      onPress={() =>
-                        void handleInviteResponse(invite.id, "declined")
-                      }
-                      className="rounded-lg border border-gray-300 px-3 py-2"
+                      onPress={() => void handleInviteResponse(invite.id, "declined")}
+                      style={{ borderWidth: 1, borderColor: "#d1d5db", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}
                     >
-                      <Text className="text-xs font-semibold text-gray-600">
-                        Decline
-                      </Text>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: "#4b5563" }}>Decline</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      onPress={() =>
-                        void handleInviteResponse(invite.id, "accepted")
-                      }
-                      className="rounded-lg bg-green-primary px-3 py-2"
+                      onPress={() => void handleInviteResponse(invite.id, "accepted")}
+                      style={{ backgroundColor: whColors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}
                     >
-                      <Text className="text-xs font-semibold text-white">
-                        Accept
-                      </Text>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>Accept</Text>
                     </TouchableOpacity>
                   </View>
                 </View>

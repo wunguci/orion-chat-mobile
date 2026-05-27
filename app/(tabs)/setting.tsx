@@ -5,6 +5,7 @@ import {
     ChevronRight,
     HelpCircle,
     LogOut,
+    Menu,
     Moon,
     Palette,
     Shield,
@@ -21,11 +22,15 @@ import {
     View,
     ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import SettingsItem from '../../components/setting/SettingsItem';
 import SettingsSection from '../../components/setting/SettingsSection';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useAuth, useAuthUser } from '../../hooks/useAuth';
 import { API_BASE_URL } from '../../services/api/profile';
+import { useSlideMenu } from '@/context/SlideMenuContext';
+import { whColors } from '@/constants/tailwindColors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const resolveImageUrl = (value: string | undefined, fallback: string) => {
     if (!value) return fallback;
@@ -38,6 +43,8 @@ const resolveImageUrl = (value: string | undefined, fallback: string) => {
 export default function Setting() {
     const router = useRouter();
     const colors = useThemeColors();
+    const { openMenu } = useSlideMenu();
+    const insets = useSafeAreaInsets();
     const [darkMode, setDarkMode] = useState(false);
     const { user, loading } = useAuthUser();
     const { logout } = useAuth();
@@ -81,8 +88,49 @@ export default function Setting() {
     };
 
     return (
-        <View className="flex-1 bg-gray-50">
-            <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#f9fafb' }} edges={[]}>
+            {/* Header with hamburger */}
+            <View
+                style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: 12,
+                    paddingTop: insets.top + 12,
+                    paddingBottom: 10,
+                    backgroundColor: '#fff',
+                    borderBottomWidth: 0,
+                    borderBottomColor: whColors.borderLight,
+                }}
+            >
+                <TouchableOpacity
+                    onPress={openMenu}
+                    activeOpacity={0.7}
+                    style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 10,
+                        backgroundColor: whColors.bgHeavy,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}
+                >
+                    <Menu size={20} color={whColors.primary} strokeWidth={2.5} />
+                </TouchableOpacity>
+                <Text
+                    style={{
+                        flex: 1,
+                        textAlign: 'center',
+                        fontSize: 17,
+                        fontWeight: '700',
+                        color: whColors.textPrimary,
+                    }}
+                >
+                    Profile
+                </Text>
+                <View style={{ width: 38 }} />
+            </View>
+
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
                 {/* Profile Section */}
                 <View className="mt-4 bg-white px-4 py-6">
                     {loading ? (
@@ -98,7 +146,7 @@ export default function Setting() {
                     ) : (
                         <TouchableOpacity
                             className="flex-row items-center"
-                            onPress={() => router.push('/profile')}
+                            onPress={() => router.push('/(settings)/profile')}
                         >
                             <Image
                                 source={{
@@ -137,7 +185,7 @@ export default function Setting() {
                             }
                             title="Thông tin cá nhân"
                             subtitle="Chỉnh sửa thông tin của bạn"
-                            onPress={() => router.push('/profile-settings')}
+                            onPress={() => router.push('/(settings)/profile-settings')}
                         />
 
                         <SettingsItem
@@ -150,7 +198,7 @@ export default function Setting() {
                                 />
                             }
                             onPress={() => {
-                                navigate('/privacy-security');
+                                navigate('/(settings)/privacy-security');
                             }}
                         />
                         <SettingsItem
@@ -160,7 +208,7 @@ export default function Setting() {
                             title="Thông báo"
                             subtitle="Cập nhật cài đặt thông báo của bạn"
                             onPress={() => {
-                                navigate('/notifycation-setting');
+                                navigate('/(settings)/notification-setting');
                             }}
                         />
 
@@ -174,7 +222,7 @@ export default function Setting() {
                             title="Thiết bị đã đăng nhập"
                             subtitle="Quản lý các thiết bị đã đăng nhập vào tài khoản"
                             onPress={() => {
-                                navigate('/linked-devices');
+                                navigate('/(settings)/linked-devices');
                             }}
                         />
                     </View>
@@ -203,7 +251,7 @@ export default function Setting() {
                             title="Chủ đề"
                             subtitle="Tùy chỉnh màu sắc giao diện"
                             onPress={() => {
-                                navigate('/apprearance-setting');
+                                navigate('/(settings)/appearance-setting');
                             }}
                         />
                     </View>
@@ -254,6 +302,6 @@ export default function Setting() {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
-        </View>
+        </SafeAreaView>
     );
 }

@@ -1,6 +1,6 @@
 import React from "react";
-import DrawerNavigator from "./DrawerNavigator";
+import BottomTabNavigator from "./BottomTabNavigator";
 
 export default function AppNavigator() {
-  return <DrawerNavigator />;
+  return <BottomTabNavigator />;
 }

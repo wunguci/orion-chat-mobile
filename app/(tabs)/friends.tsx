@@ -23,8 +23,11 @@ import type {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { GroupCallContext } from "@/context/GroupCallContext";
 import { chatApi } from "@/services/api/chat";
+import { useSlideMenu } from "@/context/SlideMenuContext";
+import { Menu } from "lucide-react-native";
 import React, {
   useCallback,
   useContext,
@@ -45,9 +48,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function Friends() {
   const router = useRouter();
+  const { openMenu } = useSlideMenu();
+  const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ activeCategory?: string }>();
   const callContext = useContext(CallContext);
   const groupCallContext = useContext(GroupCallContext);
   const [activeCategory, setActiveCategory] =
@@ -71,6 +78,20 @@ export default function Friends() {
   const [pendingSentRequestIds, setPendingSentRequestIds] = useState<Set<string>>(
     new Set(),
   );
+
+  // Handle deep-link activeCategory from notifications
+  useEffect(() => {
+    const nextCategory = params.activeCategory;
+    if (
+      nextCategory === "friends" ||
+      nextCategory === "requests" ||
+      nextCategory === "groups" ||
+      nextCategory === "group_invites" ||
+      nextCategory === "blocked"
+    ) {
+      setActiveCategory(nextCategory);
+    }
+  }, [params.activeCategory]);
 
   const formatAgo = (iso: string) => {
     const ms = Date.now() - new Date(iso).getTime();
@@ -655,8 +676,34 @@ export default function Friends() {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={[]}>
-      <View className="border-b border-gray-200 bg-white px-4 pb-4 pt-4 flex-row items-center justify-between">
-        <Text className="text-2xl font-bold text-gray-primary">Friends</Text>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 12,
+          paddingTop: insets.top + 11,
+          paddingBottom: 2,
+          backgroundColor: '#fff',
+          borderBottomWidth: 0,
+          borderBottomColor: '#e5e7eb',
+        }}
+      >
+        <TouchableOpacity
+          onPress={openMenu}
+          activeOpacity={0.7}
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 10,
+            backgroundColor: '#ccfbf1',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Menu size={20} color="#0d9488" strokeWidth={2.5} />
+        </TouchableOpacity>
+        <Text className="text-lg font-bold text-gray-primary">Friends</Text>
         <TouchableOpacity>
           <Ionicons name="ellipsis-vertical" size={20} color="#505050" />
         </TouchableOpacity>

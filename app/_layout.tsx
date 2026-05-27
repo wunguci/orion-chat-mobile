@@ -15,6 +15,7 @@ import { SocketProvider } from '@/context/SocketContext';
 import { NotificationProvider } from '@/context/NotificationContext';
 import { GroupCallProvider } from '@/context/GroupCallContext';
 import { StreamVideoProvider } from '@/context/StreamVideoContext';
+import { SlideMenuProvider } from '@/context/SlideMenuContext';
 import { useSessionConflictListener } from '@/hooks/useSessionConflictListener';
 import { useAuth } from '@/hooks/useAuth';
 import IncomingGroupCallModal from '@/components/call/IncomingGroupCallModal';
@@ -68,6 +69,10 @@ function RootLayoutContent() {
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen
+                    name="(settings)"
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
                     name="chat/[id]"
                     options={{ headerShown: false }}
                 />
@@ -77,6 +82,14 @@ function RootLayoutContent() {
                 />
                 <Stack.Screen
                     name="work-hub"
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="ai"
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="profile"
                     options={{ headerShown: false }}
                 />
                 <Stack.Screen
@@ -104,8 +117,10 @@ export default function RootLayout() {
                             <CallProvider>
                                 <GroupCallProvider>
                                     <NotificationProvider>
-                                        <RootLayoutContent />
-                                        <IncomingGroupCallModal />
+                                        <SlideMenuProvider>
+                                            <RootLayoutContent />
+                                            <IncomingGroupCallModal />
+                                        </SlideMenuProvider>
                                     </NotificationProvider>
                                 </GroupCallProvider>
                             </CallProvider>
