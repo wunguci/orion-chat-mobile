@@ -2,7 +2,9 @@ import { formatTime } from '@/hooks/useChat';
 import { useTheme } from '@/hooks/useTheme';
 import { Message } from '@/types/chat';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
+import { GroupCallContext } from '@/context/GroupCallContext';
+import { CallContext } from '@/context/CallContext';
 import {
     Image,
     Linking,
@@ -883,6 +885,228 @@ function VideoPreviewBubble({ message }: { message: Message }) {
     );
 }
 
+// ── Call history bubble ──────────────────────────────────────
+function CallBubble({ message, onCallBack }: { message: Message; onCallBack?: (callType: 'audio' | 'video') => void }) {
+    const { colors } = useTheme();
+    const groupCallContext = useContext(GroupCallContext);
+
+    const callData = message.callData;
+    if (!callData) {
+        return (
+            <View style={{ padding: 12, backgroundColor: colors.backgroundSecondary, borderRadius: 14 }}>
+                <Text style={{ color: colors.text }}>Cuộc gọi</Text>
+            </View>
+        );
+    }
+
+    const { callType, callStatus, duration, callId, callMode } = callData;
+    const isVideo = callType === 'video';
+    const isMe = message.isMine;
+
+    const handleJoin = async () => {
+        if (!callId) return;
+        try {
+            if (groupCallContext && groupCallContext.joinGroupCall) {
+                await groupCallContext.joinGroupCall(callId, message.chatId, callType);
+            }
+        } catch (error) {
+            console.error('[CallBubble] Join call failed:', error);
+            Alert.alert('Lỗi', 'Không thể tham gia cuộc gọi nhóm');
+        }
+    };
+
+    // Formatter cho thời lượng cuộc gọi
+    const formatDurationText = (seconds?: number) => {
+        if (seconds === undefined) return '0 phút';
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        if (mins === 0 && secs === 0) return '0 phút';
+        if (mins === 0) return `${secs} giây`;
+        if (secs === 0) return `${mins} phút`;
+        return `${mins} phút ${secs} giây`;
+    };
+
+    if (callStatus === 'active') {
+        return (
+            <View
+                style={{
+                    backgroundColor: '#EDE9FE', // Light purple
+                    borderWidth: 1,
+                    borderColor: '#8B5CF6', // Purple-500
+                    borderRadius: 16,
+                    padding: 14,
+                    width: 240,
+                    shadowColor: '#8B5CF6',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                    elevation: 3,
+                }}
+            >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <View
+                        style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 19,
+                            backgroundColor: '#8B5CF6',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                        }}
+                    >
+                        <Ionicons
+                            name={isVideo ? 'videocam' : 'call'}
+                            size={20}
+                            color="#FFFFFF"
+                        />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ color: '#4C1D95', fontWeight: '700', fontSize: 14 }}>
+                            Cuộc gọi nhóm
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                            <View
+                                style={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: 4,
+                                    backgroundColor: '#10B981', // Green
+                                }}
+                            />
+                            <Text style={{ color: '#6D28D9', fontSize: 12, fontWeight: '600' }}>
+                                Đang diễn ra...
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+                
+                <TouchableOpacity
+                    onPress={handleJoin}
+                    activeOpacity={0.8}
+                    style={{
+                        backgroundColor: '#8B5CF6',
+                        borderRadius: 10,
+                        paddingVertical: 8,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'row',
+                        gap: 6,
+                    }}
+                >
+                    <Ionicons name="enter-outline" size={16} color="#FFFFFF" />
+                    <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>
+                        Tham gia
+                    </Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    let cardBg = isMe ? '#00B14F' : colors.backgroundSecondary;
+    let titleColor = isMe ? '#FFFFFF' : colors.text;
+    let descColor = isMe ? 'rgba(255, 255, 255, 0.8)' : colors.textSecondary;
+    let iconBg = '';
+    let iconColor = '';
+    let iconName: any = isVideo ? 'videocam' : 'call';
+    let titleText = '';
+    let statusText = '';
+
+    if (callMode === 'group') {
+        titleText = 'Cuộc gọi nhóm';
+        if (callStatus === 'completed') {
+            statusText = `Đã kết thúc · ${formatDurationText(duration)}`;
+            iconColor = isMe ? '#FFFFFF' : '#10B981';
+            iconBg = isMe ? 'rgba(255, 255, 255, 0.25)' : '#E6F4EA';
+        } else {
+            statusText = 'Đã kết thúc';
+            titleColor = isMe ? '#FFFFFF' : '#DC2626';
+            iconColor = isMe ? '#FFFFFF' : '#DC2626';
+            iconBg = isMe ? 'rgba(255, 255, 255, 0.25)' : '#FEE2E2';
+            iconName = isVideo ? 'videocam-off' : 'call-outline';
+        }
+    } else {
+        if (callStatus === 'completed') {
+            titleText = `Cuộc gọi ${isVideo ? 'video' : 'thoại'} ${isMe ? 'đi' : 'đến'}`;
+            statusText = formatDurationText(duration);
+            iconColor = isMe ? '#FFFFFF' : '#10B981';
+            iconBg = isMe ? 'rgba(255, 255, 255, 0.25)' : '#E6F4EA';
+        } else if (callStatus === 'missed') {
+            titleText = isMe ? 'Bạn đã hủy' : 'Bạn bị nhỡ';
+            statusText = 'Cuộc gọi nhỡ';
+            titleColor = isMe ? '#FFFFFF' : '#DC2626';
+            iconColor = isMe ? '#FFFFFF' : '#DC2626';
+            iconBg = isMe ? 'rgba(255, 255, 255, 0.25)' : '#FEE2E2';
+            iconName = isVideo ? 'videocam-off' : 'call-outline';
+        } else if (callStatus === 'declined') {
+            titleText = isMe ? 'Người nhận từ chối' : 'Bạn đã từ chối';
+            statusText = 'Cuộc gọi bị từ chối';
+            titleColor = isMe ? '#FFFFFF' : '#DC2626';
+            iconColor = isMe ? '#FFFFFF' : '#DC2626';
+            iconBg = isMe ? 'rgba(255, 255, 255, 0.25)' : '#FEE2E2';
+            iconName = isVideo ? 'videocam-off' : 'call-outline';
+        }
+    }
+
+    return (
+        <View
+            style={{
+                backgroundColor: cardBg,
+                borderRadius: 16,
+                padding: 12,
+                gap: 10,
+                width: 240,
+            }}
+        >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View
+                    style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        backgroundColor: iconBg,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                    }}
+                >
+                    <Ionicons name={iconName} size={18} color={iconColor} />
+                </View>
+                <View style={{ flex: 1 }}>
+                    <Text style={{ color: titleColor, fontWeight: '600', fontSize: 13 }} numberOfLines={1}>
+                        {titleText}
+                    </Text>
+                    <Text style={{ color: descColor, fontSize: 11, marginTop: 2 }}>
+                        {statusText}
+                    </Text>
+                </View>
+            </View>
+
+            <TouchableOpacity
+                onPress={() => onCallBack?.(callType)}
+                activeOpacity={0.8}
+                style={{
+                    backgroundColor: isMe ? 'rgba(255, 255, 255, 0.2)' : colors.primary,
+                    borderRadius: 10,
+                    paddingVertical: 8,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: isMe ? 1 : 0,
+                    borderColor: isMe ? 'rgba(255, 255, 255, 0.4)' : 'transparent',
+                }}
+            >
+                <Text
+                    style={{
+                        color: '#FFFFFF',
+                        fontWeight: '700',
+                        fontSize: 13,
+                    }}
+                >
+                    Gọi lại
+                </Text>
+            </TouchableOpacity>
+        </View>
+    );
+}
+
 // ── Sender avatar (left side) ────────────────────────────────
 function SenderAvatar({
     avatarUri,
@@ -958,6 +1182,8 @@ interface MessageBubbleProps {
     senderName?: string;
     /** Callback khi nhấn giữ message */
     onLongPress?: (message: Message) => void;
+    /** Callback khi bấm gọi lại */
+    onCallBack?: (callType: 'audio' | 'video') => void;
 }
 
 const SENT_BG = '#00B14F';
@@ -969,11 +1195,54 @@ export default function MessageBubble({
     avatarUri,
     senderName,
     onLongPress,
+    onCallBack,
 }: MessageBubbleProps) {
     const { colors } = useTheme();
 
     const receivedBg = colors.backgroundSecondary;
     const receivedText = colors.text;
+
+    const messageType = String(message.type || '').toUpperCase();
+    if (messageType === 'SYSTEM') {
+        return (
+            <View
+                style={{
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 16,
+                    paddingVertical: 6,
+                    marginVertical: 4,
+                    width: '100%',
+                }}
+            >
+                <View
+                    style={{
+                        backgroundColor: 'rgba(30, 41, 59, 0.85)',
+                        borderRadius: 20,
+                        paddingHorizontal: 14,
+                        paddingVertical: 6,
+                        maxWidth: '85%',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 2,
+                        elevation: 2,
+                    }}
+                >
+                    <Text
+                        style={{
+                            color: '#F1F5F9',
+                            fontSize: 12,
+                            fontWeight: '600',
+                            textAlign: 'center',
+                        }}
+                    >
+                        {message.text}
+                    </Text>
+                </View>
+            </View>
+        );
+    }
 
     const renderContent = () => {
         const messageType = String(message.type || '').toUpperCase();
@@ -994,6 +1263,8 @@ export default function MessageBubble({
             case 'VIDEO_PREVIEW':
                 // YouTube/video preview link - show with title and channel
                 return <VideoPreviewBubble message={message} />;
+            case 'CALL':
+                return <CallBubble message={message} onCallBack={onCallBack} />;
             default:
                 return (
                     <TextBubble

@@ -25,6 +25,7 @@ import { useNotificationContext } from '@/context/NotificationContext';
 import { useFocusEffect } from 'expo-router';
 import { CallContext } from '@/context/CallContext';
 import { GroupCallContext } from '@/context/GroupCallContext';
+import { useAuth } from '@/hooks/useAuth';
 
 function shouldShowAvatar(messages: Message[], index: number): boolean {
     const curr = messages[index];
@@ -65,14 +66,88 @@ export default function ChatScreen() {
         isGroup?: string;
         participantIds?: string;
     }>();
+    const id = params.id;
 
     const router = useRouter();
-    const { id, name, avatarUri } = params;
-    const isGroup = params.isGroup === 'true';
-    const participantIds = (params.participantIds || '')
+    const { state: authState } = useAuth();
+
+    const initialIsGroup = params.isGroup === 'true';
+    const initialParticipantIds = (params.participantIds || '')
         .split(',')
         .map((value) => value.trim())
         .filter(Boolean);
+    const initialOtherUserId = params.otherUserId || undefined;
+
+    const [convDetails, setConvDetails] = useState<{
+        isGroup: boolean;
+        participantIds: string[];
+        otherUserId?: string;
+        name: string;
+        avatarUri?: string;
+        participants?: any[];
+    }>({
+        isGroup: initialIsGroup,
+        participantIds: initialParticipantIds,
+        otherUserId: initialOtherUserId,
+        name: params.name || 'Chat',
+        avatarUri: params.avatarUri || undefined,
+        participants: [],
+    });
+
+    const { isGroup, participantIds, otherUserId, name, avatarUri } = convDetails;
+
+    useEffect(() => {
+        if (!id) return;
+
+        // Check if we need to fetch additional details
+        const needsFetch = 
+            !convDetails.name || 
+            convDetails.name === 'Chat' ||
+            convDetails.participantIds.length === 0 || 
+            (!convDetails.isGroup && !convDetails.otherUserId) ||
+            (convDetails.isGroup && (!convDetails.participants || convDetails.participants.length === 0));
+
+        if (!needsFetch) return;
+
+        const fetchDetails = async () => {
+            try {
+                const conversation = await chatApi.getConversation(id);
+                if (conversation) {
+                    const isGroupChat = conversation.type === 'GROUP';
+                    const fetchedParticipantIds = conversation.participants
+                        .map((p: any) => p.userId)
+                        .filter(Boolean);
+                    
+                    const otherParticipant = !isGroupChat
+                        ? conversation.participants.find((p: any) => p.userId !== authState.user?.userId) ||
+                          conversation.participants.find((p: any) => p.userId !== conversation.participants[0]?.userId)
+                        : null;
+                    
+                    const displayName = isGroupChat
+                        ? conversation.groupInfo?.groupName || 'Group'
+                        : otherParticipant?.fullName || 'Unknown';
+                    
+                    const displayAvatar = !isGroupChat
+                        ? otherParticipant?.avatarUrl
+                        : conversation.groupInfo?.groupAvatar;
+
+                    setConvDetails({
+                        isGroup: isGroupChat,
+                        participantIds: fetchedParticipantIds,
+                        otherUserId: otherParticipant?.userId || undefined,
+                        name: displayName,
+                        avatarUri: displayAvatar || undefined,
+                        participants: conversation.participants,
+                    });
+                }
+            } catch (error) {
+                console.error('[ChatScreen] Error fetching conversation details:', error);
+            }
+        };
+
+        void fetchDetails();
+    }, [id, convDetails.name, convDetails.participantIds.length, convDetails.isGroup, convDetails.otherUserId, convDetails.participants?.length, authState.user?.userId]);
+
     const { colors, colorScheme } = useTheme();
     const callContext = useContext(CallContext);
     const groupCallContext = useContext(GroupCallContext);
@@ -142,20 +217,33 @@ export default function ChatScreen() {
 
             try {
                 if (isGroup) {
+                    const participantNames: Record<string, string> = {};
+                    const participantAvatars: Record<string, string> = {};
+                    if (convDetails.participants) {
+                        convDetails.participants.forEach((p: any) => {
+                            if (p.userId) {
+                                participantNames[p.userId] = p.fullName || `User ${p.userId}`;
+                                participantAvatars[p.userId] = p.avatarUrl || '';
+                            }
+                        });
+                    }
+
                     await groupCallContext?.initiateGroupCall(
                         id,
                         participantIds,
                         callType,
+                        participantNames,
+                        participantAvatars,
                     );
                     return;
                 }
 
-                if (!params.otherUserId) {
+                if (!otherUserId) {
                     Alert.alert('Khong the goi', 'Thieu thong tin nguoi nhan');
                     return;
                 }
 
-                await callContext?.initiateCall(id, params.otherUserId, callType, {
+                await callContext?.initiateCall(id, otherUserId, callType, {
                     name: name || 'Friend',
                     avatar: avatarUri,
                 });
@@ -173,7 +261,7 @@ export default function ChatScreen() {
             id,
             isGroup,
             name,
-            params.otherUserId,
+            otherUserId,
             participantIds,
         ],
     );
@@ -217,10 +305,11 @@ export default function ChatScreen() {
                             : undefined
                     }
                     onLongPress={handleMessageLongPress}
+                    onCallBack={(callType) => void handleStartCall(callType)}
                 />
             </View>
         ),
-        [messages, avatarUri, name, handleMessageLongPress],
+        [messages, avatarUri, name, handleMessageLongPress, handleStartCall],
     );
 
     return (

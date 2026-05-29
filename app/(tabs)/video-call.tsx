@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useContext, useEffect, useMemo } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 let RTCViewComponent: React.ComponentType<{
@@ -88,7 +88,10 @@ export default function VideoCallScreen() {
   }
 
   const showLocalPreview = callMode === "video" && Boolean(call?.localStream);
-  const showRemoteVideo = callMode === "video" && remoteStreamUrl;
+  const showRemoteVideo =
+    callMode === "video" &&
+    remoteStreamUrl &&
+    call.isRemoteVideoEnabled !== false;
   const conversationId = call.conversationId || params.conversationId;
   const currentUserId = state.user?.userId;
   const targetUserId = call.otherUser?.id || params.targetUserId;
@@ -137,14 +140,24 @@ export default function VideoCallScreen() {
                 mirror={false}
               />
             ) : null}
-            <View className="h-28 w-28 rounded-full bg-neutral-700 items-center justify-center mb-4">
-              <Text className="text-white text-3xl font-bold">
-                {getInitials(title)}
-              </Text>
-            </View>
+            {call?.otherUser?.avatar ? (
+              <Image
+                source={{ uri: call.otherUser.avatar }}
+                style={{ width: 112, height: 112, borderRadius: 56 }}
+                className="mb-4"
+              />
+            ) : (
+              <View className="h-28 w-28 rounded-full bg-neutral-700 items-center justify-center mb-4">
+                <Text className="text-white text-3xl font-bold">
+                  {getInitials(title)}
+                </Text>
+              </View>
+            )}
             <Text className="text-white/70 text-center">
               {callMode === "video"
-                ? "Waiting for remote video..."
+                ? remoteStreamUrl
+                  ? "Camera off"
+                  : "Waiting for remote video..."
                 : "Audio call in progress"}
             </Text>
           </View>
@@ -152,7 +165,7 @@ export default function VideoCallScreen() {
 
         {showLocalPreview ? (
           <View className="absolute right-4 top-28 h-40 w-28 rounded-xl overflow-hidden border border-white/25 bg-black">
-            {RTCViewComponent && localStreamUrl ? (
+            {RTCViewComponent && localStreamUrl && call.isVideoEnabled ? (
               <RTCViewComponent
                 streamURL={localStreamUrl}
                 style={{ flex: 1 }}
@@ -160,12 +173,13 @@ export default function VideoCallScreen() {
                 mirror
               />
             ) : (
-              <View className="flex-1 items-center justify-center">
+              <View className="flex-1 items-center justify-center bg-neutral-900">
                 <Ionicons
-                  name={call.isVideoEnabled ? "videocam" : "videocam-off"}
-                  size={20}
-                  color="#fff"
+                  name="videocam-off"
+                  size={24}
+                  color="#9ca3af"
                 />
+                <Text className="text-gray-400 text-[10px] mt-1">Camera off</Text>
               </View>
             )}
           </View>

@@ -26,7 +26,9 @@ export type MessageType =
     | 'FILE'
     | 'VIDEO'
     | 'LINK_PREVIEW'
-    | 'VIDEO_PREVIEW';
+    | 'VIDEO_PREVIEW'
+    | 'CALL'
+    | 'SYSTEM';
 
 export interface AttachmentAsset {
     uri: string;
@@ -92,4 +94,14 @@ export interface Message {
     timestamp: string; // display string e.g. "2:14 PM"
     status?: MessageStatus;
     isMine: boolean;
+    callData?: {
+        callType: 'audio' | 'video';
+        callStatus: 'missed' | 'declined' | 'completed' | 'active';
+        duration?: number;
+        participants?: string[];
+        isInitiator?: boolean;
+        wasRejected?: boolean;
+        callId?: string;
+        callMode?: 'direct' | 'group' | string;
+    };
 }

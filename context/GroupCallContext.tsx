@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useGroupCall } from "@/hooks/useGroupCall";
 import { useStreamVideoRuntime } from "@/context/StreamVideoContext";
 import { callSocketService } from "@/services/websocket/callSocket";
+import { chatSocketService } from "@/services/websocket/chatSocket";
 import type {
   CallType,
   GroupCallAnswerData,
@@ -31,8 +32,13 @@ export type GroupCallContextValue = GroupCallState & {
     participantIds: string[],
     callType: CallType,
     participantNames?: Record<string, string>,
+    participantAvatars?: Record<string, string>,
   ) => Promise<void>;
-  joinGroupCall: (callId: string, conversationId: string) => Promise<void>;
+  joinGroupCall: (
+    callId: string,
+    conversationId: string,
+    explicitCallType?: CallType,
+  ) => Promise<void>;
   acceptGroupCall: () => Promise<void>;
   rejectGroupCall: () => void;
   leaveGroupCall: () => void;
@@ -85,6 +91,7 @@ export function GroupCallProvider({
   const failedStateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const incomingAlertShownRef = useRef(false);
 
   const userId = state.user?.userId;
   const userName =
@@ -108,6 +115,12 @@ export function GroupCallProvider({
     onParticipantStream: (participantId, stream) => {
       setCallState((prev) => {
         const exists = prev.participants.some((p) => p.id === participantId);
+        const incomingInfo = incomingCallRef.current?.participants?.find(
+          (p) => p.id === participantId,
+        );
+        const fallbackName = incomingInfo?.name || "User";
+        const fallbackAvatar = (incomingInfo as any)?.avatar || "";
+
         const nextParticipants = exists
           ? prev.participants.map((p) =>
               p.id === participantId ? { ...p, stream } : p,
@@ -116,7 +129,8 @@ export function GroupCallProvider({
               ...prev.participants,
               {
                 id: participantId,
-                name: "User",
+                name: fallbackName,
+                avatar: fallbackAvatar,
                 isVideoEnabled: true,
                 isAudioEnabled: true,
                 stream,
@@ -160,6 +174,12 @@ export function GroupCallProvider({
     },
   });
 
+  const statusRef = useRef<string>("idle");
+  const isLocalUserCallingRef = useRef<boolean>(false);
+  useEffect(() => {
+    statusRef.current = callState.status;
+  }, [callState.status]);
+
   useEffect(() => {
     currentCallIdRef.current = callState.callId;
   }, [callState.callId]);
@@ -169,6 +189,7 @@ export function GroupCallProvider({
   }, [incomingCall]);
 
   const resetCall = useCallback(() => {
+    isLocalUserCallingRef.current = false;
     if (failedStateTimerRef.current) {
       clearTimeout(failedStateTimerRef.current);
       failedStateTimerRef.current = null;
@@ -178,6 +199,7 @@ export function GroupCallProvider({
     setCallState(INITIAL_STATE);
     setIncomingCall(null);
     callScreenOpenedRef.current = false;
+    incomingAlertShownRef.current = false;
   }, [cleanupGroupCall]);
 
   const handleUnsupportedRuntime = useCallback(
@@ -219,15 +241,205 @@ export function GroupCallProvider({
     [router],
   );
 
+  const joinGroupCall = useCallback(
+    async (
+      callId: string,
+      conversationId: string,
+      explicitCallType?: CallType,
+    ) => {
+      isLocalUserCallingRef.current = true;
+      if (!userId) return;
+
+      const socket = callSocketService.getSocket();
+      if (!socket) return;
+
+      const callData = (incomingCallRef.current ?? incomingCall) ?? {
+        callType: explicitCallType || "video",
+        participants: [],
+      };
+
+      if (!streamVideoEnabled && !isSupported) {
+        handleUnsupportedRuntime("accept");
+        setIncomingCall(null);
+        return;
+      }
+
+      currentCallIdRef.current = callId;
+
+      const initialParticipants = (callData.participants || [])
+        .filter((participant) => participant.id !== userId)
+        .map((participant) => ({
+          id: participant.id,
+          name: participant.name,
+          avatar: (participant as any).avatar || "",
+          isVideoEnabled: true,
+          isAudioEnabled: true,
+          isHost: participant.isHost,
+        }));
+
+      setCallState((prev) => ({
+        ...prev,
+        callId,
+        conversationId,
+        callType: callData.callType || prev.callType,
+        callMode: "group",
+        status: "calling",
+        isInitiator: false,
+        isCaller: false,
+        isHost: false,
+        participants: initialParticipants,
+        isVideoEnabled: callData.callType === "video",
+        isAudioEnabled: true,
+        error: null,
+      }));
+
+      if (!streamVideoEnabled) {
+        let stream: MediaStream | null = null;
+        try {
+          // ALWAYS try to get both audio and video tracks to support camera toggle during audio calls
+          stream = await getLocalStream(true, true);
+          if (callData.callType !== "video") {
+            stream.getVideoTracks().forEach((track) => {
+              track.enabled = false;
+            });
+          }
+        } catch (error) {
+          try {
+            stream = await getLocalStream(false, true);
+          } catch (audioError) {
+            setCallState((prev) => ({
+              ...prev,
+              error:
+                audioError instanceof Error
+                  ? audioError.message
+                  : "Cannot access microphone",
+            }));
+          }
+        }
+
+        if (stream) {
+          setCallState((prev) => ({
+            ...prev,
+            localStream: stream,
+          }));
+        }
+      }
+
+      socket.emit("groupcall:join", {
+        callId,
+        conversationId,
+        userId,
+        userName,
+        userAvatar: state.user?.avatarUrl,
+      });
+
+      if (!streamVideoEnabled) {
+        for (const participant of initialParticipants) {
+          try {
+            await createPeerForParticipant(participant.id, participant.name, false);
+          } catch {
+            // Ignore individual peer creation failures
+          }
+        }
+      }
+
+      setIncomingCall(null);
+      openGroupCallScreen(conversationId, callData.callType);
+    },
+    [
+      userId,
+      incomingCall,
+      isSupported,
+      streamVideoEnabled,
+      handleUnsupportedRuntime,
+      getLocalStream,
+      createPeerForParticipant,
+      openGroupCallScreen,
+      userName,
+    ],
+  );
+
+  const acceptGroupCall = useCallback(async () => {
+    if (!incomingCall) return;
+    await joinGroupCall(incomingCall.callId, incomingCall.conversationId);
+  }, [incomingCall, joinGroupCall]);
+
+  const rejectGroupCall = useCallback(() => {
+    const socket = callSocketService.getSocket();
+    if (socket && incomingCall) {
+      socket.emit("groupcall:reject", {
+        callId: incomingCall.callId,
+        userId,
+      });
+    }
+
+    setIncomingCall(null);
+  }, [incomingCall, userId]);
+
+  useEffect(() => {
+    if (!incomingCall || incomingAlertShownRef.current) {
+      return;
+    }
+
+    incomingAlertShownRef.current = true;
+
+    if (!isSupported) {
+      Alert.alert(
+        "Incoming Group Call",
+        `${incomingCall.initiatorName || incomingCall.callerName || "Someone"} is inviting you to a group call (${incomingCall.callType}). WebRTC is unavailable in Expo Go, so this call will be rejected.`,
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              rejectGroupCall();
+            },
+          },
+        ],
+        { cancelable: false },
+      );
+      return;
+    }
+
+    Alert.alert(
+      "Incoming Group Call",
+      `${incomingCall.initiatorName || incomingCall.callerName || "Someone"} is inviting you to a group call (${incomingCall.callType})`,
+      [
+        {
+          text: "Reject",
+          style: "destructive",
+          onPress: () => {
+            rejectGroupCall();
+          },
+        },
+        {
+          text: "Accept",
+          onPress: () => {
+            void acceptGroupCall();
+          },
+        },
+      ],
+      { cancelable: false },
+    );
+  }, [incomingCall, acceptGroupCall, rejectGroupCall, isSupported]);
+
   useEffect(() => {
     if (!state.isAuthenticated || !userId) {
       callSocketService.disconnect();
       return;
     }
 
-    const socket = callSocketService.connect(userId);
+    const socket = callSocketService.connect(userId, state.token || undefined);
 
     const onIncoming = (data: GroupIncomingCallData) => {
+      if (
+        data.initiatorId === userId ||
+        data.initiatorId === state.user?.userId ||
+        currentCallIdRef.current ||
+        statusRef.current !== "idle" ||
+        isLocalUserCallingRef.current
+      ) {
+        return;
+      }
       setIncomingCall(data);
       setCallState((prev) => ({
         ...prev,
@@ -245,6 +457,7 @@ export function GroupCallProvider({
           .map((participant) => ({
             id: participant.id,
             name: participant.name,
+            avatar: participant.avatar || "",
             isVideoEnabled: true,
             isAudioEnabled: true,
             isHost: participant.isHost,
@@ -267,8 +480,21 @@ export function GroupCallProvider({
 
       if (streamVideoEnabled) {
         setCallState((prev) => {
-          if (prev.participants.some((p) => p.id === data.userId)) {
-            return prev;
+          const exists = prev.participants.some((p) => p.id === data.userId);
+          if (exists) {
+            return {
+              ...prev,
+              participants: prev.participants.map((p) =>
+                p.id === data.userId
+                  ? {
+                      ...p,
+                      name: participantName,
+                      avatar: data.userAvatar || p.avatar,
+                      isHost: data.isHost !== undefined ? data.isHost : p.isHost,
+                    }
+                  : p
+              ),
+            };
           }
 
           return {
@@ -307,8 +533,21 @@ export function GroupCallProvider({
       }
 
       setCallState((prev) => {
-        if (prev.participants.some((p) => p.id === data.userId)) {
-          return prev;
+        const exists = prev.participants.some((p) => p.id === data.userId);
+        if (exists) {
+          return {
+            ...prev,
+            participants: prev.participants.map((p) =>
+              p.id === data.userId
+                ? {
+                    ...p,
+                    name: participantName,
+                    avatar: data.userAvatar || p.avatar,
+                    isHost: data.isHost !== undefined ? data.isHost : p.isHost,
+                  }
+                : p
+            ),
+          };
         }
 
         const nextParticipant: GroupCallParticipant = {
@@ -457,13 +696,15 @@ export function GroupCallProvider({
       participantIds: string[],
       callType: CallType,
       participantNames?: Record<string, string>,
+      participantAvatars?: Record<string, string>,
     ) => {
+      isLocalUserCallingRef.current = true;
       if (!userId) {
         throw new Error("Missing caller user id");
       }
 
       const socket =
-        callSocketService.getSocket() || callSocketService.connect(userId);
+        callSocketService.getSocket() || callSocketService.connect(userId, state.token || undefined);
 
       if (!socket) {
         throw new Error("Call socket is not connected");
@@ -491,34 +732,22 @@ export function GroupCallProvider({
       if (!streamVideoEnabled) {
         let stream: MediaStream | null = null;
         try {
-          stream = await getLocalStream(callType === "video", true);
+          // ALWAYS try to get both audio and video tracks to support camera toggle during audio calls
+          stream = await getLocalStream(true, true);
+          if (callType !== "video") {
+            stream.getVideoTracks().forEach((track) => {
+              track.enabled = false;
+            });
+          }
         } catch (error) {
-          if (callType === "video") {
-            try {
-              stream = await getLocalStream(false, true);
-              setCallState((prev) => ({
-                ...prev,
-                isVideoEnabled: false,
-                error:
-                  error instanceof Error
-                    ? error.message
-                    : "Cannot access camera, starting with audio only",
-              }));
-            } catch (audioError) {
-              setCallState((prev) => ({
-                ...prev,
-                error:
-                  audioError instanceof Error
-                    ? audioError.message
-                    : "Cannot access microphone",
-              }));
-            }
-          } else {
+          try {
+            stream = await getLocalStream(false, true);
+          } catch (audioError) {
             setCallState((prev) => ({
               ...prev,
               error:
-                error instanceof Error
-                  ? error.message
+                audioError instanceof Error
+                  ? audioError.message
                   : "Cannot access microphone",
             }));
           }
@@ -569,6 +798,21 @@ export function GroupCallProvider({
             })),
           }));
 
+          // Send active group call message
+          chatSocketService.sendCallMessage({
+            conversationId,
+            callType,
+            callStatus: "active",
+            duration: 0,
+            callId: data.callId,
+            clientMessageId: `group_call_${Date.now()}_${Math.random()
+              .toString(36)
+              .slice(2, 8)}`,
+            onAck: () => {
+              console.log("[GroupCallContext] Call message created successfully on mobile");
+            },
+          });
+
           if (!streamVideoEnabled) {
             for (const participant of remoteParticipants) {
               try {
@@ -594,10 +838,12 @@ export function GroupCallProvider({
         currentSocket.once("groupcall:initiated", handleInitiated);
         currentSocket.emit("groupcall:initiate", {
           conversationId,
-          participantIds,
+          participantIds: participantIds.filter((id) => id !== userId),
           participantNames: participantNames || {},
+          participantAvatars: participantAvatars || {},
           callType,
           initiatorName: userName,
+          initiatorAvatar: state.user?.avatarUrl,
         });
       });
     },
@@ -613,141 +859,7 @@ export function GroupCallProvider({
     ],
   );
 
-  const joinGroupCall = useCallback(
-    async (callId: string, conversationId: string) => {
-      const callData = incomingCallRef.current ?? incomingCall;
-      if (!callData || !userId) return;
 
-      const socket = callSocketService.getSocket();
-      if (!socket) return;
-
-      if (!streamVideoEnabled && !isSupported) {
-        handleUnsupportedRuntime("accept");
-        setIncomingCall(null);
-        return;
-      }
-
-      currentCallIdRef.current = callId;
-
-      const initialParticipants = (callData.participants || [])
-        .filter((participant) => participant.id !== userId)
-        .map((participant) => ({
-          id: participant.id,
-          name: participant.name,
-          isVideoEnabled: true,
-          isAudioEnabled: true,
-          isHost: participant.isHost,
-        }));
-
-      setCallState((prev) => ({
-        ...prev,
-        callId,
-        conversationId,
-        callType: callData.callType || prev.callType,
-        callMode: "group",
-        status: "calling",
-        isInitiator: false,
-        isCaller: false,
-        isHost: false,
-        participants: initialParticipants,
-        isVideoEnabled: callData.callType === "video" || prev.isVideoEnabled,
-        isAudioEnabled: true,
-        error: null,
-      }));
-
-      if (!streamVideoEnabled) {
-        let stream: MediaStream | null = null;
-        try {
-          stream = await getLocalStream(callData.callType === "video", true);
-        } catch (error) {
-          if (callData.callType === "video") {
-            try {
-              stream = await getLocalStream(false, true);
-              setCallState((prev) => ({
-                ...prev,
-                isVideoEnabled: false,
-                error:
-                  error instanceof Error
-                    ? error.message
-                    : "Cannot access camera, joining with audio only",
-              }));
-            } catch (audioError) {
-              setCallState((prev) => ({
-                ...prev,
-                error:
-                  audioError instanceof Error
-                    ? audioError.message
-                    : "Cannot access microphone",
-              }));
-            }
-          } else {
-            setCallState((prev) => ({
-              ...prev,
-              error:
-                error instanceof Error
-                  ? error.message
-                  : "Cannot access microphone",
-            }));
-          }
-        }
-
-        if (stream) {
-          setCallState((prev) => ({
-            ...prev,
-            localStream: stream,
-          }));
-        }
-      }
-
-      socket.emit("groupcall:join", {
-        callId,
-        conversationId,
-        userId,
-        userName,
-      });
-
-      if (!streamVideoEnabled) {
-        for (const participant of initialParticipants) {
-          try {
-            await createPeerForParticipant(participant.id, participant.name, false);
-          } catch {
-            // Ignore individual peer creation failures
-          }
-        }
-      }
-
-      setIncomingCall(null);
-      openGroupCallScreen(conversationId, callData.callType);
-    },
-    [
-      userId,
-      incomingCall,
-      isSupported,
-      streamVideoEnabled,
-      handleUnsupportedRuntime,
-      getLocalStream,
-      createPeerForParticipant,
-      openGroupCallScreen,
-      userName,
-    ],
-  );
-
-  const acceptGroupCall = useCallback(async () => {
-    if (!incomingCall) return;
-    await joinGroupCall(incomingCall.callId, incomingCall.conversationId);
-  }, [incomingCall, joinGroupCall]);
-
-  const rejectGroupCall = useCallback(() => {
-    const socket = callSocketService.getSocket();
-    if (socket && incomingCall) {
-      socket.emit("groupcall:reject", {
-        callId: incomingCall.callId,
-        userId,
-      });
-    }
-
-    setIncomingCall(null);
-  }, [incomingCall, userId]);
 
   const leaveGroupCall = useCallback(() => {
     const socket = callSocketService.getSocket();
@@ -773,10 +885,26 @@ export function GroupCallProvider({
       track.enabled = nextEnabled;
     });
 
-    setCallState((prev) => ({
-      ...prev,
-      isAudioEnabled: nextEnabled,
-    }));
+    setCallState((prev) => {
+      let updatedStream = prev.localStream;
+      if (prev.localStream) {
+        let MediaStreamCtor: any = null;
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          MediaStreamCtor = require("@stream-io/react-native-webrtc").MediaStream;
+        } catch {
+          MediaStreamCtor = null;
+        }
+        if (MediaStreamCtor) {
+          updatedStream = new MediaStreamCtor(prev.localStream.getTracks());
+        }
+      }
+      return {
+        ...prev,
+        isAudioEnabled: nextEnabled,
+        localStream: updatedStream,
+      };
+    });
 
     const socket = callSocketService.getSocket();
     if (socket && callState.callId) {
@@ -803,10 +931,26 @@ export function GroupCallProvider({
       track.enabled = nextEnabled;
     });
 
-    setCallState((prev) => ({
-      ...prev,
-      isVideoEnabled: nextEnabled,
-    }));
+    setCallState((prev) => {
+      let updatedStream = prev.localStream;
+      if (prev.localStream) {
+        let MediaStreamCtor: any = null;
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          MediaStreamCtor = require("@stream-io/react-native-webrtc").MediaStream;
+        } catch {
+          MediaStreamCtor = null;
+        }
+        if (MediaStreamCtor) {
+          updatedStream = new MediaStreamCtor(prev.localStream.getTracks());
+        }
+      }
+      return {
+        ...prev,
+        isVideoEnabled: nextEnabled,
+        localStream: updatedStream,
+      };
+    });
 
     const socket = callSocketService.getSocket();
     if (socket && callState.callId) {

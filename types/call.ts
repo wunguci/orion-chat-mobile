@@ -33,6 +33,8 @@ export interface CallState {
   startTime: number | null;
   incomingVideoUpgradeRequest?: boolean;
   isRequestingVideoUpgrade?: boolean;
+  isRemoteVideoEnabled?: boolean;
+  isRemoteAudioEnabled?: boolean;
 }
 
 export interface IncomingCallData {
@@ -93,12 +95,13 @@ export interface GroupCallState {
 }
 
 export interface GroupIncomingCallData extends IncomingCallData {
-  participants?: Array<{ id: string; name: string; isHost: boolean }>;
+  participants?: Array<{ id: string; name: string; isHost: boolean, avatar?: string }>;
   participantIds?: string[];
   participantCount: number;
   isGroupCall: true;
   initiatorId?: string;
   initiatorName?: string;
+  initiatorAvatar?: string;
 }
 
 export interface GroupCallOfferData extends CallOfferData {

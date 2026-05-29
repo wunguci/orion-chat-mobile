@@ -14,8 +14,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://aracelis-provable-grammatically.ngrok-free.dev",
-        "EXPO_PUBLIC_SOCKET_URL": "https://aracelis-provable-grammatically.ngrok-free.dev"
+        "EXPO_PUBLIC_API_URL": "https://reductional-tamesha-unavowably.ngrok-free.dev",
+        "EXPO_PUBLIC_SOCKET_URL": "https://reductional-tamesha-unavowably.ngrok-free.dev"
       }
     },
     "production": {
@@ -23,8 +23,8 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://aracelis-provable-grammatically.ngrok-free.dev",
-        "EXPO_PUBLIC_SOCKET_URL": "https://aracelis-provable-grammatically.ngrok-free.dev"
+        "EXPO_PUBLIC_API_URL": "https://reductional-tamesha-unavowably.ngrok-free.dev",
+        "EXPO_PUBLIC_SOCKET_URL": "https://reductional-tamesha-unavowably.ngrok-free.dev"
       }
     }
   },

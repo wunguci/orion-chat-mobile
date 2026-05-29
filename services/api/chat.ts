@@ -208,6 +208,15 @@ export interface MessageItem {
         emoji: string;
         reactedAt: string;
     }[];
+    callData?: {
+        callType: 'audio' | 'video';
+        callStatus: 'missed' | 'declined' | 'completed' | 'active';
+        duration?: number;
+        participants?: string[];
+        isInitiator?: boolean;
+        wasRejected?: boolean;
+        callId?: string;
+    };
 }
 
 export interface MessageResponse {

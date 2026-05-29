@@ -23,6 +23,63 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Swipeable } from 'react-native-gesture-handler';
 
 /**
+ * Trích xuất text preview cho tin nhắn cuối cùng giống như trên Web
+ */
+const getLastMessagePreview = (
+    lastMessage: any,
+    currentUserId?: string,
+): string => {
+    if (!lastMessage) return 'No messages yet';
+
+    const { content, senderId, messageType, type, isRecalled, callData } = lastMessage;
+
+    if (isRecalled || content === 'Tin nhắn đã được thu hồi') {
+        return 'Tin nhắn đã được thu hồi';
+    }
+
+    const typeStr = String(messageType || type || '').toUpperCase();
+
+    if (typeStr === 'FILE') {
+        const isMe = !!currentUserId && senderId === currentUserId;
+        return `${isMe ? 'You: ' : ''}📎 File attached`;
+    }
+
+    if (typeStr === 'IMAGE') {
+        const isMe = !!currentUserId && senderId === currentUserId;
+        return `${isMe ? 'You: ' : ''}📷 Image`;
+    }
+
+    if (typeStr === 'VIDEO') {
+        const isMe = !!currentUserId && senderId === currentUserId;
+        return `${isMe ? 'You: ' : ''}🎥 Video`;
+    }
+
+    if (typeStr === 'CALL' || !!callData) {
+        const isMe = !!currentUserId && senderId === currentUserId;
+        const callStatus = callData?.callStatus || 'completed';
+        const callType = callData?.callType || 'audio';
+        const callTypeLabel = callType === 'video' ? 'video' : 'thoại';
+
+        if (callStatus === 'completed') {
+            return `Cuộc gọi ${callTypeLabel} ${isMe ? 'đi' : 'đến'}`;
+        }
+        if (callStatus === 'missed') {
+            return isMe ? 'Bạn đã hủy' : 'Cuộc gọi nhỡ';
+        }
+        if (callStatus === 'declined') {
+            return isMe ? 'Người nhận từ chối' : 'Bạn đã từ chối';
+        }
+        if (callStatus === 'active') {
+            return 'Cuộc gọi nhóm đang diễn ra';
+        }
+        return `Cuộc gọi ${callTypeLabel}`;
+    }
+
+    const senderLabel = senderId === currentUserId ? 'You: ' : '';
+    return `${senderLabel}${content || 'No messages yet'}`;
+};
+
+/**
  * Chuyển đổi ConversationResponse thành ChatItem
  */
 const convertConversationToChatItem = (
@@ -37,6 +94,8 @@ const convertConversationToChatItem = (
     // Lấy thông tin người dùng khác (cho private chat)
     const otherParticipant = !isGroup
         ? conversation.participants.find(
+              (p: any) => p.userId !== currentUserId,
+          ) || conversation.participants.find(
               (p: any) => p.userId !== conversation.participants[0]?.userId,
           )
         : null;
@@ -98,7 +157,7 @@ const convertConversationToChatItem = (
     return {
         id: conversation.conversationId,
         name,
-        lastMessage: lastMessage?.content || 'No messages yet',
+        lastMessage: getLastMessagePreview(lastMessage, currentUserId),
         time: formatTime(lastMessage?.createdAt || lastMessage?.timestamp),
         unread: unreadByConversation[conversation.conversationId] || 0,
         isGroup,
@@ -109,6 +168,8 @@ const convertConversationToChatItem = (
         isRead: true,
         avatarUri,
         avatarUris,
+        otherUserId: otherParticipant?.userId || undefined,
+        participantIds: conversation.participants.map((p: any) => p.userId).filter(Boolean),
     };
 };
 

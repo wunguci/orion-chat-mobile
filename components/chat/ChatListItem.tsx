@@ -219,9 +219,7 @@ export default function ChatListItem({
                         }}
                         numberOfLines={1}
                     >
-                        {item.isSentByMe
-                            ? `You: ${item.lastMessage}`
-                            : item.lastMessage}
+                        {item.lastMessage}
                     </Text>
                     {renderRightMeta()}
                 </View>

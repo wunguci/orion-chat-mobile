@@ -31,6 +31,7 @@ export interface SocketMessage {
         mimeType?: string;
 
         reactions?: [];
+        callData?: any;
     };
 }
 
@@ -230,6 +231,7 @@ class ChatSocketService {
                     fileSize: serverMessage.fileSize,
                     mimeType: serverMessage.mimeType,
                     reactions: serverMessage.reactions,
+                    callData: serverMessage.callData,
                 },
             };
 
@@ -509,6 +511,57 @@ class ChatSocketService {
         this.socket.once('error', (error) => {
             console.error('[ChatSocket] Socket error after emit:', error);
         });
+    }
+
+    sendCallMessage(payload: {
+        conversationId: string;
+        callType: 'audio' | 'video';
+        callStatus: 'active' | 'completed' | 'missed' | 'declined';
+        duration: number;
+        callId: string;
+        clientMessageId: string;
+        onAck: SendAckCallback;
+    }): void {
+        if (!this.socket?.connected) {
+            console.error('[ChatSocket] Socket not connected for call message');
+            return;
+        }
+
+        const { conversationId, callType, callStatus, duration, callId, clientMessageId, onAck } = payload;
+        const requestId = clientMessageId;
+
+        this.socket.emit(
+            'chat:send_message',
+            {
+                requestId,
+                conversationId,
+                content: '',
+                clientMessageId,
+                type: 'call',
+                callData: {
+                    callType,
+                    callStatus,
+                    duration,
+                    isInitiator: true,
+                    wasRejected: false,
+                    callId,
+                },
+            },
+            (ackData: any, error: any) => {
+                if (error) {
+                    console.error('[ChatSocket] Error emitting call message:', error);
+                    return;
+                }
+                if (!ackData) return;
+                const responseData = ackData.data || ackData;
+                onAck({
+                    clientMessageId: responseData.clientMessageId,
+                    messageId: responseData.messageId,
+                    messageStatus: 'SENT',
+                    timestamp: responseData.timestamp || new Date().toISOString(),
+                });
+            }
+        );
     }
 
     sendAttachmentMessage(

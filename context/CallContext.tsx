@@ -51,6 +51,8 @@ const INITIAL_STATE: CallState = {
   remoteStream: null,
   isVideoEnabled: true,
   isAudioEnabled: true,
+  isRemoteVideoEnabled: true,
+  isRemoteAudioEnabled: true,
   otherUser: null,
   error: null,
   startTime: null,
@@ -167,6 +169,16 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         offer,
       });
     },
+    onRemoteTrackMuteChange: (kind, muted) => {
+      console.log(`[CallContext Mobile] Remote track mute changed: ${kind} is muted: ${muted}`);
+      setCallState((prev) => {
+        if (kind === "video") {
+          return { ...prev, isRemoteVideoEnabled: !muted };
+        } else {
+          return { ...prev, isRemoteAudioEnabled: !muted };
+        }
+      });
+    },
   });
 
   const openCallScreen = useCallback(
@@ -238,7 +250,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const socket = callSocketService.connect(userId);
+    const socket = callSocketService.connect(userId, state.token || undefined);
 
     const onIncoming = (data: IncomingCallData) => {
       // Luôn cho phép nhận thông báo khi có cuộc gọi đến.
@@ -421,6 +433,21 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       setTimeout(resetCall, 300);
     };
 
+    const onMediaToggled = (data: {
+      userId: string;
+      mediaType: "video" | "audio";
+      enabled: boolean;
+    }) => {
+      console.log(`[CallContext] Peer toggled media: ${data.mediaType} is now ${data.enabled}`);
+      setCallState((prev) => {
+        if (data.mediaType === "video") {
+          return { ...prev, isRemoteVideoEnabled: data.enabled };
+        } else {
+          return { ...prev, isRemoteAudioEnabled: data.enabled };
+        }
+      });
+    };
+
     const onError = (payload: { message?: string }) => {
       setCallState((prev) => ({
         ...prev,
@@ -502,6 +529,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     socket.on("call:ice-candidate", onIceCandidate);
     socket.on("call:reject", onReject);
     socket.on("call:ended", onEnded);
+    socket.on("call:media-toggled", onMediaToggled);
     socket.on("call:error", onError);
     socket.on("call:video-upgrade-request", onVideoUpgradeRequest);
     socket.on("call:video-upgrade-response", onVideoUpgradeResponse);
@@ -515,6 +543,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       socket.off("call:ice-candidate", onIceCandidate);
       socket.off("call:reject", onReject);
       socket.off("call:ended", onEnded);
+      socket.off("call:media-toggled", onMediaToggled);
       socket.off("call:error", onError);
       socket.off("call:video-upgrade-request", onVideoUpgradeRequest);
       socket.off("call:video-upgrade-response", onVideoUpgradeResponse);
@@ -725,8 +754,16 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     // Same reason as onAccept: only signaling is done here.
     setCallState((prev) => ({
       ...prev,
+      callId: incomingCall.callId,
+      conversationId: incomingCall.conversationId,
+      callType: incomingCall.callType,
       status: "calling",
       startTime: null,
+      otherUser: {
+        id: incomingCall.callerId,
+        name: incomingCall.callerName || "Friend",
+        avatar: incomingCall.callerAvatar,
+      },
     }));
 
     openCallScreen(
@@ -826,10 +863,26 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     const targetUserId = callState.otherUser?.id;
     const nextEnabled = !callState.isAudioEnabled;
 
-    setCallState((prev) => ({
-      ...prev,
-      isAudioEnabled: nextEnabled,
-    }));
+    setCallState((prev) => {
+      let updatedStream = prev.localStream;
+      if (prev.localStream) {
+        let MediaStreamCtor: any = null;
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          MediaStreamCtor = require("@stream-io/react-native-webrtc").MediaStream;
+        } catch {
+          MediaStreamCtor = null;
+        }
+        if (MediaStreamCtor) {
+          updatedStream = new MediaStreamCtor(prev.localStream.getTracks());
+        }
+      }
+      return {
+        ...prev,
+        isAudioEnabled: nextEnabled,
+        localStream: updatedStream,
+      };
+    });
 
     toggleAudioTrack(nextEnabled);
 
@@ -853,10 +906,26 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     const targetUserId = callState.otherUser?.id;
     const nextEnabled = !callState.isVideoEnabled;
 
-    setCallState((prev) => ({
-      ...prev,
-      isVideoEnabled: nextEnabled,
-    }));
+    setCallState((prev) => {
+      let updatedStream = prev.localStream;
+      if (prev.localStream) {
+        let MediaStreamCtor: any = null;
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          MediaStreamCtor = require("@stream-io/react-native-webrtc").MediaStream;
+        } catch {
+          MediaStreamCtor = null;
+        }
+        if (MediaStreamCtor) {
+          updatedStream = new MediaStreamCtor(prev.localStream.getTracks());
+        }
+      }
+      return {
+        ...prev,
+        isVideoEnabled: nextEnabled,
+        localStream: updatedStream,
+      };
+    });
 
     toggleVideoTrack(nextEnabled);
 

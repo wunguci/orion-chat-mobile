@@ -389,7 +389,22 @@ export const useChat = (conversationId: string) => {
                         });
 
                         if (exists) {
-                            return prev;
+                            return {
+                                ...prev,
+                                messages: prev.messages.map((m) => {
+                                    const sameId = incomingServerId && String(m.id).trim() === incomingServerId;
+                                    const sameClientId = incomingClientId && String(m.id).trim() === incomingClientId;
+                                    if (sameId || sameClientId) {
+                                        return {
+                                            ...m,
+                                            id: incomingServerId || m.id,
+                                            callData: socketMsg.message.callData || m.callData,
+                                            status: 'read',
+                                        };
+                                    }
+                                    return m;
+                                }),
+                            };
                         }
 
                         const senderName = resolveSenderName(
@@ -423,6 +438,7 @@ export const useChat = (conversationId: string) => {
                                     status: 'read',
                                     reactions:
                                         socketMsg.message.reactions || [],
+                                    callData: socketMsg.message.callData,
                                     ...buildAttachmentFields(
                                         normalizedType,
                                         socketMsg.message.mediaUrl,
@@ -865,6 +881,11 @@ function convertApiMessageToUIMessage(
             ...baseMessage,
             videoUri: apiMsg.mediaUrl,
             videoThumbnailUri: apiMsg.mediaUrl, // tạm thời dùng cùng 1 URL, sau này có thể tách riêng thumbnail
+        };
+    } else if (messageType === 'CALL') {
+        return {
+            ...baseMessage,
+            callData: apiMsg.callData,
         };
     }
 

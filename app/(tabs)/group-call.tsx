@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   View,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -85,27 +86,43 @@ export default function GroupCallScreen() {
       return [];
     }
 
-    return [
+    const seenIds = new Set<string>();
+    const localUserId = state.user?.userId;
+    if (localUserId) {
+      seenIds.add(localUserId);
+    }
+
+    const list = [
       {
         id: "local",
         name: "You",
+        avatar: state.user?.avatarUrl || "",
         stream: call.localStream,
         isVideoEnabled: call.isVideoEnabled,
         isAudioEnabled: call.isAudioEnabled,
         isHost: call.isHost,
         isLocal: true,
-      },
-      ...call.participants.map((participant) => ({
-        id: participant.id,
-        name: participant.name,
-        stream: participant.stream,
-        isVideoEnabled: participant.isVideoEnabled,
-        isAudioEnabled: participant.isAudioEnabled,
-        isHost: participant.isHost,
-        isLocal: false,
-      })),
+      }
     ];
-  }, [call]);
+
+    (call.participants || []).forEach((participant) => {
+      if (participant.id && participant.id !== localUserId && !seenIds.has(participant.id)) {
+        seenIds.add(participant.id);
+        list.push({
+          id: participant.id,
+          name: participant.name,
+          avatar: participant.avatar || "",
+          stream: participant.stream,
+          isVideoEnabled: participant.isVideoEnabled,
+          isAudioEnabled: participant.isAudioEnabled,
+          isHost: participant.isHost,
+          isLocal: false,
+        });
+      }
+    });
+
+    return list;
+  }, [call, state.user?.userId, state.user?.avatarUrl]);
 
   if (!call) {
     return null;
@@ -149,7 +166,7 @@ export default function GroupCallScreen() {
             {tiles.map((tile, index) => {
               const columnIndex = index % columnCount;
               const streamUrl = tile.stream?.toURL?.() || null;
-              const showVideo = callMode === "video" && streamUrl && tile.isVideoEnabled;
+              const showVideo = Boolean(streamUrl) && tile.isVideoEnabled;
               const isActive = call.activeParticipantId === tile.id;
 
               return (
@@ -192,15 +209,20 @@ export default function GroupCallScreen() {
                           mirror={false}
                         />
                       ) : null}
-                      <View className="h-14 w-14 rounded-full bg-emerald-500/15 items-center justify-center">
-                        <Text className="text-emerald-200 text-base font-semibold">
-                          {getInitials(tile.name)}
-                        </Text>
-                      </View>
+                      {tile.avatar ? (
+                        <Image
+                          source={{ uri: tile.avatar }}
+                          style={{ width: 56, height: 56, borderRadius: 28 }}
+                        />
+                      ) : (
+                        <View className="h-14 w-14 rounded-full bg-emerald-500/15 items-center justify-center">
+                          <Text className="text-emerald-200 text-base font-semibold">
+                            {getInitials(tile.name)}
+                          </Text>
+                        </View>
+                      )}
                       <Text className="text-white/70 text-xs mt-2">
-                        {tile.isVideoEnabled && callMode === "video"
-                          ? "Waiting for video"
-                          : "Camera off"}
+                        {tile.isVideoEnabled ? "Waiting for video" : "Camera off"}
                       </Text>
                     </View>
                   )}
@@ -245,20 +267,18 @@ export default function GroupCallScreen() {
               />
             </TouchableOpacity>
 
-            {callMode === "video" ? (
-              <TouchableOpacity
-                onPress={call.toggleVideo}
-                className={`h-14 w-14 rounded-full items-center justify-center mx-3 ${
-                  call.isVideoEnabled ? "bg-neutral-800" : "bg-amber-600"
-                }`}
-              >
-                <Ionicons
-                  name={call.isVideoEnabled ? "videocam" : "videocam-off"}
-                  size={24}
-                  color="#fff"
-                />
-              </TouchableOpacity>
-            ) : null}
+            <TouchableOpacity
+              onPress={call.toggleVideo}
+              className={`h-14 w-14 rounded-full items-center justify-center mx-3 ${
+                call.isVideoEnabled ? "bg-neutral-800" : "bg-amber-600"
+              }`}
+            >
+              <Ionicons
+                name={call.isVideoEnabled ? "videocam" : "videocam-off"}
+                size={24}
+                color="#fff"
+              />
+            </TouchableOpacity>
 
             <TouchableOpacity
               onPress={call.leaveGroupCall}

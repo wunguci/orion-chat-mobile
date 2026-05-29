@@ -156,8 +156,10 @@ export const useGroupCall = ({
             | undefined;
 
           if (incomingStream) {
-            peerManager.setParticipantStream(userId, incomingStream);
-            onParticipantStream(userId, incomingStream);
+            const { MediaStream } = ensureWebRTCModule();
+            const nextStream = new MediaStream(incomingStream.getTracks());
+            peerManager.setParticipantStream(userId, nextStream);
+            onParticipantStream(userId, nextStream);
             return;
           }
 
@@ -178,8 +180,9 @@ export const useGroupCall = ({
               trackStream.addTrack(incomingTrack);
             }
 
-            peerManager.setParticipantStream(userId, trackStream);
-            onParticipantStream(userId, trackStream);
+            const nextStream = new MediaStream(trackStream.getTracks());
+            peerManager.setParticipantStream(userId, nextStream);
+            onParticipantStream(userId, nextStream);
           }
         },
         (candidate: RTCIceCandidate) => {
@@ -187,7 +190,6 @@ export const useGroupCall = ({
         },
         (state: RTCPeerConnectionState) => {
           if (
-            state === "disconnected" ||
             state === "failed" ||
             state === "closed"
           ) {

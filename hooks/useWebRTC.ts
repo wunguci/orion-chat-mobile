@@ -47,6 +47,7 @@ interface UseWebRTCProps {
   onIceCandidate: (candidate: RTCIceCandidate) => void;
   onConnectionStateChange: (state: RTCPeerConnectionState) => void;
   onIceRestart?: (offer: RTCSessionDescriptionInit) => Promise<void>;
+  onRemoteTrackMuteChange?: (kind: "video" | "audio", muted: boolean) => void;
 }
 
 export const useWebRTC = ({
@@ -54,9 +55,11 @@ export const useWebRTC = ({
   onIceCandidate,
   onConnectionStateChange,
   onIceRestart,
+  onRemoteTrackMuteChange,
 }: UseWebRTCProps) => {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
   const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const iceRestartCountRef = useRef(0);
 
@@ -64,6 +67,7 @@ export const useWebRTC = ({
   const onIceCandidateRef = useRef(onIceCandidate);
   const onConnectionStateChangeRef = useRef(onConnectionStateChange);
   const onIceRestartRef = useRef(onIceRestart);
+  const onRemoteTrackMuteChangeRef = useRef(onRemoteTrackMuteChange);
 
   useEffect(() => {
     onRemoteStreamRef.current = onRemoteStream;
@@ -80,6 +84,10 @@ export const useWebRTC = ({
   useEffect(() => {
     onIceRestartRef.current = onIceRestart;
   }, [onIceRestart]);
+
+  useEffect(() => {
+    onRemoteTrackMuteChangeRef.current = onRemoteTrackMuteChange;
+  }, [onRemoteTrackMuteChange]);
 
   const restartIce = useCallback(async () => {
     const peerConnection = peerConnectionRef.current;
@@ -135,12 +143,50 @@ export const useWebRTC = ({
     };
 
     peerConnection.ontrack = (event: any) => {
-      const [stream] = event.streams || [];
-      if (stream) {
-        onRemoteStreamRef.current(stream);
-      } else if (event.track) {
-        onRemoteStreamRef.current(new MediaStream([event.track]));
+      const { MediaStream } = ensureWebRTCModule();
+      if (!remoteStreamRef.current) {
+        remoteStreamRef.current = new MediaStream();
       }
+
+      const attachMuteListeners = (track: any) => {
+        if (!track) return;
+        track.onmute = () => {
+          console.log(`[WebRTC Mobile] Remote track muted: ${track.kind}`);
+          if (onRemoteTrackMuteChangeRef.current) {
+            onRemoteTrackMuteChangeRef.current(track.kind as "video" | "audio", true);
+          }
+        };
+        track.onunmute = () => {
+          console.log(`[WebRTC Mobile] Remote track unmuted: ${track.kind}`);
+          if (onRemoteTrackMuteChangeRef.current) {
+            onRemoteTrackMuteChangeRef.current(track.kind as "video" | "audio", false);
+          }
+        };
+      };
+
+      if (event.track) {
+        attachMuteListeners(event.track);
+        const hasTrack = remoteStreamRef.current
+          .getTracks()
+          .some((t) => t.id === event.track.id);
+        if (!hasTrack) {
+          remoteStreamRef.current.addTrack(event.track);
+        }
+      } else if (event.streams?.[0]) {
+        event.streams[0].getTracks().forEach((track: any) => {
+          attachMuteListeners(track);
+          const hasTrack = remoteStreamRef.current!
+            .getTracks()
+            .some((t) => t.id === track.id);
+          if (!hasTrack) {
+            remoteStreamRef.current!.addTrack(track);
+          }
+        });
+      }
+      const nextStream = new (ensureWebRTCModule().MediaStream)(
+        remoteStreamRef.current.getTracks() as any,
+      );
+      onRemoteStreamRef.current(nextStream);
     };
 
     peerConnection.onconnectionstatechange = () => {
@@ -301,6 +347,7 @@ export const useWebRTC = ({
       peerConnectionRef.current = null;
     }
 
+    remoteStreamRef.current = null;
     pendingIceCandidatesRef.current = [];
     iceRestartCountRef.current = 0;
   }, []);
