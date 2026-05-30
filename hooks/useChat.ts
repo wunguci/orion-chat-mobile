@@ -12,6 +12,13 @@ import {
 } from "@/services/websocket/chatSocket";
 import { getMessagesCache, saveMessages } from "@/services/cache/chatCache";
 import { useAuth } from "./useAuth";
+import {
+  enqueuePendingTextMessage,
+  getPendingTextMessagesByConversation,
+  markPendingTextMessageFailed,
+  removePendingTextMessage,
+  PendingTextMessage,
+} from "@/services/cache/pendingMessageQueue";
 
 /**
  * Generate unique ID cho client message
@@ -33,6 +40,21 @@ function getMessageDedupKey(msg: Message): string {
   return [msg.chatId, msg.senderId, msg.text, msg.type, timeBucket].join("|");
 }
 
+/**
+ * Loại bỏ tin nhắn trùng lặp từ một mảng Message, xử lý 2 case:
+ *
+ * 1. Optimistic UI: Client tạo tin nhắn tạm (chưa có id) -> server trả về bản chính thức (có id).
+ *    Cần merge 2 bản này thành 1 thay vì hiển thị trùng.
+ *
+ * 2. Race condition / re-fetch: Cùng một tin nhắn xuất hiện nhiều lần
+ *    trong mảng do gộp nhiều nguồn dữ liệu (socket + API + cache).
+ *
+ * Chiến lược merge: bản đến sau (msg) ghi đè bản cũ (old),
+ * nhưng KHÔNG xóa các field có giá trị của bản cũ (id, senderName, status).
+ *
+ * @param messages - Mảng tin nhắn có thể chứa bản trùng, thứ tự bất kỳ
+ * @returns Mảng tin nhắn đã dedup, sắp xếp tăng dần theo timestamp
+ */
 function dedupeMessages(messages: Message[]): Message[] {
   const result: Message[] = [];
 
@@ -75,6 +97,36 @@ function dedupeMessages(messages: Message[]): Message[] {
   return result.sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
   );
+}
+
+/**
+ * Chuyển đổi PendingTextMessage (local queue) sang định dạng Message (UI).
+ *
+ * Mục đích: Optimistic UI — hiển thị tin nhắn ngay lập tức trên màn hình
+ * trước khi server xác nhận, thay vì chờ response từ socket/API.
+ *
+ * Luồng sử dụng:
+ *   user gửi tin
+ *     → lưu vào PendingQueue (AsyncStorage)
+ *     → convert sang Message bằng hàm này
+ *     → render lên UI ngay
+ *     → (nền) gửi lên server
+ *     → server ACK → replace bằng Message thật (có server id, timestamp chính xác)
+ *
+ * @param item - Tin nhắn đang chờ gửi từ local queue
+ * @returns Message sẵn sàng để render lên UI
+ */
+function pendingTextToMessage(item: PendingTextMessage): Message {
+  return {
+    id: item.clientMessageId,
+    chatId: item.conversationId,
+    senderId: item.userId,
+    type: "TEXT",
+    text: item.content,
+    timestamp: item.createdAt,
+    isMine: true,
+    status: item.status === "failed" ? "failed" : "pending",
+  };
 }
 
 function buildParticipantLookup(conversation?: ConversationResponse | null) {
@@ -289,6 +341,26 @@ export const useChat = (conversationId: string) => {
           conversationId,
         );
 
+        // Message chờ ở local queue
+        const pendingMessages = await getPendingTextMessagesByConversation(
+          currentUserId,
+          conversationId,
+        );
+
+        const mergedCachedMessages = dedupeMessages([
+          ...cachedMessages,
+          ...pendingMessages.map(pendingTextToMessage),
+        ]);
+
+        if (mergedCachedMessages.length > 0 && isMounted) {
+          setState((prev) => ({
+            ...prev,
+            messages: mergedCachedMessages,
+            isLoading: false,
+            error: null,
+          }));
+        }
+
         if (cachedMessages.length > 0 && isMounted) {
           setState((prev) => ({
             ...prev,
@@ -360,9 +432,14 @@ export const useChat = (conversationId: string) => {
             return dateA - dateB;
           });
 
-          const nextMessages = dedupeMessages(sortedMessages);
+          const nextMessages = dedupeMessages([
+            ...sortedMessages,
+            ...pendingMessages.map(pendingTextToMessage),
+          ]);
 
-          await saveMessages(currentUserId, conversationId, nextMessages);
+          if (nextMessages.length > 0) {
+            await saveMessages(currentUserId, conversationId, nextMessages);
+          }
 
           if (!isMounted) return;
 
@@ -615,6 +692,108 @@ export const useChat = (conversationId: string) => {
   // ─────────────────────────────────────────────────────────
 
   /**
+   * Thử gửi lại một tin nhắn bị lỗi hoặc chưa gửi được.
+   * Cập nhật UI optimistically trong qtrinh gửi (sending -> sent/failed).
+   *
+   * Luồng trạng thái:
+   *   "pending"/"failed" -> "sending" -> "read" (thành công) / "failed" (thất bại)
+   *
+   * @param pending - Tin nhắn cần gửi lại từ local queue
+   */
+  const resendPendingMessage = useCallback(
+    async (pending: PendingTextMessage) => {
+      if (!currentUserId || !conversationId) return;
+      if (!chatSocketService.isConnected()) return;
+
+      setState((prev) => ({
+        ...prev,
+        messages: prev.messages.map((msg) =>
+          msg.id === pending.clientMessageId
+            ? { ...msg, status: "sending" }
+            : msg,
+        ),
+      }));
+
+      try {
+        const ackData = await chatSocketService.sendMessageAsync(
+          pending.conversationId,
+          pending.content,
+          pending.clientMessageId,
+        );
+
+        await removePendingTextMessage(pending.clientMessageId);
+
+        setState((prev) => {
+          const nextMessages = prev.messages.map((msg) =>
+            msg.id === pending.clientMessageId
+              ? {
+                  ...msg,
+                  id: ackData.messageId,
+                  status: "read" as const,
+                  timestamp: ackData.timestamp || msg.timestamp,
+                }
+              : msg,
+          );
+
+          void saveMessages(currentUserId, conversationId, nextMessages);
+
+          return {
+            ...prev,
+            messages: nextMessages,
+          };
+        });
+      } catch (error) {
+        await markPendingTextMessageFailed(pending.clientMessageId);
+
+        setState((prev) => ({
+          ...prev,
+          messages: prev.messages.map((msg) =>
+            msg.id === pending.clientMessageId
+              ? { ...msg, status: "failed" }
+              : msg,
+          ),
+        }));
+      }
+    },
+    [currentUserId, conversationId],
+  );
+
+  /**
+   * Gửi lại toàn bộ tin nhắn đang chờ trong queue của conversation hiện tại.
+   * Gọi khi:
+   * - App reconnect sau khi mất mạng
+   * - User mở lại conversation có tin nhắn bị lỗi
+   * - Socket reconnect thành công
+   *
+   * Gửi tuần tự (sequential) thay vì song song (parallel) để tránh
+   * overwhelm server và giữ đúng thứ tự tin nhắn.
+   */
+  const flushPendingMessages = useCallback(async () => {
+    if (!currentUserId || !conversationId) return;
+    if (!chatSocketService.isConnected()) return;
+
+    const pendingMessages = await getPendingTextMessagesByConversation(
+      currentUserId,
+      conversationId,
+    );
+
+    for (const pending of pendingMessages) {
+      await resendPendingMessage(pending);
+    }
+  }, [currentUserId, conversationId, resendPendingMessage]);
+
+  useEffect(() => {
+    if (!currentUserId || !conversationId) return;
+
+    chatSocketService.onConnected(flushPendingMessages);
+    void flushPendingMessages();
+
+    return () => {
+      chatSocketService.offConnected(flushPendingMessages);
+    };
+  }, [currentUserId, conversationId, flushPendingMessages]);
+
+  /**
    * Gửi tin nhắn
    *
    * Luồng:
@@ -625,7 +804,7 @@ export const useChat = (conversationId: string) => {
    * 5. Client cập nhật message ID từ client -> server
    */
   const sendMessage = useCallback(
-    (text: string) => {
+    async (text: string) => {
       if (!text.trim() || !currentUserId || !conversationId) {
         console.warn("[useChat] Cannot send message:", {
           hasText: !!text.trim(),
@@ -655,41 +834,77 @@ export const useChat = (conversationId: string) => {
         status: "sending",
       };
 
-      setState((prev) => ({
-        ...prev,
-        messages: [...prev.messages, optimisticMessage],
-        inputText: "",
-      }));
+      const pendingItem: PendingTextMessage = {
+        clientMessageId,
+        conversationId,
+        userId: currentUserId,
+        content: text.trim(),
+        createdAt: optimisticMessage.timestamp,
+        retryCount: 0,
+        status: chatSocketService.isConnected() ? "sending" : "pending",
+      };
+
+      await enqueuePendingTextMessage(pendingItem);
+
+      setState((prev) => {
+        const nextMessages = [
+          ...prev.messages,
+          {
+            ...optimisticMessage,
+            status: chatSocketService.isConnected() ? "sending" : "pending",
+          },
+        ];
+
+        void saveMessages(currentUserId, conversationId, nextMessages);
+
+        return {
+          ...prev,
+          messages: nextMessages,
+          inputText: "",
+        };
+      });
+
+      // setState((prev) => ({
+      //   ...prev,
+      //   messages: [...prev.messages, optimisticMessage],
+      //   inputText: "",
+      // }));
 
       //console.log("[useChat] Sending message via WebSocket...");
 
       // Gửi qua WebSocket với callback
-      chatSocketService.sendMessage(
-        conversationId,
-        text.trim(),
-        clientMessageId,
-        (ackData) => {
-          // console.log("[useChat] sendMessage callback received ACK:", {
-          //   clientMessageId,
-          //   messageId: ackData.messageId,
-          // });
+      // chatSocketService.sendMessage(
+      //   conversationId,
+      //   text.trim(),
+      //   clientMessageId,
+      //   (ackData) => {
+      //     // console.log("[useChat] sendMessage callback received ACK:", {
+      //     //   clientMessageId,
+      //     //   messageId: ackData.messageId,
+      //     // });
 
-          // Cập nhật message ID từ client thành server ID
-          setState((prev) => ({
-            ...prev,
-            messages: prev.messages.map((msg) => {
-              if (msg.id === clientMessageId) {
-                return {
-                  ...msg,
-                  id: ackData.messageId,
-                  status: "read",
-                };
-              }
-              return msg;
-            }),
-          }));
-        },
-      );
+      //     // Cập nhật message ID từ client thành server ID
+      //     setState((prev) => ({
+      //       ...prev,
+      //       messages: prev.messages.map((msg) => {
+      //         if (msg.id === clientMessageId) {
+      //           return {
+      //             ...msg,
+      //             id: ackData.messageId,
+      //             status: "read",
+      //           };
+      //         }
+      //         return msg;
+      //       }),
+      //     }));
+      //   },
+      // );
+
+      if (!chatSocketService.isConnected()) {
+        return;
+      }
+
+      await resendPendingMessage(pendingItem);
     },
     [currentUserId, conversationId],
   );
@@ -808,7 +1023,8 @@ export const useChat = (conversationId: string) => {
         }));
       }
     },
-    [conversationId, currentUserId],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [conversationId, currentUserId, flushPendingMessages],
   );
 
   // ─────────────────────────────────────────────────────────
