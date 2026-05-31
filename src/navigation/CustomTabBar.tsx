@@ -2,48 +2,8 @@ import { MessageCircle, Users, Sparkles, User } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { whColors } from '@/constants/tailwindColors';
 import { useNotificationContext } from '@/context/NotificationContext';
-
-type TabIconType = {
-    default: React.ReactNode;
-    active: React.ReactNode;
-};
-
-const TAB_ICON: Record<string, TabIconType> = {
-    index: {
-        default: (
-            <MessageCircle size={22} strokeWidth={1.7} color={whColors.textMuted} />
-        ),
-        active: (
-            <MessageCircle size={22} strokeWidth={2.4} color={whColors.primary} />
-        ),
-    },
-    friends: {
-        default: (
-            <Users size={22} strokeWidth={1.7} color={whColors.textMuted} />
-        ),
-        active: (
-            <Users size={22} strokeWidth={2.4} color={whColors.primary} />
-        ),
-    },
-    ai: {
-        default: (
-            <Sparkles size={22} strokeWidth={1.7} color={whColors.textMuted} />
-        ),
-        active: (
-            <Sparkles size={22} strokeWidth={2.4} color={whColors.primary} />
-        ),
-    },
-    setting: {
-        default: (
-            <User size={22} strokeWidth={1.7} color={whColors.textMuted} />
-        ),
-        active: (
-            <User size={22} strokeWidth={2.4} color={whColors.primary} />
-        ),
-    },
-};
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 const TAB_LABELS: Record<string, string> = {
     index: 'Chats',
@@ -54,6 +14,7 @@ const TAB_LABELS: Record<string, string> = {
 
 export default function CustomTabBar({ state, navigation }: any) {
     const insets = useSafeAreaInsets();
+    const colors = useThemeColors();
 
     const notificationContext = useNotificationContext();
     const unreadMessageCount = notificationContext?.unreadMessageCount ?? 0;
@@ -61,19 +22,32 @@ export default function CustomTabBar({ state, navigation }: any) {
 
     const VISIBLE = new Set(['index', 'friends', 'ai', 'setting']);
     const focusedKey = state.routes[state.index]?.key;
+    const renderIcon = (routeName: string, isFocused: boolean) => {
+        const iconColor = isFocused ? colors.primary : colors.textSecondary;
+        const strokeWidth = isFocused ? 2.4 : 1.7;
+        const commonProps = { size: 22, strokeWidth, color: iconColor };
+
+        if (routeName === 'friends') return <Users {...commonProps} />;
+        if (routeName === 'ai') return <Sparkles {...commonProps} />;
+        if (routeName === 'setting') return <User {...commonProps} />;
+        return <MessageCircle {...commonProps} />;
+    };
 
     return (
         <View
             style={[
                 styles.container,
-                { paddingBottom: Math.max(insets.bottom, 8) },
+                {
+                    paddingBottom: Math.max(insets.bottom, 8),
+                    backgroundColor: colors.card,
+                    borderTopColor: colors.border,
+                },
             ]}
         >
             {state.routes
                 .filter((route: any) => VISIBLE.has(route.name))
                 .map((route: any) => {
                     const isFocused = route.key === focusedKey;
-                    const iconSet = TAB_ICON[route.name];
                     const label = TAB_LABELS[route.name];
 
                     return (
@@ -95,10 +69,12 @@ export default function CustomTabBar({ state, navigation }: any) {
                             <View
                                 style={[
                                     styles.iconWrap,
-                                    isFocused && styles.iconWrapActive,
+                                    isFocused && {
+                                        backgroundColor: colors.primaryLight,
+                                    },
                                 ]}
                             >
-                                {isFocused ? iconSet.active : iconSet.default}
+                                {renderIcon(route.name, isFocused)}
 
                                 {/* Unread badge for chat */}
                                 {route.name === 'index' && unreadMessageCount > 0 && (
@@ -122,14 +98,26 @@ export default function CustomTabBar({ state, navigation }: any) {
                             <Text
                                 style={[
                                     styles.label,
-                                    isFocused && styles.labelActive,
+                                    {
+                                        color: isFocused
+                                            ? colors.primary
+                                            : colors.textSecondary,
+                                        fontWeight: isFocused ? '700' : '500',
+                                    },
                                 ]}
                                 numberOfLines={1}
                             >
                                 {label}
                             </Text>
 
-                            {isFocused && <View style={styles.dot} />}
+                            {isFocused && (
+                                <View
+                                    style={[
+                                        styles.dot,
+                                        { backgroundColor: colors.primary },
+                                    ]}
+                                />
+                            )}
                         </TouchableOpacity>
                     );
                 })}
@@ -140,9 +128,7 @@ export default function CustomTabBar({ state, navigation }: any) {
 const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
-        backgroundColor: whColors.bgLight,
         borderTopWidth: 1,
-        borderTopColor: whColors.borderLight,
         paddingTop: 6,
         paddingHorizontal: 4,
     },
@@ -160,16 +146,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     iconWrapActive: {
-        backgroundColor: whColors.bgHeavy,
     },
     label: {
         fontSize: 10,
-        color: whColors.textMuted,
-        fontWeight: '500',
     },
     labelActive: {
-        color: whColors.primary,
-        fontWeight: '700',
     },
     badge: {
         position: 'absolute',
@@ -205,6 +186,5 @@ const styles = StyleSheet.create({
         width: 4,
         height: 4,
         borderRadius: 2,
-        backgroundColor: whColors.primary,
     },
 });

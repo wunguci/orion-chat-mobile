@@ -988,7 +988,7 @@ export default function ChatScreen() {
             <TouchableOpacity onPress={handleLeaveGroupFromWarning}>
               <Text
                 style={{
-                  color: "#00B14F",
+                  color: colors.primary,
                   fontSize: 13,
                   fontWeight: "700",
                 }}

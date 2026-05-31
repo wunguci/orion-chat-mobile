@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { Menu } from 'lucide-react-native';
 import { useSlideMenu } from '@/context/SlideMenuContext';
-import { whColors } from '@/constants/tailwindColors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface DropdownItem {
@@ -98,12 +97,12 @@ export default function ChatSearchBar({
                     width: 38,
                     height: 38,
                     borderRadius: 10,
-                    backgroundColor: whColors.bgHeavy,
+                    backgroundColor: colors.primaryLight,
                     alignItems: 'center',
                     justifyContent: 'center',
                 }}
             >
-                <Menu size={20} color={whColors.primary} strokeWidth={2.5} />
+                <Menu size={20} color={colors.primary} strokeWidth={2.5} />
             </TouchableOpacity>
             {/* Search bar */}
             <View

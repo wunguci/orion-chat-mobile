@@ -1,27 +1,26 @@
 import { Stack } from "expo-router";
 import React from "react";
-
-const WH_GREEN_PRIMARY = "#0d9488";
-const WH_GREEN_BG_LIGHT = "#f5f7fa";
-const WH_GREEN_TEXT_PRIMARY = "#1e293b";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 export default function SettingsLayout() {
+  const colors = useThemeColors();
+
   return (
     <Stack
       screenOptions={{
         headerShown: true,
         headerBackTitle: "Quay lại",
         headerStyle: {
-          backgroundColor: WH_GREEN_BG_LIGHT,
+          backgroundColor: colors.card,
         },
-        headerTintColor: WH_GREEN_PRIMARY,
+        headerTintColor: colors.primary,
         headerTitleStyle: {
           fontWeight: "600",
           fontSize: 17,
-          color: WH_GREEN_TEXT_PRIMARY,
+          color: colors.text,
         },
         contentStyle: {
-          backgroundColor: WH_GREEN_BG_LIGHT,
+          backgroundColor: colors.background,
         },
       }}
     >

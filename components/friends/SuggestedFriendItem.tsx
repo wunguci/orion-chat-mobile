@@ -1,14 +1,17 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Avatar } from "@/components/common/Avatar";
-import type { SuggestedFriendItem } from "@/types/friend";
+import { useThemeColors } from "@/hooks/useThemeColors";
+import type { SuggestedFriendItem as SuggestedFriend } from "@/types/friend";
 
 interface Props {
-  friend: SuggestedFriendItem;
+  friend: SuggestedFriend;
   onAdd: (id: string) => void;
 }
 
 export const SuggestedFriendItem: React.FC<Props> = ({ friend, onAdd }) => {
+  const colors = useThemeColors();
+
   return (
     <View className="flex-row items-center justify-between px-4 py-3">
       {/* Avatar + Info */}
@@ -27,10 +30,13 @@ export const SuggestedFriendItem: React.FC<Props> = ({ friend, onAdd }) => {
       {/* Add Button */}
       <TouchableOpacity
         onPress={() => onAdd(friend.id)}
-        className="bg-gray-light px-5 py-2 rounded-lg"
+        className="px-5 py-2 rounded-lg"
+        style={{ backgroundColor: colors.primaryLight }}
         activeOpacity={0.8}
       >
-        <Text className="text-green-primary font-semibold">Add</Text>
+        <Text className="font-semibold" style={{ color: colors.primary }}>
+          Add
+        </Text>
       </TouchableOpacity>
     </View>
   );

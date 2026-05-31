@@ -1,5 +1,6 @@
 import SettingsHeader from "@/components/setting/SettingsHeader";
 import { useNotificationContext } from "@/context/NotificationContext";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import type { AppNotification, NotificationType } from "@/types/notification";
 import React, { useMemo, useState } from "react";
 import {
@@ -59,27 +60,35 @@ function NotificationCard({
   onMarkRead: () => void;
   onDelete: () => void;
 }) {
+  const colors = useThemeColors();
+
   return (
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={onOpen}
-      className={`mb-2 rounded-xl border px-4 py-3 ${
-        item.isRead ? "border-gray-200 bg-white" : "border-orange-200 bg-orange-50"
-      }`}
+      className="mb-2 rounded-xl px-4 py-3"
+      style={{
+        borderWidth: 1,
+        borderColor: item.isRead ? colors.border : colors.primary,
+        backgroundColor: item.isRead ? colors.card : colors.primaryLight,
+      }}
     >
       <View className="flex-row items-start justify-between">
         <View className="mr-3 flex-1">
-          <Text className="text-base font-semibold text-gray-800">
+          <Text className="text-base font-semibold" style={{ color: colors.text }}>
             {item.title || "Thông báo"}
           </Text>
-          <Text className="mt-1 text-sm text-gray-600">{item.body}</Text>
-          <Text className="mt-2 text-xs text-gray-500">
+          <Text className="mt-1 text-sm" style={{ color: colors.textSecondary }}>{item.body}</Text>
+          <Text className="mt-2 text-xs" style={{ color: colors.textSecondary }}>
             {formatTimeLabel(item.createdAt)}
           </Text>
         </View>
 
         {!item.isRead && (
-          <View className="mt-1 h-2.5 w-2.5 rounded-full bg-orange-500" />
+          <View
+            className="mt-1 h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: colors.primary }}
+          />
         )}
       </View>
 
@@ -87,25 +96,27 @@ function NotificationCard({
         {!item.isRead && (
           <TouchableOpacity
             activeOpacity={0.85}
-            className="rounded-lg bg-white px-3 py-2"
+            className="rounded-lg px-3 py-2"
+            style={{ backgroundColor: colors.card }}
             onPress={(event) => {
               event.stopPropagation();
               onMarkRead();
             }}
           >
-            <Text className="text-xs font-semibold text-gray-700">Đánh dấu đã đọc</Text>
+            <Text className="text-xs font-semibold" style={{ color: colors.text }}>Đánh dấu đã đọc</Text>
           </TouchableOpacity>
         )}
 
         <TouchableOpacity
           activeOpacity={0.85}
-          className="rounded-lg bg-red-50 px-3 py-2"
+          className="rounded-lg px-3 py-2"
+          style={{ backgroundColor: colors.backgroundSecondary }}
           onPress={(event) => {
             event.stopPropagation();
             onDelete();
           }}
         >
-          <Text className="text-xs font-semibold text-red-600">Xoá</Text>
+          <Text className="text-xs font-semibold" style={{ color: "#ef4444" }}>Xoá</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -113,6 +124,7 @@ function NotificationCard({
 }
 
 export default function NotificationsScreen() {
+  const colors = useThemeColors();
   const {
     notifications,
     unreadCount,
@@ -135,26 +147,40 @@ export default function NotificationsScreen() {
   const isInitialLoading = loading && notifications.length === 0;
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView
+      className="flex-1"
+      style={{ backgroundColor: colors.background }}
+    >
       <SettingsHeader title="Thông báo" />
 
-      <View className="flex-1 bg-gray-50">
-        <View className="border-b border-gray-200 bg-white px-4 pb-3 pt-3">
+      <View className="flex-1" style={{ backgroundColor: colors.background }}>
+        <View
+          className="px-4 pb-3 pt-3"
+          style={{
+            backgroundColor: colors.card,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+          }}
+        >
           <View className="mb-3 flex-row items-center justify-between">
             <View>
-              <Text className="text-xl font-bold text-gray-800">
+              <Text className="text-xl font-bold" style={{ color: colors.text }}>
                 Trung tâm thông báo
               </Text>
-              <Text className="mt-1 text-xs text-gray-500">
+              <Text className="mt-1 text-xs" style={{ color: colors.textSecondary }}>
                 {unreadCount} chưa đọc
               </Text>
             </View>
 
             <TouchableOpacity
               disabled={unreadCount === 0}
-              className={`rounded-lg px-3 py-2 ${
-                unreadCount === 0 ? "bg-gray-200" : "bg-orange-500"
-              }`}
+              className="rounded-lg px-3 py-2"
+              style={{
+                backgroundColor:
+                  unreadCount === 0
+                    ? colors.backgroundSecondary
+                    : colors.primary,
+              }}
               onPress={() => {
                 void markAllAsRead();
               }}
@@ -173,15 +199,17 @@ export default function NotificationsScreen() {
               const active = item.key === filter;
               return (
                 <TouchableOpacity
-                  className={`mr-2 rounded-full px-3 py-1.5 ${
-                    active ? "bg-orange-500" : "bg-gray-200"
-                  }`}
+                  className="mr-2 rounded-full px-3 py-1.5"
+                  style={{
+                    backgroundColor: active
+                      ? colors.primary
+                      : colors.backgroundSecondary,
+                  }}
                   onPress={() => setFilter(item.key)}
                 >
                   <Text
-                    className={`text-xs font-semibold ${
-                      active ? "text-white" : "text-gray-700"
-                    }`}
+                    className="text-xs font-semibold"
+                    style={{ color: active ? "#FFFFFF" : colors.text }}
                   >
                     {item.label}
                   </Text>
@@ -193,8 +221,8 @@ export default function NotificationsScreen() {
 
         {isInitialLoading ? (
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="small" color="#f97316" />
-            <Text className="mt-2 text-sm text-gray-500">
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text className="mt-2 text-sm" style={{ color: colors.textSecondary }}>
               Đang tải thông báo...
             </Text>
           </View>
@@ -213,10 +241,10 @@ export default function NotificationsScreen() {
             }
             ListEmptyComponent={
               <View className="mt-14 items-center px-8">
-                <Text className="text-base font-semibold text-gray-700">
+                <Text className="text-base font-semibold" style={{ color: colors.text }}>
                   Không có thông báo
                 </Text>
-                <Text className="mt-1 text-center text-sm text-gray-500">
+                <Text className="mt-1 text-center text-sm" style={{ color: colors.textSecondary }}>
                   Khi có hoạt động mới, thông báo sẽ xuất hiện tại đây.
                 </Text>
               </View>

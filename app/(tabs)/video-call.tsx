@@ -1,6 +1,7 @@
 import { CallContext } from "@/context/CallContext";
 import StreamCallView from "@/components/call/StreamCallView";
 import { useAuth } from "@/hooks/useAuth";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useContext, useEffect, useMemo } from "react";
@@ -54,6 +55,7 @@ export default function VideoCallScreen() {
   }>();
   const call = useContext(CallContext);
   const { state } = useAuth();
+  const colors = useThemeColors();
 
   useEffect(() => {
     if (!call) {
@@ -205,7 +207,8 @@ export default function VideoCallScreen() {
                 onPress={() => {
                   void call.respondVideoUpgradeRequest(true);
                 }}
-                className="px-4 py-2 rounded-lg bg-green-600 mx-2"
+                className="px-4 py-2 rounded-lg mx-2"
+                style={{ backgroundColor: colors.primary }}
               >
                 <Text className="text-white text-sm font-medium">Accept</Text>
               </TouchableOpacity>

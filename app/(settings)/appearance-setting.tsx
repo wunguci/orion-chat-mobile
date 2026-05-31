@@ -1,9 +1,15 @@
 import SettingsHeader from "@/components/setting/SettingsHeader";
 import SettingsSection from "@/components/setting/SettingsSection";
+import {
+  AppearanceThemeMode,
+  getAppearanceColorFromWallpaper,
+} from "@/constants/appearance";
+import { useAppearance } from "@/context/AppearanceContext";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import { MonitorCog, Moon, RotateCcw, Sun } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  Alert,
   SafeAreaView,
   ScrollView,
   Text,
@@ -11,23 +17,35 @@ import {
   View,
 } from "react-native";
 
-type ThemeMode = "light" | "dark" | "system";
 type TextSize = "small" | "medium" | "large";
 
 const wallpapers = [
-  { id: 1, color: "#20C997", label: "Teal" },
-  { id: 2, color: "#FF6B3D", label: "Orange" },
-  { id: 3, color: "#A8C5DA", label: "Blue" },
-  { id: 4, color: "#E5DDD0", label: "Beige" },
+  { id: "teal", color: "#20C997", label: "Teal" },
+  { id: "orange", color: "#FF6B3D", label: "Orange" },
+  { id: "blue", color: "#A8C5DA", label: "Blue" },
+  { id: "purple", color: "#A78BFA", label: "Purple" },
 ];
 
 export default function AppearanceScreen() {
-  const [themeMode, setThemeMode] = useState<ThemeMode>("light");
-  const [selectedWallpaper, setSelectedWallpaper] = useState(1);
+  const { settings, updateAppearance } = useAppearance();
+  const [themeMode, setThemeMode] = useState<AppearanceThemeMode>("light");
+  const [selectedWallpaper, setSelectedWallpaper] = useState("teal");
   const [textSize, setTextSize] = useState<TextSize>("medium");
   const colors = useThemeColors();
 
-  const themeOptions: { value: ThemeMode; label: string; Icon: any }[] = [
+  useEffect(() => {
+    setThemeMode(settings.theme);
+    setSelectedWallpaper(settings.wallpaper || "teal");
+    setTextSize(
+      settings.fontSize && settings.fontSize >= 18
+        ? "large"
+        : settings.fontSize && settings.fontSize <= 14
+          ? "small"
+          : "medium",
+    );
+  }, [settings]);
+
+  const themeOptions: { value: AppearanceThemeMode; label: string; Icon: any }[] = [
     {
       value: "light",
       label: "Light",
@@ -51,37 +69,78 @@ export default function AppearanceScreen() {
     { value: "large", label: "Large" },
   ];
 
+  const handleSave = async () => {
+    const fontSize = textSize === "large" ? 18 : textSize === "small" ? 14 : 16;
+
+    await updateAppearance({
+      theme: themeMode,
+      wallpaper: selectedWallpaper,
+      appearanceColor: getAppearanceColorFromWallpaper(selectedWallpaper),
+      fontSize,
+    });
+
+    Alert.alert("Appearance", "Đã lưu giao diện.");
+  };
+
+  const handleReset = () => {
+    setThemeMode("light");
+    setSelectedWallpaper("teal");
+    setTextSize("medium");
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <ScrollView className="flex-1 pb-4 bg-gray-50">
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.background }}
+        contentContainerStyle={{ paddingBottom: 24 }}
+      >
         {/* Theme Mode Section */}
         <SettingsSection title="THEME MODE">
-          <View className="overflow-hidden rounded-3xl bg-orange-bg-light border border-orange-border-light p-6">
+          <View
+            style={{
+              overflow: "hidden",
+              borderRadius: 24,
+              backgroundColor: colors.primaryLight,
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: 24,
+            }}
+          >
             <View className="flex-row gap-4">
               {themeOptions.map((option) => (
                 <TouchableOpacity
                   key={option.value}
                   onPress={() => setThemeMode(option.value)}
-                  className={`flex-1 items-center rounded-3xl py-8 px-2 ${
-                    themeMode === option.value
-                      ? "border border-orange-primary bg-white"
-                      : "border border-gray-border bg-white"
-                  }`}
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    borderRadius: 24,
+                    paddingVertical: 32,
+                    paddingHorizontal: 8,
+                    borderWidth: 1,
+                    borderColor:
+                      themeMode === option.value ? colors.primary : colors.border,
+                    backgroundColor: colors.card,
+                  }}
                 >
                   <option.Icon
                     size={24}
                     color={
                       themeMode === option.value
-                        ? colors.orangePrimary
-                        : colors.orangeBgHeavy
+                        ? colors.primary
+                        : colors.textSecondary
                     }
                   />
                   <Text
-                    className={`mt-3 text-base font-semibold ${
-                      themeMode === option.value
-                        ? "text-gray-primary"
-                        : "text-gray-secondary"
-                    }`}
+                    style={{
+                      marginTop: 12,
+                      color:
+                        themeMode === option.value
+                          ? colors.text
+                          : colors.textSecondary,
+                      fontSize: 16,
+                      fontWeight: "600",
+                    }}
                   >
                     {option.label}
                   </Text>
@@ -96,7 +155,13 @@ export default function AppearanceScreen() {
           <View className="mb-4 flex-row items-center justify-between px-4">
             <View />
             <TouchableOpacity>
-              <Text className="text-base font-semibold text-orange-primary">
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontSize: 16,
+                  fontWeight: "600",
+                }}
+              >
                 See all
               </Text>
             </TouchableOpacity>
@@ -109,14 +174,19 @@ export default function AppearanceScreen() {
                 className="flex-1"
               >
                 <View
-                  className={`h-56 w-full rounded-3xl ${
-                    selectedWallpaper === wallpaper.id
-                      ? "border-2 border-orange-primary"
-                      : "border-2 border-gray-secondary"
-                  }`}
-                  style={{ backgroundColor: wallpaper.color }}
+                  style={{
+                    height: 224,
+                    width: "100%",
+                    borderRadius: 24,
+                    borderWidth: 2,
+                    borderColor:
+                      selectedWallpaper === wallpaper.id
+                        ? colors.primary
+                        : colors.textSecondary,
+                    backgroundColor: wallpaper.color,
+                  }}
                 >
-                  {wallpaper.id === 3 && (
+                  {wallpaper.id === "blue" && (
                     <View className="flex-1 items-center justify-center">
                       <View
                         className="flex-row flex-wrap justify-center gap-2"
@@ -133,7 +203,7 @@ export default function AppearanceScreen() {
                       </View>
                     </View>
                   )}
-                  {wallpaper.id === 4 && (
+                  {wallpaper.id === "purple" && (
                     <View className="flex-1 items-center justify-center gap-3">
                       <View className="flex-row gap-3">
                         <View className="h-4 w-4 rounded-md bg-white opacity-60" />
@@ -154,41 +224,58 @@ export default function AppearanceScreen() {
         {/* Text Size Section */}
         <SettingsSection title="TEXT SIZE">
           <View className="overflow-hidden rounded-3xl p-2">
-            <View className="flex-row gap-3 border border-orange-border-light rounded-3xl px-3 py-3 bg-orange-bg-light">
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 12,
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 24,
+                paddingHorizontal: 12,
+                paddingVertical: 12,
+                backgroundColor: colors.primaryLight,
+              }}
+            >
               {textSizeOptions.map((option) => (
                 <TouchableOpacity
                   key={option.value}
                   onPress={() => setTextSize(option.value)}
-                  className={`flex-1 items-center rounded-full py-2 ${
-                    textSize === option.value
-                      ? "border border-orange-border-light bg-white"
-                      : ""
-                  }`}
-                  style={
-                    textSize === option.value
-                      ? {
-                          shadowColor: "#424242",
-                          shadowOffset: { width: 0, height: 1 },
-                          shadowOpacity: 0.1,
-                          shadowRadius: 2,
-                          elevation: 2,
-                        }
-                      : {}
-                  }
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    borderRadius: 999,
+                    paddingVertical: 8,
+                    borderWidth: textSize === option.value ? 1 : 0,
+                    borderColor: colors.border,
+                    backgroundColor:
+                      textSize === option.value ? colors.card : "transparent",
+                  }}
                 >
                   <Text
-                    className={`text-base font-semibold ${
-                      textSize === option.value
-                        ? "text-gray-primary"
-                        : "text-gray-600"
-                    }`}
+                  style={
+                    {
+                      color:
+                        textSize === option.value
+                          ? colors.text
+                          : colors.textSecondary,
+                      fontSize: 16,
+                      fontWeight: "600",
+                    }
+                  }
                   >
                     {option.label}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
-            <Text className="mt-4 text-sm leading-5 text-gray-secondary">
+            <Text
+              style={{
+                marginTop: 16,
+                color: colors.textSecondary,
+                fontSize: 14,
+                lineHeight: 20,
+              }}
+            >
               Adjusting the font size will change the scale all chat text across
               the app.
             </Text>
@@ -197,9 +284,18 @@ export default function AppearanceScreen() {
 
         {/* Reset Button */}
         <View className="mt-8 px-4">
-          <TouchableOpacity className="flex-row items-center gap-2">
-            <RotateCcw size={22} color={colors.orangePrimary} />
-            <Text className="text-base font-semibold text-orange-primary">
+          <TouchableOpacity
+            className="flex-row items-center gap-2"
+            onPress={handleReset}
+          >
+            <RotateCcw size={22} color={colors.primary} />
+            <Text
+              style={{
+                color: colors.primary,
+                fontSize: 16,
+                fontWeight: "600",
+              }}
+            >
               Reset to default settings
             </Text>
           </TouchableOpacity>
@@ -207,12 +303,38 @@ export default function AppearanceScreen() {
 
         {/* Action Buttons */}
         <View className="mt-10 gap-3 px-4 pb-6">
-          <TouchableOpacity className="rounded-full border-2 border-gray-border bg-white py-4">
-            <Text className="text-center text-lg font-bold text-gray-primary">
+          <TouchableOpacity
+            style={{
+              borderRadius: 999,
+              borderWidth: 2,
+              borderColor: colors.border,
+              backgroundColor: colors.card,
+              paddingVertical: 16,
+            }}
+            onPress={() => {
+              setThemeMode(settings.theme);
+              setSelectedWallpaper(settings.wallpaper || "teal");
+            }}
+          >
+            <Text
+              style={{
+                color: colors.text,
+                textAlign: "center",
+                fontSize: 18,
+                fontWeight: "700",
+              }}
+            >
               Cancel
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity className="rounded-full bg-orange-primary py-4">
+          <TouchableOpacity
+            style={{
+              borderRadius: 999,
+              backgroundColor: colors.primary,
+              paddingVertical: 16,
+            }}
+            onPress={() => void handleSave()}
+          >
             <Text className="text-center text-lg font-bold text-white">
               Save Changes
             </Text>

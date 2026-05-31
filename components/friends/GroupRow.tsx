@@ -1,4 +1,5 @@
 import { Avatar } from "@/components/common/Avatar";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import type { GroupItem } from "@/types/friend";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -17,6 +18,8 @@ export const GroupRow: React.FC<Props> = ({
   onAudioCall,
   onVideoCall,
 }) => {
+  const colors = useThemeColors();
+
   return (
     <View className="flex-row items-center px-4 py-3 border-b border-gray-100">
       <TouchableOpacity
@@ -39,16 +42,21 @@ export const GroupRow: React.FC<Props> = ({
         {onAudioCall ? (
           <TouchableOpacity
             onPress={() => onAudioCall(group)}
-            className="h-9 w-9 rounded-full bg-green-bg-light border border-green-border-light items-center justify-center mr-2"
+            className="h-9 w-9 rounded-full border items-center justify-center mr-2"
+            style={{
+              backgroundColor: colors.primaryLight,
+              borderColor: colors.border,
+            }}
             activeOpacity={0.8}
           >
-            <Ionicons name="call" size={16} color="#0d9488" />
+            <Ionicons name="call" size={16} color={colors.primary} />
           </TouchableOpacity>
         ) : null}
         {onVideoCall ? (
           <TouchableOpacity
             onPress={() => onVideoCall(group)}
-            className="h-9 w-9 rounded-full bg-green-primary items-center justify-center mr-2"
+            className="h-9 w-9 rounded-full items-center justify-center mr-2"
+            style={{ backgroundColor: colors.primary }}
             activeOpacity={0.8}
           >
             <Ionicons name="videocam" size={16} color="#fff" />

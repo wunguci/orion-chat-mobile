@@ -1,4 +1,4 @@
-import { Colors } from "../constants/theme";
+import { useAppearance } from "@/context/AppearanceContext";
 
 /**
  * Custom hook để lấy colors dựa trên theme hiện tại (light/dark)
@@ -9,5 +9,6 @@ import { Colors } from "../constants/theme";
  * <Text style={{ color: colors.text }}>Hello</Text>
  */
 export function useThemeColors() {
-  return Colors.light;
+  const { colors } = useAppearance();
+  return colors;
 }

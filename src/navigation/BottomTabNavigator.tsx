@@ -1,15 +1,17 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { whColors } from '@/constants/tailwindColors';
 import CustomTabBar from './CustomTabBar';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 export default function BottomTabNavigator() {
+    const colors = useThemeColors();
+
     return (
         <Tabs
             tabBar={(props) => <CustomTabBar {...props} />}
             screenOptions={{
                 headerShown: false,
-                sceneStyle: { backgroundColor: whColors.bgLight },
+                sceneStyle: { backgroundColor: colors.background },
             }}
         >
             {/* Main 4 tabs */}

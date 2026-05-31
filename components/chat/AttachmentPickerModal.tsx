@@ -58,7 +58,7 @@ export default function AttachmentPickerModal({
         <Ionicons
           name="camera-outline"
           size={28}
-          color={colors.primary ?? "#00B14F"}
+          color={colors.primary}
         />
       ),
       onPress: () => pickFromCamera("all"),
@@ -70,7 +70,7 @@ export default function AttachmentPickerModal({
         <Ionicons
           name="images-outline"
           size={28}
-          color={colors.primary ?? "#00B14F"}
+          color={colors.primary}
         />
       ),
       onPress: () => pickFromGallery("all"), // Giới hạn chỉ chọn image -> pickFromGallery('images')
@@ -82,7 +82,7 @@ export default function AttachmentPickerModal({
         <MaterialCommunityIcons
           name="file-outline"
           size={28}
-          color={colors.primary ?? "#00B14F"}
+          color={colors.primary}
         />
       ),
       onPress: pickDocument,
@@ -144,7 +144,7 @@ export default function AttachmentPickerModal({
         {loading ? (
           <ActivityIndicator
             size="large"
-            color={colors.primary ?? "#00B14F"}
+            color={colors.primary}
             style={{ marginVertical: 24 }}
           />
         ) : (

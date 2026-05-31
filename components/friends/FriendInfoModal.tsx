@@ -1,5 +1,6 @@
 import { Avatar } from "@/components/common/Avatar";
 import { API_BASE_URL } from "@/config/api";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import type { FriendProfileItem } from "@/types/friend";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -65,6 +66,8 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({
   onBlock,
   onRemove,
 }) => {
+  const colors = useThemeColors();
+
   if (!visible || !profile) return null;
 
   const coverUri = toAbsoluteUrl(profile.coverImage);
@@ -88,7 +91,7 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({
               resizeMode="cover"
             />
           ) : (
-            <View className="h-28 bg-green-primary" />
+            <View className="h-28" style={{ backgroundColor: colors.primary }} />
           )}
 
           <TouchableOpacity
@@ -135,7 +138,8 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({
                 <TouchableOpacity
                   disabled={isSendingAddFriend || hasPendingRequest}
                   onPress={() => onAddFriend?.(profile.id)}
-                  className="flex-1 flex-row items-center justify-center rounded-xl bg-green-primary py-3 disabled:opacity-70"
+                  className="flex-1 flex-row items-center justify-center rounded-xl py-3 disabled:opacity-70"
+                  style={{ backgroundColor: colors.primary }}
                 >
                   <Ionicons name="person-add" size={16} color="#fff" />
                   <Text className="ml-2 font-semibold text-white">
@@ -165,7 +169,8 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => onChat?.(profile.id)}
-                  className="flex-1 flex-row items-center justify-center rounded-xl bg-green-primary py-3"
+                  className="flex-1 flex-row items-center justify-center rounded-xl py-3"
+                  style={{ backgroundColor: colors.primary }}
                 >
                   <Ionicons name="chatbubble-ellipses" size={16} color="#fff" />
                   <Text className="ml-2 font-semibold text-white">Chat</Text>

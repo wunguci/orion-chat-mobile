@@ -17,8 +17,6 @@ interface ChatListItemProps {
     onSwipeOpen?: (id: string, ref: Swipeable | null) => void;
 }
 
-const UNREAD_COLOR = '#00B14F';
-
 export default function ChatListItem({
     item,
     onPress,
@@ -36,7 +34,7 @@ export default function ChatListItem({
             return (
                 <View
                     style={{
-                        backgroundColor: UNREAD_COLOR,
+                        backgroundColor: colors.primary,
                         borderRadius: 12,
                         minWidth: 24,
                         height: 24,
@@ -77,7 +75,7 @@ export default function ChatListItem({
                 <MaterialCommunityIcons
                     name="check-all"
                     size={18}
-                    color={UNREAD_COLOR}
+                    color={colors.primary}
                 />
             );
         }

@@ -1,4 +1,5 @@
 import { Avatar } from "@/components/common/Avatar";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import type { GroupInviteItem } from "@/types/friend";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
@@ -14,6 +15,8 @@ export const GroupInviteRow: React.FC<Props> = ({
   onAccept,
   onDecline,
 }) => {
+  const colors = useThemeColors();
+
   return (
     <View className="flex-row items-center px-4 py-3 border-b border-gray-100">
       <Avatar uri={invite.groupAvatar} name={invite.groupName} size="lg" />
@@ -27,15 +30,19 @@ export const GroupInviteRow: React.FC<Props> = ({
         <View className="flex-row mt-3 gap-2">
           <TouchableOpacity
             onPress={() => onAccept(invite.id)}
-            className="flex-1 bg-green-primary py-2.5 rounded-lg items-center"
+            className="flex-1 py-2.5 rounded-lg items-center"
+            style={{ backgroundColor: colors.primary }}
           >
             <Text className="text-white font-semibold">Accept</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => onDecline(invite.id)}
-            className="flex-1 bg-green-bg-light py-2.5 rounded-lg items-center"
+            className="flex-1 py-2.5 rounded-lg items-center"
+            style={{ backgroundColor: colors.primaryLight }}
           >
-            <Text className="text-green-primary font-semibold">Decline</Text>
+            <Text className="font-semibold" style={{ color: colors.primary }}>
+              Decline
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

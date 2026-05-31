@@ -1,5 +1,6 @@
 import SettingsHeader from "@/components/setting/SettingsHeader";
 import { useAuthUser } from "@/hooks/useAuth";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import { API_BASE_URL } from "@/services/api/profile";
 import React, { useMemo } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
@@ -41,6 +42,7 @@ type ProfileViewModel = {
 
 export default function ProfileScreen() {
   const { user, loading, error, reload } = useAuthUser();
+  const colors = useThemeColors();
 
   const profile = useMemo<ProfileViewModel | null>(() => {
     if (!user) return null;
@@ -93,7 +95,10 @@ export default function ProfileScreen() {
   }, [profile]);
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView
+      className="flex-1"
+      style={{ backgroundColor: colors.background }}
+    >
       <ScrollView showsVerticalScrollIndicator={false}>
         {loading && (
           <View className="px-6 py-6">
@@ -139,7 +144,14 @@ export default function ProfileScreen() {
 
             {/* Avatar */}
             <View className=" items-center -mt-16 ">
-              <View className=" w-32 h-32 rounded-full bg-green-bg-heavy border-4 border-white items-center justify-center shadow-lg ">
+              <View
+                className=" w-32 h-32 rounded-full items-center justify-center shadow-lg "
+                style={{
+                  backgroundColor: colors.primaryLight,
+                  borderWidth: 4,
+                  borderColor: colors.card,
+                }}
+              >
                 <Image
                   source={{
                     uri: profile.avatar,
@@ -153,38 +165,60 @@ export default function ProfileScreen() {
             {/* Name and Bio */}
             <View className="items-center px-6">
               <View className="flex-row items-center justify-center gap-2">
-                <Text className="text-2xl font-bold text-teal-700">
+                <Text
+                  className="text-2xl font-bold"
+                  style={{ color: colors.primaryDark }}
+                >
                   {profile.name}
                 </Text>
-                <Feather name="edit-2" size={18} color="#0d9488" />
+                <Feather name="edit-2" size={18} color={colors.primary} />
               </View>
 
-              <Text className="text-center text-gray-600 mt-3 leading-6 text-sm">
+              <Text
+                className="text-center mt-3 leading-6 text-sm"
+                style={{ color: colors.textSecondary }}
+              >
                 {profile.bio}
               </Text>
             </View>
 
             {/* Message and Call Buttons */}
             <View className="flex-row gap-4 mt-6 px-6">
-              <TouchableOpacity className="flex-1 bg-teal-700 py-3 rounded-full flex-row items-center justify-center gap-2">
+              <TouchableOpacity
+                className="flex-1 py-3 rounded-full flex-row items-center justify-center gap-2"
+                style={{ backgroundColor: colors.primary }}
+              >
                 <MaterialIcons name="mail" size={18} color="white" />
                 <Text className="text-white font-semibold">Message</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity className="flex-1 border-2 border-teal-700 py-3 rounded-full flex-row items-center justify-center gap-2">
-                <Feather name="phone" size={18} color="#0d9488" />
-                <Text className="text-teal-700 font-semibold">Call</Text>
+              <TouchableOpacity
+                className="flex-1 py-3 rounded-full flex-row items-center justify-center gap-2"
+                style={{ borderWidth: 2, borderColor: colors.primary }}
+              >
+                <Feather name="phone" size={18} color={colors.primary} />
+                <Text className="font-semibold" style={{ color: colors.primary }}>
+                  Call
+                </Text>
               </TouchableOpacity>
             </View>
 
             {hasStats && (
-              <View className="flex-row justify-between bg-white mt-6 py-6 px-8 border-t border-b border-gray-200">
+              <View
+                className="flex-row justify-between mt-6 py-6 px-8"
+                style={{
+                  backgroundColor: colors.card,
+                  borderTopWidth: 1,
+                  borderBottomWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
                 {profile.stats?.friends !== undefined && (
                   <View className="items-center">
-                    <Text className="font-bold text-lg text-gray-800">
+                    <Text className="font-bold text-lg" style={{ color: colors.text }}>
                       {profile.stats.friends}
                     </Text>
-                    <Text className="text-gray-500 text-xs mt-1 font-semibold">
+                    <Text className="text-xs mt-1 font-semibold" style={{ color: colors.textSecondary }}>
                       FRIENDS
                     </Text>
                   </View>
@@ -192,10 +226,10 @@ export default function ProfileScreen() {
 
                 {profile.stats?.photos !== undefined && (
                   <View className="items-center">
-                    <Text className="font-bold text-lg text-gray-800">
+                    <Text className="font-bold text-lg" style={{ color: colors.text }}>
                       {profile.stats.photos}
                     </Text>
-                    <Text className="text-gray-500 text-xs mt-1 font-semibold">
+                    <Text className="text-xs mt-1 font-semibold" style={{ color: colors.textSecondary }}>
                       PHOTOS
                     </Text>
                   </View>
@@ -203,10 +237,10 @@ export default function ProfileScreen() {
 
                 {profile.stats?.videos !== undefined && (
                   <View className="items-center">
-                    <Text className="font-bold text-lg text-gray-800">
+                    <Text className="font-bold text-lg" style={{ color: colors.text }}>
                       {profile.stats.videos}
                     </Text>
-                    <Text className="text-gray-500 text-xs mt-1 font-semibold">
+                    <Text className="text-xs mt-1 font-semibold" style={{ color: colors.textSecondary }}>
                       VIDEOS
                     </Text>
                   </View>
@@ -215,8 +249,15 @@ export default function ProfileScreen() {
             )}
 
             {profile.interests.length > 0 && (
-              <View className="bg-white mt-4 px-6 py-5 border-b border-gray-200">
-                <Text className="font-bold text-teal-700 mb-4 text-sm">
+              <View
+                className="mt-4 px-6 py-5"
+                style={{
+                  backgroundColor: colors.card,
+                  borderBottomWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Text className="font-bold mb-4 text-sm" style={{ color: colors.primary }}>
                   INTERESTS
                 </Text>
 
@@ -224,9 +265,14 @@ export default function ProfileScreen() {
                   {profile.interests.map((item: string, index: number) => (
                     <View
                       key={index}
-                      className="bg-cyan-50 px-4 py-2 rounded-full border border-cyan-200"
+                      className="px-4 py-2 rounded-full"
+                      style={{
+                        backgroundColor: colors.primaryLight,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }}
                     >
-                      <Text className="text-teal-700 font-medium text-sm">
+                      <Text className="font-medium text-sm" style={{ color: colors.primary }}>
                         {item}
                       </Text>
                     </View>
@@ -235,13 +281,20 @@ export default function ProfileScreen() {
               </View>
             )}
 
-            <View className="bg-white mt-4 px-6 py-5 border-b border-gray-200">
-              <Text className="font-bold text-teal-700 mb-5 text-sm">
+            <View
+              className="mt-4 px-6 py-5"
+              style={{
+                backgroundColor: colors.card,
+                borderBottomWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              <Text className="font-bold mb-5 text-sm" style={{ color: colors.primary }}>
                 CHI TIẾT
               </Text>
 
               {detailRows.length === 0 && (
-                <Text className="text-gray-500 text-sm">
+                <Text className="text-sm" style={{ color: colors.textSecondary }}>
                   Chua co thong tin chi tiet.
                 </Text>
               )}
@@ -254,14 +307,14 @@ export default function ProfileScreen() {
                   <MaterialIcons
                     name={row.icon as any}
                     size={22}
-                    color="#0d9488"
+                    color={colors.primary}
                   />
                   <View className="flex-1">
-                    <Text className="text-gray-800 font-medium">
+                    <Text className="font-medium" style={{ color: colors.text }}>
                       {row.value}
                     </Text>
                     {row.label && (
-                      <Text className="text-gray-500 text-xs mt-1">
+                      <Text className="text-xs mt-1" style={{ color: colors.textSecondary }}>
                         {row.label}
                       </Text>
                     )}

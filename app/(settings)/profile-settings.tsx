@@ -69,12 +69,18 @@ export default function ProfileSettings() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView
+      className="flex-1"
+      style={{ backgroundColor: colors.background }}
+    >
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Avatar Section */}
         <View className="flex flex-col gap-4 items-center py-8">
           <View className="relative">
-            <View className="h-32 w-32 overflow-hidden rounded-full bg-orange-bg-heavy">
+            <View
+              className="h-32 w-32 overflow-hidden rounded-full"
+              style={{ backgroundColor: colors.primaryLight }}
+            >
               <Image
                 source={{ uri: avatar }}
                 className="h-full w-full"
@@ -83,17 +89,18 @@ export default function ProfileSettings() {
             </View>
             <TouchableOpacity
               onPress={handleUploadAvatar}
-              className="absolute bottom-0 right-0 h-10 w-10 items-center justify-center rounded-full bg-orange-primary"
+              className="absolute bottom-0 right-0 h-10 w-10 items-center justify-center rounded-full"
+              style={{ backgroundColor: colors.primary }}
             >
               <Camera size={20} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
 
           <View className="flex flex-col gap-2 items-center">
-            <Text className="text-lg font-bold text-gray-primary">
+            <Text className="text-lg font-bold" style={{ color: colors.text }}>
               ZangThanks
             </Text>
-            <Text className="text-sm text-gray-secondary">
+            <Text className="text-sm" style={{ color: colors.textSecondary }}>
               JPG, GIF or PNG. Max size of 800K
             </Text>
 
@@ -101,7 +108,8 @@ export default function ProfileSettings() {
             <View className="flex-row justify-center items-center gap-3">
               <TouchableOpacity
                 onPress={handleUploadAvatar}
-                className="rounded-[12px] bg-orange-primary px-6 py-3"
+                className="rounded-[12px] px-6 py-3"
+                style={{ backgroundColor: colors.primary }}
               >
                 <Text className="text-sm font-semibold text-white">
                   Upload New
@@ -109,9 +117,13 @@ export default function ProfileSettings() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleRemoveAvatar}
-                className="rounded-[12px] border border-gray-300 px-6 py-3"
+                className="rounded-[12px] px-6 py-3"
+                style={{ borderWidth: 1, borderColor: colors.border }}
               >
-                <Text className="text-sm font-semibold text-gray-primary">
+                <Text
+                  className="text-sm font-semibold"
+                  style={{ color: colors.text }}
+                >
                   Remove
                 </Text>
               </TouchableOpacity>
@@ -123,13 +135,19 @@ export default function ProfileSettings() {
         <View className="px-6">
           {/* Display Name */}
           <View className="mb-5">
-            <Text className="mb-2 text-sm font-semibold text-gray-primary">
+            <Text className="mb-2 text-sm font-semibold" style={{ color: colors.text }}>
               Display Name
             </Text>
             <TextInput
               value={displayName}
               onChangeText={setDisplayName}
-              className="rounded-lg border border-orange-border-light bg-orange-bg-light px-4 py-3 text-gray-primary"
+              className="rounded-lg px-4 py-3"
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.backgroundSecondary,
+                color: colors.text,
+              }}
               placeholder="Enter your display name"
               placeholderTextColor={colors.graySecondary}
             />
@@ -137,13 +155,19 @@ export default function ProfileSettings() {
 
           {/* Username */}
           <View className="mb-5">
-            <Text className="mb-2 text-sm font-semibold text-gray-primary">
+            <Text className="mb-2 text-sm font-semibold" style={{ color: colors.text }}>
               Username
             </Text>
             <TextInput
               value={username}
               onChangeText={setUsername}
-              className="rounded-lg border border-orange-border-light bg-orange-bg-light px-4 py-3 text-gray-primary"
+              className="rounded-lg px-4 py-3"
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.backgroundSecondary,
+                color: colors.text,
+              }}
               placeholder="Enter your username"
               placeholderTextColor={colors.graySecondary}
               autoCapitalize="none"
@@ -152,13 +176,19 @@ export default function ProfileSettings() {
 
           {/* Status Message */}
           <View className="mb-6">
-            <Text className="mb-2 text-sm font-semibold text-gray-primary">
+            <Text className="mb-2 text-sm font-semibold" style={{ color: colors.text }}>
               Status Message
             </Text>
             <TextInput
               value={statusMessage}
               onChangeText={setStatusMessage}
-              className="rounded-lg border border-orange-border-light bg-orange-bg-light px-4 py-3 text-gray-primary"
+              className="rounded-lg px-4 py-3"
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.backgroundSecondary,
+                color: colors.text,
+              }}
               placeholder="Enter your status message"
               placeholderTextColor={colors.graySecondary}
               multiline
@@ -171,16 +201,26 @@ export default function ProfileSettings() {
         {/* Preferences Section */}
         <SettingsSection title="Preferences">
           {/* Push Notifications */}
-          <View className="mb-3 flex-row items-center justify-between rounded-xl bg-orange-bg-light p-4 border border-orange-border-light">
+          <View
+            className="mb-3 flex-row items-center justify-between rounded-xl p-4"
+            style={{
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
             <View className="flex-1 flex-row items-center">
-              <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-orange-bg-heavy">
-                <Bell size={20} color={colors.orangePrimary} />
+              <View
+                className="mr-3 h-10 w-10 items-center justify-center rounded-full"
+                style={{ backgroundColor: colors.primaryLight }}
+              >
+                <Bell size={20} color={colors.primary} />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-primary">
+                <Text className="text-base font-semibold" style={{ color: colors.text }}>
                   Push Notifications
                 </Text>
-                <Text className="mt-0.5 text-sm text-gray-secondary">
+                <Text className="mt-0.5 text-sm" style={{ color: colors.textSecondary }}>
                   Receive alerts for new messages
                 </Text>
               </View>
@@ -192,16 +232,26 @@ export default function ProfileSettings() {
           </View>
 
           {/* Read Receipts */}
-          <View className="mb-3 flex-row items-center justify-between rounded-xl bg-orange-bg-light p-4 border border-orange-border-light">
+          <View
+            className="mb-3 flex-row items-center justify-between rounded-xl p-4"
+            style={{
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
             <View className="flex-1 flex-row items-center">
-              <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-orange-bg-heavy">
-                <Eye size={20} color={colors.orangePrimary} />
+              <View
+                className="mr-3 h-10 w-10 items-center justify-center rounded-full"
+                style={{ backgroundColor: colors.primaryLight }}
+              >
+                <Eye size={20} color={colors.primary} />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-primary">
+                <Text className="text-base font-semibold" style={{ color: colors.text }}>
                   Read Receipts
                 </Text>
-                <Text className="mt-0.5 text-sm text-gray-secondary">
+                <Text className="mt-0.5 text-sm" style={{ color: colors.textSecondary }}>
                   Others can see when you have read messages
                 </Text>
               </View>
@@ -213,16 +263,26 @@ export default function ProfileSettings() {
           </View>
 
           {/* Sound Effects */}
-          <View className="mb-6 flex-row items-center justify-between rounded-xl bg-orange-bg-light p-4 border border-orange-border-light">
+          <View
+            className="mb-6 flex-row items-center justify-between rounded-xl p-4"
+            style={{
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
             <View className="flex-1 flex-row items-center">
-              <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-orange-bg-heavy">
-                <Volume2 size={20} color={colors.orangePrimary} />
+              <View
+                className="mr-3 h-10 w-10 items-center justify-center rounded-full"
+                style={{ backgroundColor: colors.primaryLight }}
+              >
+                <Volume2 size={20} color={colors.primary} />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-primary">
+                <Text className="text-base font-semibold" style={{ color: colors.text }}>
                   Sound Effects
                 </Text>
-                <Text className="mt-0.5 text-sm text-gray-secondary">
+                <Text className="mt-0.5 text-sm" style={{ color: colors.textSecondary }}>
                   Play sounds for incoming messages
                 </Text>
               </View>
@@ -238,15 +298,17 @@ export default function ProfileSettings() {
         <View className="flex-row px-6 pb-8 pt-2">
           <TouchableOpacity
             onPress={handleDiscardChanges}
-            className="mr-3 flex-1 items-center justify-center rounded-lg border border-gray-300 py-4"
+            className="mr-3 flex-1 items-center justify-center rounded-lg py-4"
+            style={{ borderWidth: 1, borderColor: colors.border }}
           >
-            <Text className="text-base font-semibold text-gray-primary">
+            <Text className="text-base font-semibold" style={{ color: colors.text }}>
               Discard Changes
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleSaveChanges}
-            className="flex-1 items-center justify-center rounded-lg bg-orange-primary py-4"
+            className="flex-1 items-center justify-center rounded-lg py-4"
+            style={{ backgroundColor: colors.primary }}
           >
             <Text className="text-base font-semibold text-white">
               Save Changes

@@ -1,6 +1,6 @@
 import EventEditorModal from "@/components/calendar/EventEditorModal";
 import ViewModeTabs from "@/components/calendar/ViewModeTabs";
-import { whColors } from "@/constants/tailwindColors";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import { calendarApi } from "@/services/api/calendar";
 import { CalendarEvent, ParticipantOption, ViewMode } from "@/types/calendar";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -34,6 +34,7 @@ import {
 export default function CalendarScreen() {
   const { openMenu } = useSlideMenu();
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -236,7 +237,7 @@ export default function CalendarScreen() {
 
   return (
     <SafeAreaView
-      style={{ flex: 1, backgroundColor: "#fff" }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       edges={[]}
     >
       {/* ── Custom header ── */}
@@ -248,9 +249,9 @@ export default function CalendarScreen() {
           paddingHorizontal: 12,
           paddingTop: insets.top + 10,
           paddingBottom: 10,
-          backgroundColor: "#fff",
+          backgroundColor: colors.card,
           borderBottomWidth: 1,
-          borderBottomColor: whColors.borderLight,
+          borderBottomColor: colors.border,
         }}
       >
         {/* Left: hamburger */}
@@ -261,12 +262,12 @@ export default function CalendarScreen() {
             width: 38,
             height: 38,
             borderRadius: 10,
-            backgroundColor: whColors.bgHeavy,
+            backgroundColor: colors.primaryLight,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Menu size={20} color={whColors.primary} strokeWidth={2.5} />
+          <Menu size={20} color={colors.primary} strokeWidth={2.5} />
         </TouchableOpacity>
 
         {/* Center: prev / TODAY / next */}
@@ -279,18 +280,18 @@ export default function CalendarScreen() {
               borderRadius: 8,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: whColors.bgMedium,
+              backgroundColor: colors.backgroundSecondary,
               borderWidth: 1,
-              borderColor: whColors.borderLight,
+              borderColor: colors.border,
             }}
           >
-            <Ionicons name="chevron-back" size={16} color={whColors.textPrimary} />
+            <Ionicons name="chevron-back" size={16} color={colors.text} />
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => setCurrentDate(new Date())}
             style={{
-              backgroundColor: "#1f2937",
+              backgroundColor: colors.primary,
               borderRadius: 8,
               paddingHorizontal: 12,
               paddingVertical: 6,
@@ -309,12 +310,12 @@ export default function CalendarScreen() {
               borderRadius: 8,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: whColors.bgMedium,
+              backgroundColor: colors.backgroundSecondary,
               borderWidth: 1,
-              borderColor: whColors.borderLight,
+              borderColor: colors.border,
             }}
           >
-            <Ionicons name="chevron-forward" size={16} color={whColors.textPrimary} />
+            <Ionicons name="chevron-forward" size={16} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -328,16 +329,16 @@ export default function CalendarScreen() {
               borderRadius: 9,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: whColors.bgMedium,
+              backgroundColor: colors.backgroundSecondary,
               borderWidth: 1,
-              borderColor: whColors.borderLight,
+              borderColor: colors.border,
             }}
             activeOpacity={0.8}
           >
             <Ionicons
               name={showSearch ? "close" : "search"}
               size={17}
-              color={whColors.primary}
+              color={colors.primary}
             />
           </TouchableOpacity>
 
@@ -349,19 +350,19 @@ export default function CalendarScreen() {
               borderRadius: 9,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: whColors.bgMedium,
+              backgroundColor: colors.backgroundSecondary,
               borderWidth: 1,
-              borderColor: whColors.borderLight,
+              borderColor: colors.border,
             }}
             activeOpacity={0.8}
           >
-            <Ionicons name="ellipsis-vertical" size={16} color={whColors.primary} />
+            <Ionicons name="ellipsis-vertical" size={16} color={colors.primary} />
           </TouchableOpacity>
         </View>
       </View>
 
       {showSearch && (
-        <View style={{ borderBottomWidth: 1, borderBottomColor: "#e5e7eb", backgroundColor: "#fff", padding: 12 }}>
+        <View style={{ borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.card, padding: 12 }}>
           <TextInput
             ref={searchInputRef}
             value={searchQuery}
@@ -369,13 +370,13 @@ export default function CalendarScreen() {
             placeholder="Search events, location, description"
             style={{
               borderWidth: 1,
-              borderColor: "#d1d5db",
+              borderColor: colors.border,
               borderRadius: 12,
-              backgroundColor: "#f9fafb",
+              backgroundColor: colors.backgroundSecondary,
               paddingHorizontal: 16,
               paddingVertical: 10,
               fontSize: 14,
-              color: "#111827",
+              color: colors.text,
             }}
             autoCapitalize="none"
             returnKeyType="search"
@@ -384,9 +385,9 @@ export default function CalendarScreen() {
           <View style={{ marginTop: 10, flexDirection: "row" }}>
             <TouchableOpacity
               onPress={() => { setSearchQuery(""); void loadEvents(); }}
-              style={{ borderWidth: 1, borderColor: "#d1d5db", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 }}
+              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 }}
             >
-              <Text style={{ fontSize: 13, color: "#374151" }}>Clear</Text>
+              <Text style={{ fontSize: 13, color: colors.textSecondary }}>Clear</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -395,8 +396,8 @@ export default function CalendarScreen() {
       <ViewModeTabs activeView={viewMode} onChange={setViewMode} />
 
       {loading && (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" }}>
-          <ActivityIndicator size="large" color={whColors.primary} />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       )}
 
@@ -407,18 +408,18 @@ export default function CalendarScreen() {
       )}
 
       {!loading && !errorMessage && pendingInvites.length > 0 && (
-        <View style={{ margin: 16, borderWidth: 1, borderColor: "#e5e7eb", backgroundColor: "#fff", borderRadius: 16, padding: 12 }}>
+        <View style={{ margin: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card, borderRadius: 16, padding: 12 }}>
           <TouchableOpacity
             onPress={() => setShowPendingInvites((prev) => !prev)}
             style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
             activeOpacity={0.8}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: "#1f2937" }}>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>
                 Pending event invites
               </Text>
-              <View style={{ backgroundColor: "#f3f4f6", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
-                <Text style={{ fontSize: 11, fontWeight: "600", color: "#4b5563" }}>
+              <View style={{ backgroundColor: colors.backgroundSecondary, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textSecondary }}>
                   {pendingInvites.length}
                 </Text>
               </View>
@@ -426,7 +427,7 @@ export default function CalendarScreen() {
             <Ionicons
               name={showPendingInvites ? "chevron-up" : "chevron-down"}
               size={16}
-              color="#6B7280"
+              color={colors.textSecondary}
             />
           </TouchableOpacity>
 
@@ -435,24 +436,24 @@ export default function CalendarScreen() {
               {pendingInvites.map((invite) => (
                 <View
                   key={invite.id}
-                  style={{ borderWidth: 1, borderColor: "#e5e7eb", backgroundColor: "#f9fafb", borderRadius: 12, padding: 12 }}
+                  style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.backgroundSecondary, borderRadius: 12, padding: 12 }}
                 >
-                  <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "600", color: "#1e293b" }}>
+                  <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>
                     {invite.title}
                   </Text>
-                  <Text numberOfLines={1} style={{ marginTop: 3, fontSize: 11, color: "#6b7280" }}>
+                  <Text numberOfLines={1} style={{ marginTop: 3, fontSize: 11, color: colors.textSecondary }}>
                     {new Date(invite.start).toLocaleString()}
                   </Text>
                   <View style={{ marginTop: 10, flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
                     <TouchableOpacity
                       onPress={() => void handleInviteResponse(invite.id, "declined")}
-                      style={{ borderWidth: 1, borderColor: "#d1d5db", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}
+                      style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}
                     >
-                      <Text style={{ fontSize: 12, fontWeight: "600", color: "#4b5563" }}>Decline</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textSecondary }}>Decline</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => void handleInviteResponse(invite.id, "accepted")}
-                      style={{ backgroundColor: whColors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}
+                      style={{ backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}
                     >
                       <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>Accept</Text>
                     </TouchableOpacity>

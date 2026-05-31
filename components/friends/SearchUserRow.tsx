@@ -1,4 +1,5 @@
 import { Avatar } from "@/components/common/Avatar";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import type { SearchUserItem } from "@/types/friend";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
@@ -16,6 +17,8 @@ export const SearchUserRow: React.FC<Props> = ({
   onMessage,
   isPending = false,
 }) => {
+  const colors = useThemeColors();
+
   return (
     <View className="flex-row items-center justify-between py-2 border-b border-gray-100">
       <View className="flex-row items-center flex-1">
@@ -39,9 +42,10 @@ export const SearchUserRow: React.FC<Props> = ({
         <TouchableOpacity
           disabled={isPending}
           onPress={() => onAdd(user.id)}
-          className="bg-gray-light px-4 py-2 rounded-lg disabled:opacity-70"
+          className="px-4 py-2 rounded-lg disabled:opacity-70"
+          style={{ backgroundColor: colors.primaryLight }}
         >
-          <Text className="text-green-primary font-semibold">
+          <Text className="font-semibold" style={{ color: colors.primary }}>
             {isPending ? "Request sent" : "Add"}
           </Text>
         </TouchableOpacity>

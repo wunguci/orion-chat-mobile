@@ -1,4 +1,5 @@
 import type { FriendCategory } from "@/types/friend";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 
@@ -19,6 +20,8 @@ export const FriendCategoryTabs: React.FC<Props> = ({
   counts,
   onChange,
 }) => {
+  const colors = useThemeColors();
+
   const tabs: { key: FriendCategory; label: string; count: number }[] = [
     { key: "friends", label: "Friends", count: counts.friends },
     { key: "requests", label: "Requests", count: counts.requests },
@@ -41,14 +44,21 @@ export const FriendCategoryTabs: React.FC<Props> = ({
         <TouchableOpacity
           key={tab.key}
           onPress={() => onChange(tab.key)}
-          className={`rounded-lg px-3 py-2 ${
-            activeCategory === tab.key ? "bg-green-primary" : "bg-gray-light"
-          }`}
+          className="rounded-lg px-3 py-2"
+          style={{
+            backgroundColor:
+              activeCategory === tab.key
+                ? colors.primary
+                : colors.backgroundSecondary,
+            borderWidth: activeCategory === tab.key ? 0 : 1,
+            borderColor: colors.border,
+          }}
         >
           <Text
-            className={`font-semibold ${
-              activeCategory === tab.key ? "text-white" : "text-gray-primary"
-            }`}
+            className="font-semibold"
+            style={{
+              color: activeCategory === tab.key ? "#FFFFFF" : colors.text,
+            }}
           >
             {tab.label} ({tab.count})
           </Text>

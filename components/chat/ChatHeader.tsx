@@ -87,7 +87,7 @@ export default function ChatHeader({
                             width: 10,
                             height: 10,
                             borderRadius: 5,
-                            backgroundColor: '#00B14F',
+                            backgroundColor: colors.success,
                             position: 'absolute',
                             bottom: 0,
                             right: 0,

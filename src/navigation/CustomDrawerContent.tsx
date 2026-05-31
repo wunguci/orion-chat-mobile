@@ -6,8 +6,8 @@ import { router, usePathname } from "expo-router";
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { whColors } from "@/constants/tailwindColors";
 import { useAuthUser } from "@/hooks/useAuth";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import { API_BASE_URL } from "@/services/api/profile";
 import {
   MessageCircle,
@@ -112,20 +112,38 @@ function DrawerRow({
   isActive: boolean;
   onPress: () => void;
 }) {
+  const colors = useThemeColors();
+
   return (
     <TouchableOpacity
-      style={[styles.item, isActive && styles.itemActive]}
+      style={[
+        styles.item,
+        isActive && { backgroundColor: colors.primaryLight },
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
+      <View
+        style={[
+          styles.iconWrap,
+          isActive && { backgroundColor: colors.backgroundSecondary },
+        ]}
+      >
         {React.isValidElement<{ color?: string }>(icon)
           ? React.cloneElement(icon, {
-              color: isActive ? whColors.primary : whColors.textSecondary,
+              color: isActive ? colors.primary : colors.textSecondary,
             })
           : icon}
       </View>
-      <Text style={[styles.itemLabel, isActive && styles.itemLabelActive]}>
+      <Text
+        style={[
+          styles.itemLabel,
+          {
+            color: isActive ? colors.primaryDark : colors.textSecondary,
+            fontWeight: isActive ? "600" : "500",
+          },
+        ]}
+      >
         {label}
       </Text>
     </TouchableOpacity>
@@ -138,12 +156,18 @@ export default function CustomDrawerContent(
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const { user, loading } = useAuthUser();
+  const colors = useThemeColors();
   const displayName = user?.fullName || user?.phoneNumber || "User";
   const subtitle = user?.phoneNumber || user?.email || "No phone";
   const avatarUri = resolveImageUrl(user?.avatarUrl);
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 4 }]}>
+    <View
+      style={[
+        styles.root,
+        { paddingTop: insets.top + 4, backgroundColor: colors.card },
+      ]}
+    >
       <TouchableOpacity
         style={styles.header}
         onPress={() => {
@@ -151,24 +175,40 @@ export default function CustomDrawerContent(
           props.navigation.closeDrawer();
         }}
       >
-        <View style={styles.avatar}>
+        <View
+          style={[
+            styles.avatar,
+            {
+              backgroundColor: colors.primaryLight,
+              borderColor: colors.primary,
+            },
+          ]}
+        >
           {avatarUri ? (
             <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
           ) : (
-            <Text style={styles.avatarText}>{getInitials(displayName)}</Text>
+            <Text style={[styles.avatarText, { color: colors.primary }]}>
+              {getInitials(displayName)}
+            </Text>
           )}
         </View>
         <View>
-          <Text style={styles.userName} numberOfLines={1}>
+          <Text
+            style={[styles.userName, { color: colors.text }]}
+            numberOfLines={1}
+          >
             {loading ? "Loading..." : displayName}
           </Text>
-          <Text style={styles.userSub} numberOfLines={1}>
+          <Text
+            style={[styles.userSub, { color: colors.textSecondary }]}
+            numberOfLines={1}
+          >
             {loading ? "" : subtitle}
           </Text>
         </View>
       </TouchableOpacity>
 
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
       <DrawerContentScrollView
         {...props}
@@ -188,8 +228,10 @@ export default function CustomDrawerContent(
           />
         ))}
 
-        <View style={styles.divider} />
-        <Text style={styles.sectionLabel}>TÍNH NĂNG KHÁC</Text>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+          TÍNH NĂNG KHÁC
+        </Text>
 
         {EXTRA_ITEMS.map((item) => (
           <DrawerRow
@@ -211,7 +253,6 @@ export default function CustomDrawerContent(
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: whColors.bgLight,
   },
   contentContainer: {
     paddingTop: 0,
@@ -228,9 +269,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: whColors.bgMedium,
     borderWidth: 1.5,
-    borderColor: whColors.primary,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -240,29 +279,24 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   avatarText: {
-    color: whColors.primary,
     fontWeight: "700",
     fontSize: 14,
   },
   userName: {
-    color: whColors.textPrimary,
     fontWeight: "600",
     fontSize: 14,
   },
   userSub: {
-    color: whColors.textSecondary,
     fontSize: 12,
     marginTop: 2,
   },
   divider: {
     height: 0.5,
-    backgroundColor: whColors.borderLight,
     marginHorizontal: 12,
     marginVertical: 6,
   },
   sectionLabel: {
     fontSize: 11,
-    color: whColors.textSecondary,
     letterSpacing: 0.8,
     marginHorizontal: 16,
     marginTop: 10,
@@ -280,9 +314,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 2,
   },
-  itemActive: {
-    backgroundColor: whColors.bgHeavy,
-  },
   iconWrap: {
     width: 30,
     height: 30,
@@ -290,16 +321,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  iconWrapActive: {
-    backgroundColor: whColors.bgMedium,
-  },
   itemLabel: {
     fontSize: 14,
-    color: whColors.textSecondary,
-    fontWeight: "500",
-  },
-  itemLabelActive: {
-    color: whColors.primaryHover,
-    fontWeight: "600",
   },
 });
