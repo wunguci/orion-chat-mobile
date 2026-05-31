@@ -170,8 +170,8 @@ export default function CreateGroupModal({
             return;
         }
 
-        if (selectedFriends.length === 0) {
-            setError('Vui lòng chọn ít nhất 1 thành viên');
+        if (selectedFriends.length < 2) {
+            setError('Vui lòng chọn ít nhất 2 thành viên');
             return;
         }
 
@@ -313,10 +313,20 @@ export default function CreateGroupModal({
                                 padding: 12,
                                 color: colors.text,
                                 fontSize: 14,
-                                marginBottom: 12,
+                                marginBottom: 8,
                             }}
                             placeholderTextColor={colors.textSecondary}
                         />
+                        <Text
+                            style={{
+                                fontSize: 12,
+                                color: colors.success,
+                                fontStyle: 'italic',
+                                marginBottom: 12,
+                            }}
+                        >
+                            * Nhóm phải có từ 3 thành viên trở lên (bao gồm cả bạn)
+                        </Text>
 
                         {/* Friends List */}
                         {loading ? (
@@ -503,7 +513,7 @@ export default function CreateGroupModal({
                         disabled={
                             creating ||
                             !groupName.trim() ||
-                            selectedFriends.length === 0
+                            selectedFriends.length < 2
                         }
                         style={{
                             flex: 1,
@@ -516,7 +526,7 @@ export default function CreateGroupModal({
                             opacity:
                                 creating ||
                                 !groupName.trim() ||
-                                selectedFriends.length === 0
+                                selectedFriends.length < 2
                                     ? 0.6
                                     : 1,
                         }}

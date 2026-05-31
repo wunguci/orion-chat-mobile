@@ -521,7 +521,8 @@ export default function ChatScreen() {
   const { colors, colorScheme } = useTheme();
   const callContext = useContext(CallContext);
   const groupCallContext = useContext(GroupCallContext);
-  const { markConversationNotificationsAsRead } = useNotificationContext();
+  const { markConversationNotificationsAsRead, setActiveConversationId } =
+    useNotificationContext();
   const {
     messages,
     inputText,
@@ -561,9 +562,19 @@ export default function ChatScreen() {
     useCallback(() => {
       if (!id) return;
 
+      setActiveConversationId(id);
       void markConversationNotificationsAsRead(id);
       setBlockRefreshKey((value) => value + 1);
-    }, [id, markConversationNotificationsAsRead]),
+
+      return () => {
+        setActiveConversationId(undefined);
+      };
+    }, [
+      id,
+      markConversationNotificationsAsRead,
+      setActiveConversationId,
+      setBlockRefreshKey,
+    ]),
   );
 
   const privateMessagingBlocked = !isGroup && privateBlockStatus.isBlocked;

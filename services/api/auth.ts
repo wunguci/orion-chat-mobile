@@ -6,6 +6,7 @@ import type {
   ErrorResponse,
 } from "../../types/auth";
 import { API_BASE_URL, fetchWithTimeout } from "../../config/api";
+import { tokenUtils } from "../../utils/tokenUtils";
 
 /**
  * Send OTP to phone number
@@ -209,6 +210,34 @@ export async function logout(token: string): Promise<{ message: string }> {
         throw error;
     }
 
+}
+
+export async function confirmQrLogin(qrToken: string): Promise<{
+  success: boolean;
+  message?: string;
+  data?: { status: "confirmed" };
+}> {
+  const token = await tokenUtils.getToken();
+  if (!token) {
+    throw new Error("Bạn cần đăng nhập trên mobile trước khi quét QR.");
+  }
+
+  const response = await fetchWithTimeout(`${API_BASE_URL}/auth/qr/confirm`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Platform": "mobile",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ qrToken }),
+  });
+
+  if (!response.ok) {
+    const errorData: ErrorResponse = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Không thể xác nhận đăng nhập QR");
+  }
+
+  return response.json();
 }
 
 /**

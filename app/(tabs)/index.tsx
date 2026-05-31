@@ -617,6 +617,7 @@ export default function ChatsScreen() {
         onChangeText={setSearch}
         onCreateGroupPress={openModal}
         onAddFriendsPress={() => setAddFriendsVisible(true)}
+        onQrScanPress={() => router.push("/qr-scan")}
       />
 
       {/* Tab filter */}

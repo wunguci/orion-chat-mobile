@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
   Alert,
+  Platform,
 } from "react-native";
 import { WebView } from "react-native-webview";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -1492,12 +1493,24 @@ export default function MessageBubble({
   onImagePress,
 }: MessageBubbleProps) {
   const { colors } = useTheme();
+  const [fullscreenImageUri, setFullscreenImageUri] = useState<string | null>(null);
 
   const receivedBg = colors.backgroundSecondary;
   const receivedText = colors.text;
   const sentBg = colors.chatBubbleSent || colors.primary;
 
   const messageType = String(message.type || "").toUpperCase();
+  const handleImagePress = (targetMessage: Message) => {
+    if (onImagePress) {
+      onImagePress(targetMessage);
+      return;
+    }
+
+    if (targetMessage.imageUri) {
+      setFullscreenImageUri(targetMessage.imageUri);
+    }
+  };
+
   if (messageType === "SYSTEM") {
     return (
       <View
@@ -1545,7 +1558,7 @@ export default function MessageBubble({
         <ImageGroupBubble
           messages={imageGroup}
           isHighlighted={isHighlighted}
-          onImagePress={onImagePress}
+          onImagePress={handleImagePress}
         />
       );
     }
@@ -1557,7 +1570,7 @@ export default function MessageBubble({
           <ImageBubble
             message={message}
             isHighlighted={isHighlighted}
-            onImagePress={onImagePress}
+            onImagePress={handleImagePress}
           />
         );
       case "FILE":
@@ -1665,6 +1678,54 @@ export default function MessageBubble({
           )}
         </View>
       </View>
+
+      {/* Fullscreen Image Viewer Modal */}
+      <Modal
+        visible={!!fullscreenImageUri}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setFullscreenImageUri(null)}
+      >
+        <SafeAreaView
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.95)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          {/* Close Button at top-right */}
+          <TouchableOpacity
+            onPress={() => setFullscreenImageUri(null)}
+            style={{
+              position: "absolute",
+              top: Platform.OS === "ios" ? 50 : 20,
+              right: 20,
+              backgroundColor: "rgba(255,255,255,0.2)",
+              borderRadius: 20,
+              width: 40,
+              height: 40,
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 10,
+            }}
+          >
+            <Ionicons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
+
+          {/* Full Screen Image */}
+          {fullscreenImageUri ? (
+            <Image
+              source={{ uri: fullscreenImageUri }}
+              style={{
+                width: "100%",
+                height: "80%",
+              }}
+              resizeMode="contain"
+            />
+          ) : null}
+        </SafeAreaView>
+      </Modal>
     </Pressable>
   );
 }

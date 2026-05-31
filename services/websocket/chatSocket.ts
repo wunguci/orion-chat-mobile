@@ -394,6 +394,15 @@ class ChatSocketService {
    * Leave một Conversation (ngừng listen)
    */
   leaveConversation(conversationId: string): void {
+    this.joinedConversations.delete(conversationId);
+
+    // Chỉ xóa callback khỏi Maps, không gọi socket.off() để tránh ảnh hưởng đến các conversation khác
+    this.messageListeners.delete(conversationId);
+    this.conversationListeners.delete(conversationId);
+    this.reactionListeners.delete(conversationId);
+    this.recallListeners.delete(conversationId);
+    this.deleteListeners.delete(conversationId);
+
     if (!this.socket?.connected) return;
 
     //console.log("[ChatSocket] Leaving conversation:", conversationId);
@@ -402,13 +411,6 @@ class ChatSocketService {
       requestId,
       conversationId,
     });
-
-    // Chỉ xóa callback khỏi Maps, không gọi socket.off() để tránh ảnh hưởng đến các conversation khác
-    this.messageListeners.delete(conversationId);
-    this.conversationListeners.delete(conversationId);
-    this.reactionListeners.delete(conversationId);
-    this.recallListeners.delete(conversationId);
-    this.deleteListeners.delete(conversationId);
 
     // console.log(
     //   "[ChatSocket] Cleared listeners for conversation:",

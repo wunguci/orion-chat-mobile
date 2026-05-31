@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { API_BASE_URL } from '@/config/api';
 import { useTheme } from '@/hooks/useTheme';
 import {
@@ -7,6 +8,8 @@ import {
     GroupJoinRequest,
     GroupMemberItem,
 } from '@/services/api/chat';
+import { friendApi, FriendResponse } from '@/services/api/friend';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
@@ -110,6 +113,9 @@ export default function ConversationInfoModal({
     const [groupManagementVisible, setGroupManagementVisible] = useState(false);
     const [groupNameDialogVisible, setGroupNameDialogVisible] = useState(false);
     const [groupNameInput, setGroupNameInput] = useState('');
+    const [addMembersVisible, setAddMembersVisible] = useState(false);
+    const [transferOwnerVisible, setTransferOwnerVisible] = useState(false);
+    const [selectedTransferOwnerId, setSelectedTransferOwnerId] = useState('');
 
     const groupMode = isGroup || conversation?.type === 'GROUP';
     const displayName = String(
@@ -131,6 +137,10 @@ export default function ConversationInfoModal({
         myRole === 'co-admin' ||
         myRole === 'deputy';
     const isHidden = !!conversation?.myIsHidden;
+    const ownerTransferCandidates = useMemo(
+        () => groupMembers.filter((member) => !member.isMe),
+        [groupMembers],
+    );
 
     const imageItems = useMemo(
         () =>
@@ -249,6 +259,9 @@ export default function ConversationInfoModal({
             setGroupManagementVisible(false);
             setGroupNameDialogVisible(false);
             setGroupNameInput('');
+            setAddMembersVisible(false);
+            setTransferOwnerVisible(false);
+            setSelectedTransferOwnerId('');
         }
     }, [refreshData, visible]);
 
@@ -396,11 +409,63 @@ export default function ConversationInfoModal({
     };
 
     const handleLeaveGroup = () => {
+        if (isOwner) {
+            if (!ownerTransferCandidates.length) {
+                Alert.alert(
+                    'Không thể rời nhóm',
+                    'Bạn đang là trưởng nhóm. Cần có thành viên khác để chuyển quyền trưởng nhóm trước khi rời.',
+                );
+                return;
+            }
+
+            setSelectedTransferOwnerId(ownerTransferCandidates[0].userId);
+            setTransferOwnerVisible(true);
+            return;
+        }
+
         confirmAction('Rời nhóm', `Rời khỏi nhóm ${displayName}?`, async () => {
             await chatApi.leaveGroup(conversationId);
             onConversationDeleted?.(conversationId);
             onClose();
         });
+    };
+
+    const handleConfirmLeaveGroupWithTransfer = () => {
+        const newAdminUserId = selectedTransferOwnerId;
+        const newOwner = ownerTransferCandidates.find(
+            (member) => member.userId === newAdminUserId,
+        );
+
+        if (!newAdminUserId || !newOwner) {
+            Alert.alert(
+                'Chưa chọn trưởng nhóm mới',
+                'Vui lòng chọn một thành viên khác làm trưởng nhóm trước khi rời.',
+            );
+            return;
+        }
+
+        Alert.alert(
+            'Rời nhóm',
+            `Chuyển quyền trưởng nhóm cho ${newOwner.fullName || 'thành viên này'} và rời khỏi nhóm ${displayName}?`,
+            [
+                { text: 'Hủy', style: 'cancel' },
+                {
+                    text: 'Đồng ý',
+                    style: 'destructive',
+                    onPress: () =>
+                        void runAction(async () => {
+                            await chatApi.leaveGroup(
+                                conversationId,
+                                newAdminUserId,
+                            );
+                            setTransferOwnerVisible(false);
+                            setSelectedTransferOwnerId('');
+                            onConversationDeleted?.(conversationId);
+                            onClose();
+                        }),
+                },
+            ],
+        );
     };
 
     const handleDissolveGroup = () => {
@@ -749,6 +814,14 @@ export default function ConversationInfoModal({
                                         showChevron
                                         onPress={() => setGroupManagementVisible(true)}
                                     />
+                                    {canManageGroup ? (
+                                        <InfoRow
+                                            icon="account-plus-outline"
+                                            title="Thêm thành viên"
+                                            showChevron
+                                            onPress={() => setAddMembersVisible(true)}
+                                        />
+                                    ) : null}
                                     <TouchableOpacity
                                         onPress={handleCopyConversationId}
                                         activeOpacity={0.75}
@@ -959,6 +1032,17 @@ export default function ConversationInfoModal({
                     onCancel={() => setGroupNameDialogVisible(false)}
                     onSubmit={handleUpdateGroupName}
                 />
+                <TransferOwnerDialog
+                    visible={transferOwnerVisible}
+                    members={ownerTransferCandidates}
+                    selectedUserId={selectedTransferOwnerId}
+                    onSelect={setSelectedTransferOwnerId}
+                    onCancel={() => {
+                        setTransferOwnerVisible(false);
+                        setSelectedTransferOwnerId('');
+                    }}
+                    onSubmit={handleConfirmLeaveGroupWithTransfer}
+                />
                 <GroupManagementModalV2
                     visible={groupManagementVisible}
                     conversationId={conversationId}
@@ -969,6 +1053,16 @@ export default function ConversationInfoModal({
                     onMemberPress={handleMemberAction}
                     onCopyLink={handleCopyConversationId}
                     onDissolveGroup={handleDissolveGroup}
+                />
+                <AddMembersModal
+                    visible={addMembersVisible}
+                    conversationId={conversationId}
+                    existingMemberIds={groupMembers.map((m) => m.userId)}
+                    onClose={() => setAddMembersVisible(false)}
+                    onAdded={() => {
+                        setAddMembersVisible(false);
+                        void refreshData();
+                    }}
                 />
             </Animated.View>
         </Modal>
@@ -1166,6 +1260,572 @@ function GroupNameDialog({
                             </Text>
                         </TouchableOpacity>
                     </View>
+                </View>
+            </View>
+        </Modal>
+    );
+}
+
+function TransferOwnerDialog({
+    visible,
+    members,
+    selectedUserId,
+    onSelect,
+    onCancel,
+    onSubmit,
+}: {
+    visible: boolean;
+    members: GroupMemberItem[];
+    selectedUserId: string;
+    onSelect: (userId: string) => void;
+    onCancel: () => void;
+    onSubmit: () => void;
+}) {
+    const { colors } = useTheme();
+    return (
+        <Modal
+            visible={visible}
+            animationType="fade"
+            transparent
+            onRequestClose={onCancel}
+        >
+            <View
+                style={{
+                    flex: 1,
+                    justifyContent: 'center',
+                    padding: 24,
+                    backgroundColor: 'rgba(0,0,0,0.35)',
+                }}
+            >
+                <View
+                    style={{
+                        maxHeight: '78%',
+                        borderRadius: 12,
+                        backgroundColor: colors.background,
+                        overflow: 'hidden',
+                    }}
+                >
+                    <View style={{ paddingHorizontal: 18, paddingTop: 18 }}>
+                        <Text
+                            style={{
+                                color: colors.text,
+                                fontSize: 17,
+                                fontWeight: '800',
+                            }}
+                        >
+                            Chọn trưởng nhóm mới
+                        </Text>
+                        <Text
+                            style={{
+                                color: colors.textSecondary,
+                                fontSize: 13,
+                                marginTop: 6,
+                                lineHeight: 19,
+                            }}
+                        >
+                            Bạn đang là trưởng nhóm. Hãy chọn một thành viên khác
+                            làm trưởng nhóm trước khi rời.
+                        </Text>
+                    </View>
+
+                    <ScrollView
+                        showsVerticalScrollIndicator={false}
+                        style={{ marginTop: 10 }}
+                    >
+                        {members.map((member) => {
+                            const selected = selectedUserId === member.userId;
+                            return (
+                                <TouchableOpacity
+                                    key={member.userId}
+                                    onPress={() => onSelect(member.userId)}
+                                    activeOpacity={0.75}
+                                    style={{
+                                        minHeight: 64,
+                                        paddingHorizontal: 18,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 12,
+                                        borderTopWidth: 0.5,
+                                        borderTopColor: colors.divider,
+                                    }}
+                                >
+                                    {member.avatarUrl ? (
+                                        <Image
+                                            source={{
+                                                uri: toAbsoluteUrl(
+                                                    member.avatarUrl,
+                                                ),
+                                            }}
+                                            style={{
+                                                width: 42,
+                                                height: 42,
+                                                borderRadius: 21,
+                                            }}
+                                        />
+                                    ) : (
+                                        <View
+                                            style={{
+                                                width: 42,
+                                                height: 42,
+                                                borderRadius: 21,
+                                                backgroundColor: LOGIN_PRIMARY,
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                            }}
+                                        >
+                                            <Text
+                                                style={{
+                                                    color: '#fff',
+                                                    fontWeight: '800',
+                                                }}
+                                            >
+                                                {(member.fullName || '?')
+                                                    .split(' ')
+                                                    .map((word) => word[0])
+                                                    .join('')
+                                                    .toUpperCase()
+                                                    .slice(0, 2)}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    <View style={{ flex: 1 }}>
+                                        <Text
+                                            style={{
+                                                color: colors.text,
+                                                fontSize: 15,
+                                                fontWeight: '700',
+                                            }}
+                                            numberOfLines={1}
+                                        >
+                                            {member.fullName || 'Thành viên'}
+                                        </Text>
+                                        <Text
+                                            style={{
+                                                color: colors.textSecondary,
+                                                fontSize: 12,
+                                                marginTop: 2,
+                                            }}
+                                        >
+                                            {getRoleLabel(member.role)}
+                                        </Text>
+                                    </View>
+                                    <MaterialCommunityIcons
+                                        name={
+                                            selected
+                                                ? 'radiobox-marked'
+                                                : 'radiobox-blank'
+                                        }
+                                        size={24}
+                                        color={
+                                            selected
+                                                ? LOGIN_PRIMARY
+                                                : colors.textSecondary
+                                        }
+                                    />
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+
+                    <View
+                        style={{
+                            flexDirection: 'row',
+                            justifyContent: 'flex-end',
+                            gap: 16,
+                            padding: 18,
+                            borderTopWidth: 0.5,
+                            borderTopColor: colors.divider,
+                        }}
+                    >
+                        <TouchableOpacity onPress={onCancel}>
+                            <Text
+                                style={{
+                                    color: colors.textSecondary,
+                                    fontWeight: '700',
+                                }}
+                            >
+                                Hủy
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={onSubmit}>
+                            <Text
+                                style={{
+                                    color: LOGIN_PRIMARY,
+                                    fontWeight: '800',
+                                }}
+                            >
+                                Tiếp tục
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+}
+
+function AddMembersModal({
+    visible,
+    conversationId,
+    existingMemberIds,
+    onClose,
+    onAdded,
+}: {
+    visible: boolean;
+    conversationId: string;
+    existingMemberIds: string[];
+    onClose: () => void;
+    onAdded: () => void;
+}) {
+    const { colors } = useTheme();
+    const insets = useSafeAreaInsets();
+    const [friends, setFriends] = useState<FriendResponse[]>([]);
+    const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
+    const [searchText, setSearchText] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [adding, setAdding] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const loadFriends = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const candidates = [
+                await AsyncStorage.getItem('userId'),
+                await AsyncStorage.getItem('user.id'),
+            ];
+
+            try {
+                const authUser = await AsyncStorage.getItem('auth_user');
+                if (authUser) {
+                    const parsed = JSON.parse(authUser);
+                    candidates.push(parsed?.userId || parsed?.id);
+                }
+            } catch {
+                // ignore
+            }
+
+            const userId = candidates.find(
+                (id) => id && typeof id === 'string' && id.trim().length > 0,
+            );
+
+            if (!userId) {
+                setError('Không thể xác định userId');
+                return;
+            }
+
+            const response = await friendApi.getFriends(userId);
+            setFriends(response || []);
+        } catch (err) {
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : 'Không thể tải danh sách bạn bè',
+            );
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (visible) {
+            void loadFriends();
+            setSelectedFriends([]);
+            setSearchText('');
+            setError(null);
+        }
+    }, [visible]);
+
+    const filteredFriends = useMemo(() => {
+        // Only show friends who are NOT in the group
+        const notInGroup = friends.filter(
+            (friend) => !existingMemberIds.includes(friend.id),
+        );
+
+        if (!searchText.trim()) return notInGroup;
+        const normalizedSearch = searchText.toLowerCase().trim();
+        return notInGroup.filter((friend) =>
+            friend.fullName.toLowerCase().includes(normalizedSearch),
+        );
+    }, [friends, existingMemberIds, searchText]);
+
+    const handleToggleFriend = (friendId: string) => {
+        setSelectedFriends((prev) =>
+            prev.includes(friendId)
+                ? prev.filter((id) => id !== friendId)
+                : [...prev, friendId],
+        );
+    };
+
+    const handleAddMembers = async () => {
+        if (selectedFriends.length === 0) return;
+
+        try {
+            setAdding(true);
+            setError(null);
+            await chatApi.addGroupMembers(conversationId, selectedFriends);
+            Alert.alert('Thành công', 'Đã thêm thành viên vào nhóm');
+            onAdded();
+        } catch (err) {
+            setError(
+                err instanceof Error ? err.message : 'Không thể thêm thành viên',
+            );
+        } finally {
+            setAdding(false);
+        }
+    };
+
+    return (
+        <Modal
+            visible={visible}
+            animationType="slide"
+            transparent={false}
+            onRequestClose={onClose}
+        >
+            <View
+                style={{
+                    flex: 1,
+                    backgroundColor: colors.background,
+                    paddingTop: Math.max(insets.top, 0),
+                    paddingBottom: insets.bottom,
+                }}
+            >
+                {/* Header */}
+                <View
+                    style={{
+                        paddingHorizontal: 16,
+                        paddingTop: 12,
+                        paddingBottom: 12,
+                        borderBottomWidth: 1,
+                        borderBottomColor: colors.border,
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                    }}
+                >
+                    <Text
+                        style={{
+                            fontSize: 18,
+                            fontWeight: '600',
+                            color: colors.text,
+                        }}
+                    >
+                        Thêm thành viên
+                    </Text>
+                    <TouchableOpacity onPress={onClose} disabled={adding}>
+                        <MaterialCommunityIcons
+                            name="close"
+                            size={24}
+                            color={colors.text}
+                        />
+                    </TouchableOpacity>
+                </View>
+
+                <View style={{ flex: 1, padding: 16 }}>
+                    {/* Search Input */}
+                    <View
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: colors.backgroundSecondary,
+                            borderRadius: 10,
+                            paddingHorizontal: 12,
+                            paddingVertical: Platform.OS === 'ios' ? 10 : 6,
+                            marginBottom: 16,
+                        }}
+                    >
+                        <Ionicons
+                            name="search-outline"
+                            size={20}
+                            color={colors.textSecondary}
+                            style={{ marginRight: 8 }}
+                        />
+                        <TextInput
+                            placeholder="Tìm kiếm bạn bè"
+                            placeholderTextColor={colors.textSecondary}
+                            value={searchText}
+                            onChangeText={setSearchText}
+                            style={{
+                                flex: 1,
+                                color: colors.text,
+                                fontSize: 15,
+                            }}
+                        />
+                    </View>
+
+                    {loading ? (
+                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                            <ActivityIndicator size="large" color={LOGIN_PRIMARY} />
+                        </View>
+                    ) : filteredFriends.length === 0 ? (
+                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                            <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>
+                                {friends.length === 0
+                                    ? 'Không tìm thấy bạn bè nào.'
+                                    : 'Tất cả bạn bè đã tham gia nhóm này.'}
+                            </Text>
+                        </View>
+                    ) : (
+                        <ScrollView style={{ flex: 1 }}>
+                            {filteredFriends.map((item) => (
+                                <TouchableOpacity
+                                    key={item.id}
+                                    onPress={() => handleToggleFriend(item.id)}
+                                    activeOpacity={0.7}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        paddingVertical: 12,
+                                        borderBottomWidth: 0.5,
+                                        borderBottomColor: colors.divider,
+                                    }}
+                                >
+                                    <View
+                                        style={{
+                                            width: 40,
+                                            height: 40,
+                                            borderRadius: 20,
+                                            backgroundColor: colors.backgroundSecondary,
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            marginRight: 12,
+                                            overflow: 'hidden',
+                                        }}
+                                    >
+                                        {item.avatarUrl ? (
+                                            <Image
+                                                source={{ uri: toAbsoluteUrl(item.avatarUrl) }}
+                                                style={{
+                                                    width: '100%',
+                                                    height: '100%',
+                                                }}
+                                            />
+                                        ) : (
+                                            <MaterialCommunityIcons
+                                                name="account"
+                                                size={24}
+                                                color={colors.textSecondary}
+                                            />
+                                        )}
+                                    </View>
+
+                                    <Text
+                                        style={{
+                                            flex: 1,
+                                            color: colors.text,
+                                            fontSize: 15,
+                                            fontWeight: '500',
+                                        }}
+                                    >
+                                        {item.fullName}
+                                    </Text>
+
+                                    <MaterialCommunityIcons
+                                        name={
+                                            selectedFriends.includes(item.id)
+                                                ? 'checkbox-marked'
+                                                : 'checkbox-blank-outline'
+                                        }
+                                        size={24}
+                                        color={
+                                            selectedFriends.includes(item.id)
+                                                ? LOGIN_PRIMARY
+                                                : colors.textSecondary
+                                        }
+                                    />
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    )}
+
+                    {/* Selected Count */}
+                    {selectedFriends.length > 0 && (
+                        <Text
+                            style={{
+                                marginTop: 12,
+                                fontSize: 13,
+                                fontWeight: '500',
+                                color: colors.textSecondary,
+                            }}
+                        >
+                            Đã chọn {selectedFriends.length} thành viên
+                        </Text>
+                    )}
+
+                    {/* Error Message */}
+                    {error && (
+                        <View
+                            style={{
+                                backgroundColor: '#fee2e2',
+                                borderRadius: 8,
+                                padding: 12,
+                                marginTop: 12,
+                            }}
+                        >
+                            <Text style={{ color: '#dc2626', fontSize: 14 }}>
+                                {error}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+
+                {/* Footer Buttons */}
+                <View
+                    style={{
+                        flexDirection: 'row',
+                        gap: 12,
+                        padding: 16,
+                        borderTopWidth: 1,
+                        borderTopColor: colors.border,
+                    }}
+                >
+                    <TouchableOpacity
+                        onPress={onClose}
+                        disabled={adding}
+                        style={{
+                            flex: 1,
+                            paddingVertical: 12,
+                            borderRadius: 8,
+                            backgroundColor: colors.backgroundSecondary,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                        }}
+                    >
+                        <Text
+                            style={{
+                                color: colors.text,
+                                fontSize: 14,
+                                fontWeight: '600',
+                            }}
+                        >
+                            Hủy
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={handleAddMembers}
+                        disabled={adding || selectedFriends.length === 0}
+                        style={{
+                            flex: 1,
+                            paddingVertical: 12,
+                            borderRadius: 8,
+                            backgroundColor: LOGIN_PRIMARY,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            opacity: selectedFriends.length === 0 ? 0.6 : 1,
+                        }}
+                    >
+                        <Text
+                            style={{
+                                color: '#fff',
+                                fontSize: 14,
+                                fontWeight: '600',
+                            }}
+                        >
+                            Thêm
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             </View>
         </Modal>
