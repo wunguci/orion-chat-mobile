@@ -75,12 +75,12 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
+    "owner": "phuochiep",
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "16fa5af5-a665-43ea-8a30-5d3c2d095b6c"
+        "projectId": "2b0e18b8-8090-4a02-ac05-db5f400d1ff6"
       }
-    },
-    "owner": "wunguci"
+    }
   }
 }

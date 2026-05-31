@@ -56,6 +56,12 @@ export default function SettingsLayout() {
         }}
       />
       <Stack.Screen
+        name="mobile-config"
+        options={{
+          title: "Cấu hình Mobile",
+        }}
+      />
+      <Stack.Screen
         name="notification-setting"
         options={{
           title: "Thông báo",

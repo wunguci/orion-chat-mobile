@@ -1,11 +1,5 @@
-import API_BASE_URL from "@/config/api";
+import { getSocketNamespaceUrl } from "@/config/api";
 import { io, Socket } from "socket.io-client";
-
-const SOCKET_BASE_URL = (process.env.EXPO_PUBLIC_SOCKET_URL || API_BASE_URL)
-  .replace(/\/$/, "")
-  .replace(/\/call$/, "");
-
-const CALL_SOCKET_URL = `${SOCKET_BASE_URL}/call`;
 
 class CallSocketService {
   private socket: Socket | null = null;
@@ -23,7 +17,7 @@ class CallSocketService {
 
     this.currentUserId = userId;
 
-    this.socket = io(CALL_SOCKET_URL, {
+    this.socket = io(getSocketNamespaceUrl("call"), {
       query: { userId },
       auth: token ? { token } : undefined,
       transports: ["websocket"],

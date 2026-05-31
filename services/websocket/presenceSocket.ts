@@ -1,11 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import API_BASE_URL from '@/config/api';
-
-const SOCKET_BASE_URL = (process.env.EXPO_PUBLIC_SOCKET_URL || API_BASE_URL)
-    .replace(/\/$/, '')
-    .replace(/\/presence$/, '');
-
-const PRESENCE_URL = `${SOCKET_BASE_URL}/presence`;
+import { getSocketNamespaceUrl } from '@/config/api';
 
 class PresenceSocketService {
     private socket: Socket | null = null;
@@ -23,7 +17,7 @@ class PresenceSocketService {
             platform,
         );
 
-        this.socket = io(PRESENCE_URL, {
+        this.socket = io(getSocketNamespaceUrl('presence'), {
             query: { userId, platform },
             auth: token ? { token } : undefined,
             transports: ['websocket'],

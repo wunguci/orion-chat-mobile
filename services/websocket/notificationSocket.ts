@@ -1,11 +1,5 @@
-import API_BASE_URL from "@/config/api";
+import { getSocketNamespaceUrl } from "@/config/api";
 import { io, Socket } from "socket.io-client";
-
-const SOCKET_BASE_URL = (process.env.EXPO_PUBLIC_SOCKET_URL || API_BASE_URL)
-  .replace(/\/$/, "")
-  .replace(/\/notifications$/, "");
-
-const NOTIFICATION_URL = `${SOCKET_BASE_URL}/notifications`;
 
 class NotificationSocketService {
   private socket: Socket | null = null;
@@ -23,7 +17,7 @@ class NotificationSocketService {
 
     this.currentUserId = userId;
 
-    this.socket = io(NOTIFICATION_URL, {
+    this.socket = io(getSocketNamespaceUrl("notifications"), {
       query: { userId },
       auth: token ? { token } : undefined,
       transports: ["websocket"],
