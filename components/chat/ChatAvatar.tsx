@@ -1,6 +1,23 @@
 import { useTheme } from '@/hooks/useTheme';
+import { API_BASE_URL } from '@/config/api';
 import React from 'react';
 import { Image, Text, View } from 'react-native';
+
+const toAbsoluteUrl = (url?: string | null) => {
+    if (!url) return undefined;
+    if (
+        url.startsWith('http://') ||
+        url.startsWith('https://') ||
+        url.startsWith('data:') ||
+        url.startsWith('blob:')
+    ) {
+        return url;
+    }
+
+    const base = API_BASE_URL.replace(/\/$/, '');
+    const path = url.startsWith('/') ? url : `/${url}`;
+    return `${base}${path}`;
+};
 
 interface SingleAvatarProps {
     uri?: string;
@@ -10,6 +27,7 @@ interface SingleAvatarProps {
 
 function SingleAvatar({ uri, name, size }: SingleAvatarProps) {
     const { colors } = useTheme();
+    const imageUri = toAbsoluteUrl(uri);
 
     const initials = name
         .split(' ')
@@ -18,10 +36,10 @@ function SingleAvatar({ uri, name, size }: SingleAvatarProps) {
         .toUpperCase()
         .slice(0, 2);
 
-    if (uri) {
+    if (imageUri) {
         return (
             <Image
-                source={{ uri }}
+                source={{ uri: imageUri }}
                 style={{
                     width: size,
                     height: size,
@@ -71,6 +89,10 @@ export default function ChatAvatar({
     size = 50,
 }: ChatAvatarProps) {
     const { colors } = useTheme();
+
+    if (isGroup && avatarUri) {
+        return <SingleAvatar uri={avatarUri} name={name} size={size} />;
+    }
 
     if (isGroup && avatarUris && avatarUris.length > 1) {
         const smallSize = size * 0.64;

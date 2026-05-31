@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
   Alert,
+  Platform,
 } from "react-native";
 import { WebView } from "react-native-webview";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -543,9 +544,11 @@ function VideoBubble({
 function ImageBubble({
   message,
   isHighlighted = false,
+  onImagePress,
 }: {
   message: Message;
   isHighlighted?: boolean;
+  onImagePress?: (uri: string) => void;
 }) {
   const { colors } = useTheme();
 
@@ -577,7 +580,9 @@ function ImageBubble({
 
   return (
     <View style={{ maxWidth: "78%" }}>
-      <View
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => message.imageUri && onImagePress?.(message.imageUri)}
         style={{
           borderRadius: 16,
           overflow: "hidden",
@@ -646,7 +651,7 @@ function ImageBubble({
         >
           {formatTime(message.timestamp)}
         </Text>
-      </View>
+      </TouchableOpacity>
       <MessageReactions reactions={message.reactions} />
     </View>
   );
@@ -655,9 +660,11 @@ function ImageBubble({
 function ImageGroupBubble({
   messages,
   isHighlighted = false,
+  onImagePress,
 }: {
   messages: Message[];
   isHighlighted?: boolean;
+  onImagePress?: (uri: string) => void;
 }) {
   const { colors } = useTheme();
   const count = messages.length;
@@ -686,18 +693,23 @@ function ImageGroupBubble({
           const isEndOfRow = (index + 1) % columns === 0 || index === count - 1;
 
           return (
-            <Image
+            <TouchableOpacity
               key={message.id}
-              source={{ uri: message.imageUri }}
-              style={{
-                width: tileSize,
-                height: tileSize,
-                marginRight: isEndOfRow ? 0 : gap,
-                marginBottom: row < rowCount - 1 ? gap : 0,
-                backgroundColor: colors.backgroundSecondary,
-              }}
-              resizeMode="cover"
-            />
+              activeOpacity={0.9}
+              onPress={() => message.imageUri && onImagePress?.(message.imageUri)}
+            >
+              <Image
+                source={{ uri: message.imageUri }}
+                style={{
+                  width: tileSize,
+                  height: tileSize,
+                  marginRight: isEndOfRow ? 0 : gap,
+                  marginBottom: row < rowCount - 1 ? gap : 0,
+                  backgroundColor: colors.backgroundSecondary,
+                }}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
           );
         })}
         {isHighlighted ? (
@@ -1469,6 +1481,7 @@ export default function MessageBubble({
   onReplyPreviewPress,
 }: MessageBubbleProps) {
   const { colors } = useTheme();
+  const [fullscreenImageUri, setFullscreenImageUri] = useState<string | null>(null);
 
   const receivedBg = colors.backgroundSecondary;
   const receivedText = colors.text;
@@ -1518,14 +1531,14 @@ export default function MessageBubble({
   const renderContent = () => {
     if (imageGroup && imageGroup.length > 1) {
       return (
-        <ImageGroupBubble messages={imageGroup} isHighlighted={isHighlighted} />
+        <ImageGroupBubble messages={imageGroup} isHighlighted={isHighlighted} onImagePress={setFullscreenImageUri} />
       );
     }
 
     const messageType = String(message.type || "").toUpperCase();
     switch (messageType) {
       case "IMAGE":
-        return <ImageBubble message={message} isHighlighted={isHighlighted} />;
+        return <ImageBubble message={message} isHighlighted={isHighlighted} onImagePress={setFullscreenImageUri} />;
       case "FILE":
         return (
           <FileBubble
@@ -1631,6 +1644,54 @@ export default function MessageBubble({
           )}
         </View>
       </View>
+
+      {/* Fullscreen Image Viewer Modal */}
+      <Modal
+        visible={!!fullscreenImageUri}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setFullscreenImageUri(null)}
+      >
+        <SafeAreaView
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.95)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          {/* Close Button at top-right */}
+          <TouchableOpacity
+            onPress={() => setFullscreenImageUri(null)}
+            style={{
+              position: "absolute",
+              top: Platform.OS === "ios" ? 50 : 20,
+              right: 20,
+              backgroundColor: "rgba(255,255,255,0.2)",
+              borderRadius: 20,
+              width: 40,
+              height: 40,
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 10,
+            }}
+          >
+            <Ionicons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
+
+          {/* Full Screen Image */}
+          {fullscreenImageUri ? (
+            <Image
+              source={{ uri: fullscreenImageUri }}
+              style={{
+                width: "100%",
+                height: "80%",
+              }}
+              resizeMode="contain"
+            />
+          ) : null}
+        </SafeAreaView>
+      </Modal>
     </Pressable>
   );
 }

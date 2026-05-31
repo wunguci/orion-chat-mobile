@@ -17,6 +17,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Image,
+  ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -39,7 +41,10 @@ export default function MessageInput({
 }: MessageInputProps) {
   const { colors } = useTheme();
   const { bottom } = useSafeAreaInsets();
+  const [pendingAssets, setPendingAssets] = useState<AttachmentAsset[]>([]);
   const hasText = value.trim().length > 0;
+  const hasPendingAssets = pendingAssets.length > 0;
+  const showSend = hasText || hasPendingAssets;
   const [pickerVisible, setPickerVisible] = useState(false);
   const [isRewriting, setIsRewriting] = useState(false);
   const [previousValue, setPreviousValue] = useState<string | null>(null);
@@ -204,6 +209,101 @@ export default function MessageInput({
           </View>
         ) : null}
 
+        {/* Pending Assets Preview */}
+        {pendingAssets.length > 0 ? (
+          <View
+            style={{
+              paddingTop: 10,
+              paddingBottom: 10,
+              borderBottomWidth: 0.5,
+              borderBottomColor: colors.divider,
+            }}
+          >
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{
+                gap: 12,
+                paddingHorizontal: 12,
+              }}
+            >
+              {pendingAssets.map((asset, index) => {
+                const isImage = asset.mimeType.startsWith("image/");
+                return (
+                  <View
+                    key={`${asset.uri}-${index}`}
+                    style={{
+                      position: "relative",
+                      width: 68,
+                      height: 68,
+                      justifyContent: "flex-end",
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    {isImage ? (
+                      <Image
+                        source={{ uri: asset.uri }}
+                        style={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: colors.border,
+                        }}
+                      />
+                    ) : (
+                      <View
+                        style={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: 8,
+                          backgroundColor: colors.backgroundSecondary,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          borderWidth: 1,
+                          borderColor: colors.border,
+                        }}
+                      >
+                        <Ionicons
+                          name="document-attach-outline"
+                          size={24}
+                          color={colors.textSecondary}
+                        />
+                      </View>
+                    )}
+                    <TouchableOpacity
+                      onPress={() => {
+                        setPendingAssets((prev) =>
+                          prev.filter((_, idx) => idx !== index)
+                        );
+                      }}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        right: 0,
+                        backgroundColor: "#FF3B30",
+                        borderRadius: 10,
+                        width: 20,
+                        height: 20,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: 2,
+                        elevation: 3,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.2,
+                        shadowRadius: 1,
+                      }}
+                    >
+                      <Ionicons name="close" size={14} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
+        ) : null}
+
         <View
           style={{
             flexDirection: "row",
@@ -260,35 +360,43 @@ export default function MessageInput({
           </View>
 
           {/* Send or mic + emoji */}
-          {hasText ? (
+          {showSend ? (
             <>
-              <TouchableOpacity
-                onPress={showRewriteOptions}
-                disabled={isRewriting}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: colors.backgroundSecondary,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 2,
-                }}
-              >
-                {isRewriting ? (
-                  <ActivityIndicator size="small" color="#00B14F" />
-                ) : (
-                  <Ionicons
-                    name="color-wand-outline"
-                    size={18}
-                    color="#00B14F"
-                  />
-                )}
-              </TouchableOpacity>
+              {hasText && (
+                <TouchableOpacity
+                  onPress={showRewriteOptions}
+                  disabled={isRewriting}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: colors.backgroundSecondary,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 2,
+                  }}
+                >
+                  {isRewriting ? (
+                    <ActivityIndicator size="small" color="#00B14F" />
+                  ) : (
+                    <Ionicons
+                      name="color-wand-outline"
+                      size={18}
+                      color="#00B14F"
+                    />
+                  )}
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 onPress={() => {
-                  setPreviousValue(null);
-                  onSend();
+                  if (hasPendingAssets) {
+                    onAttach?.(pendingAssets);
+                    setPendingAssets([]);
+                  }
+                  if (hasText) {
+                    setPreviousValue(null);
+                    onSend();
+                  }
                 }}
                 disabled={isRewriting}
                 style={{
@@ -337,7 +445,7 @@ export default function MessageInput({
         onClose={() => setPickerVisible(false)}
         onAttach={(assets) => {
           setPickerVisible(false);
-          onAttach?.(assets);
+          setPendingAssets((prev) => [...prev, ...assets]);
         }}
       />
     </>

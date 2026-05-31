@@ -25,6 +25,7 @@ interface ChatSearchBarProps {
     onChangeText: (text: string) => void;
     onAddFriendsPress?: () => void;
     onCreateGroupPress?: () => void;
+    onQrScanPress?: () => void;
 }
 
 export default function ChatSearchBar({
@@ -32,6 +33,7 @@ export default function ChatSearchBar({
     onChangeText,
     onAddFriendsPress,
     onCreateGroupPress,
+    onQrScanPress,
 }: ChatSearchBarProps) {
     const { colors } = useTheme();
     const { openMenu } = useSlideMenu();
@@ -133,7 +135,7 @@ export default function ChatSearchBar({
             </View>
 
             {/* QR icon */}
-            <TouchableOpacity>
+            <TouchableOpacity onPress={onQrScanPress} activeOpacity={0.7}>
                 <MaterialCommunityIcons
                     name="qrcode-scan"
                     size={24}

@@ -594,6 +594,14 @@ export const chatApi = {
     return toJson<any>(response);
   },
 
+  async addGroupMembers(groupId: string, userIds: string[]) {
+    const response = await authFetch(buildUrl(`/groups/${groupId}/members`), {
+      method: "POST",
+      body: JSON.stringify({ userIds }),
+    });
+    return toJson<any>(response);
+  },
+
   /**
    * Lấy danh sách Messages trong một Conversation
    */

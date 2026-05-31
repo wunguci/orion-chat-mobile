@@ -1,5 +1,6 @@
 import SettingsHeader from "@/components/setting/SettingsHeader";
 import SettingsSection from "@/components/setting/SettingsSection";
+import { useRouter } from "expo-router";
 import { Info, Laptop, Monitor, QrCode, Smartphone } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -22,6 +23,7 @@ interface Device {
 }
 
 export default function DevicesScreen() {
+  const router = useRouter();
   const [devices] = useState<Device[]>([
     {
       id: "1",
@@ -84,7 +86,10 @@ export default function DevicesScreen() {
                 </Text>
               </View>
             </View>
-            <TouchableOpacity className="bg-orange-primary py-3 rounded-lg">
+            <TouchableOpacity
+              className="bg-orange-primary py-3 rounded-lg"
+              onPress={() => router.push("/qr-scan")}
+            >
               <Text className="text-center font-semibold text-white">
                 Link via QR Code
               </Text>
