@@ -3,6 +3,7 @@ import MessageBubble from "@/components/chat/MessageBubble";
 import MessageInput from "@/components/chat/MessageInput";
 import MessageTimestamp from "@/components/chat/MessageTimestamp";
 import MessageActionMenu from "@/components/chat/MessageActionMenu";
+import ImageViewerModal from "@/components/chat/ImageViewerModal";
 import ConversationInfoModal from "@/components/chat/ConversationInfoModal";
 import { formatTime, getDiffMinutes, useChat } from "@/hooks/useChat";
 import { useTheme } from "@/hooks/useTheme";
@@ -302,6 +303,10 @@ export default function ChatScreen() {
   const [highlightedMessageId, setHighlightedMessageId] = useState<
     string | null
   >(null);
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [initialViewerImageId, setInitialViewerImageId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     if (!id) {
@@ -434,6 +439,22 @@ export default function ChatScreen() {
     [messages],
   );
 
+  const imageMessages = useMemo(
+    () =>
+      messages.filter(
+        (message) =>
+          String(message.type || "").toUpperCase() === "IMAGE" &&
+          Boolean(message.imageUri) &&
+          !message.isRecalled,
+      ),
+    [messages],
+  );
+
+  const handleOpenImageViewer = useCallback((message: Message) => {
+    setInitialViewerImageId(message.id);
+    setImageViewerVisible(true);
+  }, []);
+
   const handleReplyPreviewPress = useCallback(
     (messageId: string) => {
       const targetIndex = messageItems.findIndex((item) => {
@@ -501,6 +522,7 @@ export default function ChatScreen() {
             onLongPress={handleMessageLongPress}
             onCallBack={(callType) => void handleStartCall(callType)}
             onReplyPreviewPress={handleReplyPreviewPress}
+            onImagePress={handleOpenImageViewer}
           />
         </View>
       );
@@ -513,6 +535,7 @@ export default function ChatScreen() {
       handleMessageLongPress,
       handleStartCall,
       handleReplyPreviewPress,
+      handleOpenImageViewer,
     ],
   );
 
@@ -601,6 +624,13 @@ export default function ChatScreen() {
           }}
         />
       )}
+      <ImageViewerModal
+        visible={imageViewerVisible}
+        images={imageMessages}
+        initialMessageId={initialViewerImageId}
+        conversationId={id || ""}
+        onClose={() => setImageViewerVisible(false)}
+      />
       <ConversationInfoModal
         visible={infoVisible}
         conversationId={id || ""}

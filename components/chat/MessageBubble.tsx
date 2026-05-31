@@ -543,9 +543,11 @@ function VideoBubble({
 function ImageBubble({
   message,
   isHighlighted = false,
+  onImagePress,
 }: {
   message: Message;
   isHighlighted?: boolean;
+  onImagePress?: (message: Message) => void;
 }) {
   const { colors } = useTheme();
 
@@ -577,7 +579,9 @@ function ImageBubble({
 
   return (
     <View style={{ maxWidth: "78%" }}>
-      <View
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => onImagePress?.(message)}
         style={{
           borderRadius: 16,
           overflow: "hidden",
@@ -646,7 +650,7 @@ function ImageBubble({
         >
           {formatTime(message.timestamp)}
         </Text>
-      </View>
+      </TouchableOpacity>
       <MessageReactions reactions={message.reactions} />
     </View>
   );
@@ -655,9 +659,11 @@ function ImageBubble({
 function ImageGroupBubble({
   messages,
   isHighlighted = false,
+  onImagePress,
 }: {
   messages: Message[];
   isHighlighted?: boolean;
+  onImagePress?: (message: Message) => void;
 }) {
   const { colors } = useTheme();
   const count = messages.length;
@@ -686,9 +692,8 @@ function ImageGroupBubble({
           const isEndOfRow = (index + 1) % columns === 0 || index === count - 1;
 
           return (
-            <Image
+            <TouchableOpacity
               key={message.id}
-              source={{ uri: message.imageUri }}
               style={{
                 width: tileSize,
                 height: tileSize,
@@ -696,8 +701,15 @@ function ImageGroupBubble({
                 marginBottom: row < rowCount - 1 ? gap : 0,
                 backgroundColor: colors.backgroundSecondary,
               }}
-              resizeMode="cover"
-            />
+              activeOpacity={0.9}
+              onPress={() => onImagePress?.(message)}
+            >
+              <Image
+                source={{ uri: message.imageUri }}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
           );
         })}
         {isHighlighted ? (
@@ -1452,6 +1464,7 @@ interface MessageBubbleProps {
   onLongPress?: (message: Message) => void;
   onCallBack?: (callType: "audio" | "video") => void;
   onReplyPreviewPress?: (messageId: string) => void;
+  onImagePress?: (message: Message) => void;
 }
 
 const SENT_BG = "#00B14F";
@@ -1467,6 +1480,7 @@ export default function MessageBubble({
   onLongPress,
   onCallBack,
   onReplyPreviewPress,
+  onImagePress,
 }: MessageBubbleProps) {
   const { colors } = useTheme();
 
@@ -1518,14 +1532,24 @@ export default function MessageBubble({
   const renderContent = () => {
     if (imageGroup && imageGroup.length > 1) {
       return (
-        <ImageGroupBubble messages={imageGroup} isHighlighted={isHighlighted} />
+        <ImageGroupBubble
+          messages={imageGroup}
+          isHighlighted={isHighlighted}
+          onImagePress={onImagePress}
+        />
       );
     }
 
     const messageType = String(message.type || "").toUpperCase();
     switch (messageType) {
       case "IMAGE":
-        return <ImageBubble message={message} isHighlighted={isHighlighted} />;
+        return (
+          <ImageBubble
+            message={message}
+            isHighlighted={isHighlighted}
+            onImagePress={onImagePress}
+          />
+        );
       case "FILE":
         return (
           <FileBubble
