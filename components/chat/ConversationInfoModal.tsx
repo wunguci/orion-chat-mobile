@@ -578,7 +578,6 @@ export default function ConversationInfoModal({
             visible={shouldRender}
             transparent
             animationType="none"
-            presentationStyle="fullScreen"
             onRequestClose={handleClose}
         >
             <Animated.View

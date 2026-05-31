@@ -24,11 +24,14 @@ import {
   StatusBar,
   View,
   Alert,
+  Text,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ForwardConversationModal from "@/components/chat/ForwardConversationModal";
 import { generateUniqueId } from "@/utils/generateUniqueId";
 import { chatApi } from "@/services/api/chat";
+import { friendApi } from "@/services/api/friend";
 import { useNotificationContext } from "@/context/NotificationContext";
 import { useFocusEffect } from "expo-router";
 import { CallContext } from "@/context/CallContext";
@@ -48,6 +51,18 @@ type ChatMessageListItem =
       id: string;
       messages: Message[];
     };
+
+type PrivateBlockStatus = {
+  isBlocked: boolean;
+  iAmBlocked: boolean;
+  iAmTheBlocker: boolean;
+};
+
+const EMPTY_PRIVATE_BLOCK_STATUS: PrivateBlockStatus = {
+  isBlocked: false,
+  iAmBlocked: false,
+  iAmTheBlocker: false,
+};
 
 function getMessageTime(message: Message): number {
   const time = new Date(message.timestamp).getTime();
@@ -170,6 +185,158 @@ function shouldShowSenderName(
   return curr.senderId !== prev.senderId;
 }
 
+function toUserIdList(value: unknown): string[] {
+  if (!value) return [];
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object") {
+          const record = item as Record<string, unknown>;
+          return record.userId || record.id || record._id;
+        }
+        return null;
+      })
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function getNestedValue(source: any, path: string) {
+  return path.split(".").reduce((current, key) => current?.[key], source);
+}
+
+function getBlockedFriendId(friend: any) {
+  const candidate =
+    friend?.userId ||
+    friend?.friendId ||
+    friend?.blockedUserId ||
+    friend?.blockedId ||
+    friend?.id ||
+    friend?._id ||
+    friend?.blockedUser?.userId ||
+    friend?.blockedUser?.id ||
+    friend?.friend?.userId ||
+    friend?.friend?.id ||
+    friend?.user?.userId ||
+    friend?.user?.id;
+
+  return String(candidate || "").trim();
+}
+
+function getBlockedFriendName(friend: any) {
+  const candidate =
+    friend?.fullName ||
+    friend?.name ||
+    friend?.displayName ||
+    friend?.blockedUser?.fullName ||
+    friend?.blockedUser?.name ||
+    friend?.friend?.fullName ||
+    friend?.friend?.name ||
+    friend?.user?.fullName ||
+    friend?.user?.name;
+
+  return String(candidate || "").trim();
+}
+
+function getGroupBlockedParticipantIds(
+  conversation: any,
+  currentUserId?: string,
+) {
+  const candidatePaths = [
+    "myBlockedBy",
+    "blockedUserIds",
+    "blockedUsers",
+    "usersIBlocked",
+    "iBlockedUserIds",
+    "blockStatus.myBlockedBy",
+    "blockStatus.blockedUserIds",
+    "blockStatus.blockedUsers",
+    "blockStatus.usersIBlocked",
+    "blockStatus.iBlockedUserIds",
+  ];
+
+  const blockedIds = candidatePaths.flatMap((path) =>
+    toUserIdList(getNestedValue(conversation, path)),
+  );
+
+  return Array.from(new Set(blockedIds)).filter(
+    (userId) => userId && userId !== currentUserId,
+  );
+}
+
+function getParticipantNamesByIds(participants: any[] = [], userIds: string[]) {
+  const namesById = new Map(
+    participants
+      .map(
+        (participant) =>
+          [
+            String(participant.userId || "").trim(),
+            String(participant.fullName || "").trim(),
+          ] as const,
+      )
+      .filter(([userId]) => Boolean(userId)),
+  );
+
+  return userIds
+    .map((userId) => namesById.get(userId) || `User ${userId}`)
+    .filter(Boolean);
+}
+
+function getGroupParticipantBlockedFriends(
+  participants: any[] = [],
+  blockedFriends: any[],
+  currentUserId?: string,
+) {
+  const participantIds = new Set(
+    participants
+      .map((participant) => String(participant.userId || "").trim())
+      .filter((userId) => Boolean(userId) && userId !== currentUserId),
+  );
+
+  return blockedFriends.filter((friend) => {
+    const blockedFriendId = getBlockedFriendId(friend);
+    return blockedFriendId && participantIds.has(blockedFriendId);
+  });
+}
+
+function buildPrivateBlockStatus(
+  conversation?: any,
+  blockStatus?: any,
+): PrivateBlockStatus {
+  const sourceStatus = blockStatus || conversation?.blockStatus || {};
+  const iAmTheBlocker = Boolean(
+    sourceStatus.iAmTheBlocker ||
+    sourceStatus.canUnblock ||
+    conversation?.canUnblock,
+  );
+  const iAmBlocked = Boolean(sourceStatus.iAmBlocked);
+  const isBlocked = Boolean(
+    sourceStatus.isBlocked ||
+    conversation?.myIsBlocked ||
+    conversation?.blockStatus?.isBlocked ||
+    iAmTheBlocker ||
+    iAmBlocked,
+  );
+
+  return {
+    isBlocked,
+    iAmBlocked,
+    iAmTheBlocker,
+  };
+}
+
 export default function ChatScreen() {
   const params = useLocalSearchParams<{
     id: string;
@@ -208,20 +375,22 @@ export default function ChatScreen() {
   });
 
   const { isGroup, participantIds, otherUserId, name, avatarUri } = convDetails;
+  const [privateBlockStatus, setPrivateBlockStatus] =
+    useState<PrivateBlockStatus>(EMPTY_PRIVATE_BLOCK_STATUS);
+  const [groupBlockedParticipantNames, setGroupBlockedParticipantNames] =
+    useState<string[]>([]);
+  const [groupHasBlockedParticipant, setGroupHasBlockedParticipant] =
+    useState(false);
+  const [groupBlockWarningDismissed, setGroupBlockWarningDismissed] =
+    useState(false);
+  const [blockRefreshKey, setBlockRefreshKey] = useState(0);
+
+  useEffect(() => {
+    setGroupBlockWarningDismissed(false);
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
-
-    // Check if we need to fetch additional details
-    const needsFetch =
-      !convDetails.name ||
-      convDetails.name === "Chat" ||
-      convDetails.participantIds.length === 0 ||
-      (!convDetails.isGroup && !convDetails.otherUserId) ||
-      (convDetails.isGroup &&
-        (!convDetails.participants || convDetails.participants.length === 0));
-
-    if (!needsFetch) return;
 
     const fetchDetails = async () => {
       try {
@@ -257,6 +426,77 @@ export default function ChatScreen() {
             avatarUri: displayAvatar || undefined,
             participants: conversation.participants,
           });
+
+          if (isGroupChat) {
+            const [blockedFriendsResult, groupMembersResult] =
+              await Promise.allSettled([
+                authState.user?.userId
+                  ? friendApi.getBlockedFriends(authState.user.userId)
+                  : Promise.resolve([]),
+                chatApi.getGroupMembers(id),
+              ]);
+            const blockedFriends =
+              blockedFriendsResult.status === "fulfilled"
+                ? blockedFriendsResult.value
+                : [];
+            const groupParticipants =
+              groupMembersResult.status === "fulfilled"
+                ? groupMembersResult.value.items
+                : conversation.participants;
+            const blockedGroupFriends = getGroupParticipantBlockedFriends(
+              groupParticipants,
+              blockedFriends,
+              authState.user?.userId,
+            );
+            const blockedIds = getGroupBlockedParticipantIds(
+              conversation,
+              authState.user?.userId,
+            );
+            const allBlockedIds = Array.from(
+              new Set([
+                ...blockedIds,
+                ...blockedGroupFriends.map(getBlockedFriendId),
+              ]),
+            );
+            const hasBlockedParticipant = Boolean(
+              conversation.myIsBlocked ||
+                allBlockedIds.length > 0 ||
+                conversation.blockStatus?.isBlocked,
+            );
+
+            setGroupHasBlockedParticipant(hasBlockedParticipant);
+            const blockedFriendNames = blockedGroupFriends
+              .map(getBlockedFriendName)
+              .filter(Boolean);
+            const participantNames = getParticipantNamesByIds(
+              groupParticipants,
+              allBlockedIds,
+            );
+
+            setGroupBlockedParticipantNames(
+              Array.from(new Set([...blockedFriendNames, ...participantNames])),
+            );
+            setPrivateBlockStatus(EMPTY_PRIVATE_BLOCK_STATUS);
+          } else {
+            let nextBlockStatus = buildPrivateBlockStatus(conversation);
+
+            try {
+              const blockStatus = await chatApi.getBlockStatus(id);
+              nextBlockStatus = buildPrivateBlockStatus(
+                conversation,
+                blockStatus,
+              );
+            } catch (blockStatusError) {
+              console.warn(
+                "[ChatScreen] Cannot fetch block status",
+                blockStatusError,
+              );
+            }
+
+            setPrivateBlockStatus(nextBlockStatus);
+            setGroupHasBlockedParticipant(false);
+            setGroupBlockedParticipantNames([]);
+          }
         }
       } catch (error) {
         console.error(
@@ -275,6 +515,7 @@ export default function ChatScreen() {
     convDetails.otherUserId,
     convDetails.participants?.length,
     authState.user?.userId,
+    blockRefreshKey,
   ]);
 
   const { colors, colorScheme } = useTheme();
@@ -321,13 +562,35 @@ export default function ChatScreen() {
       if (!id) return;
 
       void markConversationNotificationsAsRead(id);
+      setBlockRefreshKey((value) => value + 1);
     }, [id, markConversationNotificationsAsRead]),
   );
 
+  const privateMessagingBlocked = !isGroup && privateBlockStatus.isBlocked;
+  const privateBlockMessage = privateBlockStatus.iAmTheBlocker
+    ? `Bạn đã chặn ${name || "người này"}. Bỏ chặn để tiếp tục nhắn tin.`
+    : `${name || "Người này"} đã chặn bạn. Bạn không thể gửi tin nhắn trong đoạn chat này.`;
+  const showGroupBlockWarning =
+    isGroup && groupHasBlockedParticipant && !groupBlockWarningDismissed;
+
+  const handleBlockedSendAttempt = useCallback(() => {
+    Alert.alert("Không thể gửi tin nhắn", privateBlockMessage);
+  }, [privateBlockMessage]);
+
   const handleSend = useCallback(() => {
+    if (privateMessagingBlocked) {
+      handleBlockedSendAttempt();
+      return;
+    }
+
     void sendMessage(inputText);
     setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 100);
-  }, [inputText, sendMessage]);
+  }, [
+    handleBlockedSendAttempt,
+    inputText,
+    privateMessagingBlocked,
+    sendMessage,
+  ]);
 
   const handleMessageLongPress = useCallback((message: Message) => {
     setSelectedMessage(message);
@@ -350,12 +613,55 @@ export default function ChatScreen() {
 
   const handleAttach = useCallback(
     (assets: AttachmentAsset[]) => {
+      if (privateMessagingBlocked) {
+        handleBlockedSendAttempt();
+        return;
+      }
+
       assets.forEach((asset) => {
         void sendAttachment(asset);
       });
     },
-    [sendAttachment],
+    [handleBlockedSendAttempt, privateMessagingBlocked, sendAttachment],
   );
+
+  const handleLeaveGroupFromWarning = useCallback(() => {
+    if (!id) return;
+
+    Alert.alert("Rời nhóm", `Bạn có muốn rời nhóm ${name || "này"} không?`, [
+      { text: "Ở lại", style: "cancel" },
+      {
+        text: "Rời nhóm",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await chatApi.leaveGroup(id);
+            router.back();
+          } catch (error) {
+            Alert.alert(
+              "Không thể rời nhóm",
+              error instanceof Error ? error.message : "Vui lòng thử lại sau",
+            );
+          }
+        },
+      },
+    ]);
+  }, [id, name, router]);
+
+  const handleUnblockFromChat = useCallback(async () => {
+    if (!id) return;
+
+    try {
+      await chatApi.unblockUser(id);
+      setPrivateBlockStatus(EMPTY_PRIVATE_BLOCK_STATUS);
+      setBlockRefreshKey((value) => value + 1);
+    } catch (error) {
+      Alert.alert(
+        "Không thể bỏ chặn",
+        error instanceof Error ? error.message : "Vui lòng thử lại sau",
+      );
+    }
+  }, [id]);
 
   const handleStartCall = useCallback(
     async (callType: "audio" | "video") => {
@@ -593,6 +899,120 @@ export default function ChatScreen() {
           showsVerticalScrollIndicator={false}
         />
 
+        {privateMessagingBlocked ? (
+          <View
+            style={{
+              marginHorizontal: 12,
+              marginBottom: 8,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              borderRadius: 8,
+              backgroundColor:
+                colorScheme === "dark"
+                  ? "rgba(239, 68, 68, 0.14)"
+                  : "rgba(239, 68, 68, 0.08)",
+              borderWidth: 1,
+              borderColor: "rgba(239, 68, 68, 0.24)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{
+                color: colorScheme === "dark" ? "#FCA5A5" : "#B91C1C",
+                fontSize: 13,
+                lineHeight: 18,
+              }}
+            >
+              {privateBlockMessage}
+            </Text>
+            {privateBlockStatus.iAmTheBlocker ? (
+              <TouchableOpacity
+                style={{
+                  width: "100%",
+                }}
+                onPress={handleUnblockFromChat}
+              >
+                <Text
+                  style={{
+                    backgroundColor:
+                      colorScheme === "dark" ? "#B91C1C" : "#fdc1c1",
+                    color: "#B91C1C",
+                    textAlign: "center",
+                    borderRadius: 8,
+                    paddingVertical: 8,
+                    fontSize: 13,
+                    fontWeight: "700",
+                  }}
+                >
+                  Bỏ chặn
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
+
+        {showGroupBlockWarning ? (
+          <View
+            style={{
+              marginHorizontal: 12,
+              marginBottom: 8,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              borderRadius: 8,
+              backgroundColor:
+                colorScheme === "dark"
+                  ? "rgba(245, 158, 11, 0.16)"
+                  : "rgba(245, 158, 11, 0.12)",
+              borderWidth: 1,
+              borderColor: "rgba(245, 158, 11, 0.28)",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <Text
+              style={{
+                flex: 1,
+                color: colorScheme === "dark" ? "#FCD34D" : "#92400E",
+                fontSize: 13,
+                lineHeight: 18,
+              }}
+            >
+              {groupBlockedParticipantNames.length > 0
+                ? `Trong nhóm có ${groupBlockedParticipantNames.join(", ")} đang bị chặn. Bạn có muốn rời nhóm không?`
+                : "Trong nhóm có người đang bị chặn. Bạn có muốn rời nhóm không?"}
+            </Text>
+            <TouchableOpacity onPress={handleLeaveGroupFromWarning}>
+              <Text
+                style={{
+                  color: "#00B14F",
+                  fontSize: 13,
+                  fontWeight: "700",
+                }}
+              >
+                Rời nhóm
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setGroupBlockWarningDismissed(true)}
+              hitSlop={10}
+            >
+              <Text
+                style={{
+                  color: colors.textSecondary,
+                  fontSize: 18,
+                  fontWeight: "700",
+                }}
+              >
+                x
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         {/* Input */}
         <MessageInput
           value={inputText}
@@ -601,6 +1021,8 @@ export default function ChatScreen() {
           onAttach={handleAttach}
           replyToMessage={replyToMessage}
           onCancelReply={clearReplyToMessage}
+          disabled={privateMessagingBlocked}
+          disabledPlaceholder="Không thể nhắn tin"
         />
       </KeyboardAvoidingView>
 
@@ -637,7 +1059,10 @@ export default function ChatScreen() {
         name={name || "Chat"}
         avatarUri={avatarUri}
         isGroup={isGroup}
-        onClose={() => setInfoVisible(false)}
+        onClose={() => {
+          setInfoVisible(false);
+          setBlockRefreshKey((value) => value + 1);
+        }}
         onConversationDeleted={() => router.back()}
       />
       {forwardMessageId && (
