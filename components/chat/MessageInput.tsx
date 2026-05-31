@@ -27,6 +27,8 @@ interface MessageInputProps {
   onAttach?: (asset: AttachmentAsset[]) => void;
   replyToMessage?: Message | null;
   onCancelReply?: () => void;
+  disabled?: boolean;
+  disabledPlaceholder?: string;
 }
 
 export default function MessageInput({
@@ -36,16 +38,18 @@ export default function MessageInput({
   onAttach,
   replyToMessage,
   onCancelReply,
+  disabled = false,
+  disabledPlaceholder,
 }: MessageInputProps) {
   const { colors } = useTheme();
   const { bottom } = useSafeAreaInsets();
-  const hasText = value.trim().length > 0;
+  const hasText = !disabled && value.trim().length > 0;
   const [pickerVisible, setPickerVisible] = useState(false);
   const [isRewriting, setIsRewriting] = useState(false);
   const [previousValue, setPreviousValue] = useState<string | null>(null);
 
   const handleRewrite = async (tone: RewriteTone) => {
-    if (!hasText || isRewriting) return;
+    if (!hasText || isRewriting || disabled) return;
 
     setIsRewriting(true);
     try {
@@ -215,7 +219,11 @@ export default function MessageInput({
         >
           {/* Attach */}
           <TouchableOpacity
-            onPress={() => setPickerVisible(true)}
+            onPress={() => {
+              if (disabled) return;
+              setPickerVisible(true);
+            }}
+            disabled={disabled}
             style={{
               width: 36,
               height: 36,
@@ -225,6 +233,7 @@ export default function MessageInput({
               alignItems: "center",
               justifyContent: "center",
               marginBottom: 2,
+              opacity: disabled ? 0.45 : 1,
             }}
           >
             <Ionicons name="add" size={22} color={colors.textSecondary} />
@@ -245,7 +254,7 @@ export default function MessageInput({
             <TextInput
               value={value}
               onChangeText={onChangeText}
-              placeholder="Type your message"
+              placeholder={disabledPlaceholder || "Type your message"}
               placeholderTextColor={colors.textSecondary}
               style={{
                 color: colors.text,
@@ -255,7 +264,7 @@ export default function MessageInput({
               }}
               multiline
               returnKeyType="default"
-              editable={!isRewriting}
+              editable={!isRewriting && !disabled}
             />
           </View>
 
@@ -264,12 +273,13 @@ export default function MessageInput({
             <>
               <TouchableOpacity
                 onPress={showRewriteOptions}
-                disabled={isRewriting}
+                disabled={isRewriting || disabled}
                 style={{
                   width: 36,
                   height: 36,
                   borderRadius: 18,
                   backgroundColor: colors.backgroundSecondary,
+                  opacity: disabled ? 0.45 : 1,
                   alignItems: "center",
                   justifyContent: "center",
                   marginBottom: 2,
@@ -287,15 +297,17 @@ export default function MessageInput({
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
+                  if (disabled) return;
                   setPreviousValue(null);
                   onSend();
                 }}
-                disabled={isRewriting}
+                disabled={isRewriting || disabled}
                 style={{
                   width: 36,
                   height: 36,
                   borderRadius: 18,
-                  backgroundColor: isRewriting ? colors.border : "#00B14F",
+                  backgroundColor:
+                    isRewriting || disabled ? colors.border : "#00B14F",
                   alignItems: "center",
                   justifyContent: "center",
                   marginBottom: 2,
@@ -337,6 +349,7 @@ export default function MessageInput({
         onClose={() => setPickerVisible(false)}
         onAttach={(assets) => {
           setPickerVisible(false);
+          if (disabled) return;
           onAttach?.(assets);
         }}
       />
