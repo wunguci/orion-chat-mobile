@@ -28,7 +28,12 @@ export async function sendOtp(phoneNumber: string): Promise<SendOtpResponse> {
       );
     }
 
-    return response.json();
+    const result = await response.json();
+    if (result && result.success === false) {
+      throw new Error(result.message || "Gửi OTP thất bại");
+    }
+
+    return result;
   } catch (error) {
     console.error("[sendOtp] Error:", error);
     throw error;
@@ -246,7 +251,12 @@ export async function sendOtpForgetPassword(
       );
     }
 
-    return response.json();
+    const result = await response.json();
+    if (result && result.success === false) {
+      throw new Error(result.message || "Gửi OTP thất bại");
+    }
+
+    return result;
   } catch (error) {
     console.error("[sendOtpForgetPassword] Error:", error);
     throw error;
