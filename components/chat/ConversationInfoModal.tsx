@@ -37,6 +37,7 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 interface ConversationInfoModalProps {
     visible: boolean;
@@ -94,6 +95,7 @@ export default function ConversationInfoModal({
     onConversationDeleted,
 }: ConversationInfoModalProps) {
     const { colors } = useTheme();
+    const router = useRouter();
     const insets = useSafeAreaInsets();
     const { width: windowWidth } = useWindowDimensions();
     const translateX = useRef(new Animated.Value(windowWidth)).current;
@@ -128,8 +130,10 @@ export default function ConversationInfoModal({
             ? conversation.groupInfo.groupAvatar
             : avatarUri,
     );
-    const memberCount = groupMembers.length || conversation?.participants?.length || 0;
-    const myRole = conversation?.myRole || groupMembers.find((m) => m.isMe)?.role;
+    const memberCount =
+        groupMembers.length || conversation?.participants?.length || 0;
+    const myRole =
+        conversation?.myRole || groupMembers.find((m) => m.isMe)?.role;
     const isOwner = myRole === 'admin' || myRole === 'leader';
     const canManageGroup =
         myRole === 'admin' ||
@@ -156,6 +160,26 @@ export default function ConversationInfoModal({
                 .slice(0, 6),
         [mediaItems],
     );
+    const mediaPreviewItems = useMemo(
+        () =>
+            mediaItems
+                .filter((item) => !item.isRevoked && item.mediaUrl)
+                .slice(0, 5),
+        [mediaItems],
+    );
+
+    const openMediaManager = useCallback(() => {
+        onClose();
+        setTimeout(() => {
+            router.push({
+                pathname: '/chat/media',
+                params: {
+                    conversationId,
+                    name: 'Ảnh, file, link',
+                },
+            });
+        }, 120);
+    }, [conversationId, onClose, router]);
 
     useEffect(() => {
         if (visible) {
@@ -348,23 +372,26 @@ export default function ConversationInfoModal({
         const trimmed = password.trim();
         if (!passwordMode || !trimmed) return;
 
-        void runAction(async () => {
-            if (passwordMode === 'hide') {
-                await chatApi.hideConversation(conversationId, trimmed);
-                setConversation((prev) =>
-                    prev ? { ...prev, myIsHidden: true } : prev,
-                );
-                onConversationDeleted?.(conversationId);
-                onClose();
-            } else {
-                await chatApi.unhideConversation(conversationId, trimmed);
-                setConversation((prev) =>
-                    prev ? { ...prev, myIsHidden: false } : prev,
-                );
-            }
-            setPasswordMode(null);
-            setPassword('');
-        }, passwordMode === 'hide' ? undefined : 'Đã bỏ ẩn hội thoại');
+        void runAction(
+            async () => {
+                if (passwordMode === 'hide') {
+                    await chatApi.hideConversation(conversationId, trimmed);
+                    setConversation((prev) =>
+                        prev ? { ...prev, myIsHidden: true } : prev,
+                    );
+                    onConversationDeleted?.(conversationId);
+                    onClose();
+                } else {
+                    await chatApi.unhideConversation(conversationId, trimmed);
+                    setConversation((prev) =>
+                        prev ? { ...prev, myIsHidden: false } : prev,
+                    );
+                }
+                setPasswordMode(null);
+                setPassword('');
+            },
+            passwordMode === 'hide' ? undefined : 'Đã bỏ ẩn hội thoại',
+        );
     };
 
     const handleClearHistory = () => {
@@ -481,12 +508,9 @@ export default function ConversationInfoModal({
     };
 
     const handleCopyConversationId = () => {
-        void runAction(
-            async () => {
-                await Clipboard.setStringAsync(conversationId);
-            },
-            'Đã sao chép ID nhóm',
-        );
+        void runAction(async () => {
+            await Clipboard.setStringAsync(conversationId);
+        }, 'Đã sao chép ID nhóm');
     };
 
     const openGroupNameDialog = () => {
@@ -770,17 +794,28 @@ export default function ConversationInfoModal({
                                 />
                                 <QuickAction
                                     icon={isPinned ? 'pin' : 'pin-outline'}
-                                    label={isPinned ? 'Bỏ ghim' : 'Ghim hội thoại'}
+                                    label={
+                                        isPinned ? 'Bỏ ghim' : 'Ghim hội thoại'
+                                    }
                                     onPress={handleTogglePin}
                                 />
                                 <QuickAction
-                                    icon={groupMode ? 'settings-outline' : 'people-outline'}
+                                    icon={
+                                        groupMode
+                                            ? 'settings-outline'
+                                            : 'people-outline'
+                                    }
                                     onPress={
                                         groupMode
-                                            ? () => setGroupManagementVisible(true)
+                                            ? () =>
+                                                  setGroupManagementVisible(
+                                                      true,
+                                                  )
                                             : undefined
                                     }
-                                    label={groupMode ? 'Quản lý nhóm' : 'Tạo nhóm'}
+                                    label={
+                                        groupMode ? 'Quản lý nhóm' : 'Tạo nhóm'
+                                    }
                                 />
                             </View>
                         </View>
@@ -792,7 +827,9 @@ export default function ConversationInfoModal({
                                         icon="account-multiple-outline"
                                         title={`${memberCount} thành viên`}
                                         subtitle={
-                                            myRole ? `Vai trò của bạn: ${myRole}` : undefined
+                                            myRole
+                                                ? `Vai trò của bạn: ${myRole}`
+                                                : undefined
                                         }
                                     />
                                     <InfoRow
@@ -805,21 +842,27 @@ export default function ConversationInfoModal({
                                         icon="camera-outline"
                                         title="Đổi ảnh nhóm"
                                         showChevron
-                                        onPress={() => void handleUpdateGroupAvatar()}
+                                        onPress={() =>
+                                            void handleUpdateGroupAvatar()
+                                        }
                                     />
                                     <InfoRow
                                         icon="account-cog-outline"
                                         title="Quản lý nhóm"
                                         subtitle={getRoleLabel(myRole)}
                                         showChevron
-                                        onPress={() => setGroupManagementVisible(true)}
+                                        onPress={() =>
+                                            setGroupManagementVisible(true)
+                                        }
                                     />
                                     {canManageGroup ? (
                                         <InfoRow
                                             icon="account-plus-outline"
                                             title="Thêm thành viên"
                                             showChevron
-                                            onPress={() => setAddMembersVisible(true)}
+                                            onPress={() =>
+                                                setAddMembersVisible(true)
+                                            }
                                         />
                                     ) : null}
                                     <TouchableOpacity
@@ -887,7 +930,9 @@ export default function ConversationInfoModal({
                                                 item.mediaUrl
                                             }
                                             source={{
-                                                uri: toAbsoluteUrl(item.mediaUrl),
+                                                uri: toAbsoluteUrl(
+                                                    item.mediaUrl,
+                                                ),
                                             }}
                                             style={{
                                                 width: 78,
@@ -912,7 +957,135 @@ export default function ConversationInfoModal({
                             )}
                         </Section>
 
-                        <Section title={groupMode ? 'Bảng tin nhóm' : 'Bảng tin'}>
+                        <Section title="Ảnh, file, link">
+                            <InfoRow
+                                icon="folder-multiple-image"
+                                title="Ảnh, file, link"
+                                subtitle={
+                                    mediaPreviewItems.length
+                                        ? `${mediaPreviewItems.length} mục gần đây`
+                                        : 'Chưa có nội dung'
+                                }
+                                showChevron
+                                onPress={openMediaManager}
+                            />
+                            {mediaPreviewItems.length ? (
+                                <TouchableOpacity
+                                    onPress={openMediaManager}
+                                    activeOpacity={0.82}
+                                    style={{
+                                        flexDirection: 'row',
+                                        gap: 6,
+                                        paddingHorizontal: 16,
+                                        paddingTop: 8,
+                                    }}
+                                >
+                                    {mediaPreviewItems.map((item) => {
+                                        const isImage =
+                                            item.fileCategory === 'image' ||
+                                            item.mimeType?.startsWith(
+                                                'image/',
+                                            ) ||
+                                            item.messageType?.toLowerCase() ===
+                                                'image';
+                                        const isVideo =
+                                            item.fileCategory === 'video' ||
+                                            item.mimeType?.startsWith(
+                                                'video/',
+                                            ) ||
+                                            item.messageType?.toLowerCase() ===
+                                                'video';
+
+                                        return (
+                                            <View
+                                                key={
+                                                    item.messageId ||
+                                                    item._id ||
+                                                    item.mediaUrl
+                                                }
+                                                style={{
+                                                    width: 76,
+                                                    height: 60,
+                                                    borderRadius: 8,
+                                                    overflow: 'hidden',
+                                                    backgroundColor:
+                                                        colors.backgroundSecondary,
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                }}
+                                            >
+                                                {isImage || isVideo ? (
+                                                    <Image
+                                                        source={{
+                                                            uri: toAbsoluteUrl(
+                                                                item.mediaUrl,
+                                                            ),
+                                                        }}
+                                                        style={{
+                                                            width: '100%',
+                                                            height: '100%',
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <MaterialCommunityIcons
+                                                        name="file-outline"
+                                                        size={26}
+                                                        color={
+                                                            colors.textSecondary
+                                                        }
+                                                    />
+                                                )}
+                                                {isVideo ? (
+                                                    <View
+                                                        style={{
+                                                            position:
+                                                                'absolute',
+                                                            top: 0,
+                                                            right: 0,
+                                                            bottom: 0,
+                                                            left: 0,
+                                                            alignItems:
+                                                                'center',
+                                                            justifyContent:
+                                                                'center',
+                                                            backgroundColor:
+                                                                'rgba(0,0,0,0.22)',
+                                                        }}
+                                                    >
+                                                        <MaterialCommunityIcons
+                                                            name="play-circle"
+                                                            size={26}
+                                                            color="#fff"
+                                                        />
+                                                    </View>
+                                                ) : null}
+                                            </View>
+                                        );
+                                    })}
+                                    <View
+                                        style={{
+                                            width: 76,
+                                            height: 60,
+                                            borderRadius: 8,
+                                            backgroundColor:
+                                                colors.backgroundSecondary,
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                        }}
+                                    >
+                                        <Ionicons
+                                            name="arrow-forward"
+                                            size={25}
+                                            color={LOGIN_PRIMARY}
+                                        />
+                                    </View>
+                                </TouchableOpacity>
+                            ) : null}
+                        </Section>
+
+                        <Section
+                            title={groupMode ? 'Bảng tin nhóm' : 'Bảng tin'}
+                        >
                             <InfoRow
                                 icon="alarm-check"
                                 title="Danh sách nhắc hẹn"
@@ -927,18 +1100,24 @@ export default function ConversationInfoModal({
                             <InfoRow
                                 icon="timer-outline"
                                 title="Tin nhắn tự xóa"
-                                subtitle={getAutoDeleteLabel(autoDeleteDuration)}
+                                subtitle={getAutoDeleteLabel(
+                                    autoDeleteDuration,
+                                )}
                                 showChevron
                                 onPress={handleAutoDelete}
                             />
                             <InfoRow
                                 icon="eye-off-outline"
                                 title={
-                                    isHidden ? 'Bỏ ẩn trò chuyện' : 'Ẩn trò chuyện'
+                                    isHidden
+                                        ? 'Bỏ ẩn trò chuyện'
+                                        : 'Ẩn trò chuyện'
                                 }
                                 showChevron
                                 onPress={() => {
-                                    setPasswordMode(isHidden ? 'reveal' : 'hide');
+                                    setPasswordMode(
+                                        isHidden ? 'reveal' : 'hide',
+                                    );
                                     setPassword('');
                                 }}
                             />
@@ -1323,8 +1502,8 @@ function TransferOwnerDialog({
                                 lineHeight: 19,
                             }}
                         >
-                            Bạn đang là trưởng nhóm. Hãy chọn một thành viên khác
-                            làm trưởng nhóm trước khi rời.
+                            Bạn đang là trưởng nhóm. Hãy chọn một thành viên
+                            khác làm trưởng nhóm trước khi rời.
                         </Text>
                     </View>
 
@@ -1569,7 +1748,9 @@ function AddMembersModal({
             onAdded();
         } catch (err) {
             setError(
-                err instanceof Error ? err.message : 'Không thể thêm thành viên',
+                err instanceof Error
+                    ? err.message
+                    : 'Không thể thêm thành viên',
             );
         } finally {
             setAdding(false);
@@ -1655,12 +1836,32 @@ function AddMembersModal({
                     </View>
 
                     {loading ? (
-                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <ActivityIndicator size="large" color={LOGIN_PRIMARY} />
+                        <View
+                            style={{
+                                flex: 1,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                            }}
+                        >
+                            <ActivityIndicator
+                                size="large"
+                                color={LOGIN_PRIMARY}
+                            />
                         </View>
                     ) : filteredFriends.length === 0 ? (
-                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>
+                        <View
+                            style={{
+                                flex: 1,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                            }}
+                        >
+                            <Text
+                                style={{
+                                    color: colors.textSecondary,
+                                    textAlign: 'center',
+                                }}
+                            >
                                 {friends.length === 0
                                     ? 'Không tìm thấy bạn bè nào.'
                                     : 'Tất cả bạn bè đã tham gia nhóm này.'}
@@ -1686,7 +1887,8 @@ function AddMembersModal({
                                             width: 40,
                                             height: 40,
                                             borderRadius: 20,
-                                            backgroundColor: colors.backgroundSecondary,
+                                            backgroundColor:
+                                                colors.backgroundSecondary,
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             marginRight: 12,
@@ -1695,7 +1897,11 @@ function AddMembersModal({
                                     >
                                         {item.avatarUrl ? (
                                             <Image
-                                                source={{ uri: toAbsoluteUrl(item.avatarUrl) }}
+                                                source={{
+                                                    uri: toAbsoluteUrl(
+                                                        item.avatarUrl,
+                                                    ),
+                                                }}
                                                 style={{
                                                     width: '100%',
                                                     height: '100%',
@@ -1905,12 +2111,12 @@ function GroupManagementModalV2({
         setSettings((prev) => ({ ...prev, [key]: nextValue }));
 
         if (key === 'approveNewMembers') {
-            void chatApi.updateGroupJoinApproval(conversationId, nextValue).catch(
-                () => {
+            void chatApi
+                .updateGroupJoinApproval(conversationId, nextValue)
+                .catch(() => {
                     setSettings((prev) => ({ ...prev, [key]: !nextValue }));
                     Alert.alert('Không thể cập nhật', 'Vui lòng thử lại sau.');
-                },
-            );
+                });
         }
     };
 
@@ -1926,7 +2132,9 @@ function GroupManagementModalV2({
         } catch (error) {
             Alert.alert(
                 'Không tải được yêu cầu tham gia',
-                error instanceof Error ? error.message : 'Vui lòng thử lại sau.',
+                error instanceof Error
+                    ? error.message
+                    : 'Vui lòng thử lại sau.',
             );
         } finally {
             setLoadingRequests(false);
@@ -2244,13 +2452,7 @@ function GroupManagementModalV2({
     );
 }
 
-function HeaderBar({
-    title,
-    onBack,
-}: {
-    title: string;
-    onBack: () => void;
-}) {
+function HeaderBar({ title, onBack }: { title: string; onBack: () => void }) {
     const { colors } = useTheme();
     return (
         <View
@@ -2557,7 +2759,7 @@ function JoinRequestRow({
 }
 
 // Kept temporarily as a fallback for the member-only management view.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 function GroupManagementModal({
     visible,
     members,
@@ -2584,7 +2786,10 @@ function GroupManagementModal({
                 style={{
                     flex: 1,
                     backgroundColor: colors.background,
-                    paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 44 : 0),
+                    paddingTop: Math.max(
+                        insets.top,
+                        Platform.OS === 'ios' ? 44 : 0,
+                    ),
                     paddingBottom: insets.bottom,
                 }}
             >
@@ -2809,7 +3014,9 @@ function InfoRow({
                 color={colors.textSecondary}
             />
             <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.text, fontSize: 15 }}>{title}</Text>
+                <Text style={{ color: colors.text, fontSize: 15 }}>
+                    {title}
+                </Text>
                 {subtitle ? (
                     <Text
                         style={{
