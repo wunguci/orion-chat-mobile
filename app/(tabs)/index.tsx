@@ -31,63 +31,100 @@ import {
   getConversationsCache,
   saveConversationsToCache,
 } from "@/services/cache/chatCache";
+import {
+  chatSocketService,
+  SocketMessage,
+} from "@/services/websocket/chatSocket";
+import { formatTime } from "@/hooks/useChat";
 
 /**
  * Trích xuất text preview cho tin nhắn cuối cùng giống như trên Web
  */
+const getLastMessageSenderId = (lastMessage: any): string =>
+  String(
+    lastMessage?.senderId ||
+      lastMessage?.senderBy ||
+      lastMessage?.senderById ||
+      "",
+  ).trim();
+
+const getParticipantNameById = (
+  participants: ConversationResponse["participants"] | undefined,
+  senderId: string,
+): string | undefined =>
+  participants?.find((p) => String(p.userId).trim() === senderId)?.fullName;
+
 const getLastMessagePreview = (
   lastMessage: any,
   currentUserId?: string,
+  options?: {
+    isGroup?: boolean;
+    participants?: ConversationResponse["participants"];
+  },
 ): string => {
   if (!lastMessage) return "No messages yet";
 
-  const { content, senderId, messageType, type, isRecalled, callData } =
-    lastMessage;
+  const isGroup = !!options?.isGroup;
+  const senderId = getLastMessageSenderId(lastMessage);
+  const isMine = !!currentUserId && senderId === String(currentUserId).trim();
+
+  const senderName =
+    lastMessage.senderName ||
+    getParticipantNameById(options?.participants, senderId) ||
+    "Unknown";
+
+  const prefix = isGroup
+    ? `${isMine ? "Bạn" : senderName}: `
+    : isMine
+      ? "Bạn: "
+      : "";
+
+  const { content, messageType, type, isRecalled, callData } = lastMessage;
 
   if (isRecalled || content === "Tin nhắn đã được thu hồi") {
-    return "Tin nhắn đã được thu hồi";
+    return `${prefix}Tin nhắn đã được thu hồi`;
   }
 
   const typeStr = String(messageType || type || "").toUpperCase();
 
-  if (typeStr === "FILE") {
-    const isMe = !!currentUserId && senderId === currentUserId;
-    return `${isMe ? "You: " : ""}📎 File attached`;
-  }
-
-  if (typeStr === "IMAGE") {
-    const isMe = !!currentUserId && senderId === currentUserId;
-    return `${isMe ? "You: " : ""}📷 Image`;
-  }
-
-  if (typeStr === "VIDEO") {
-    const isMe = !!currentUserId && senderId === currentUserId;
-    return `${isMe ? "You: " : ""}🎥 Video`;
+  switch (typeStr) {
+    case "TEXT":
+      return prefix + (content || "No messages yet");
+    case "LINK":
+      return `${prefix}Đã gửi một liên kết`;
+    case "STICKER":
+      return `${prefix}Đã gửi một sticker`;
+    case "VOICE":
+      return `${prefix}Đã gửi một tin nhắn thoại`;
+    case "IMAGE":
+      return `${prefix}Hình ảnh`;
+    case "FILE":
+      return `${prefix}Tệp đính kèm`;
+    case "VIDEO":
+      return `${prefix}Video`;
   }
 
   if (typeStr === "CALL" || !!callData) {
-    const isMe = !!currentUserId && senderId === currentUserId;
     const callStatus = callData?.callStatus || "completed";
     const callType = callData?.callType || "audio";
     const callTypeLabel = callType === "video" ? "video" : "thoại";
 
     if (callStatus === "completed") {
-      return `Cuộc gọi ${callTypeLabel} ${isMe ? "đi" : "đến"}`;
+      return `${prefix}Cuộc gọi ${callTypeLabel} ${isMine ? "đi" : "đến"}`;
     }
     if (callStatus === "missed") {
-      return isMe ? "Bạn đã hủy" : "Cuộc gọi nhỡ";
+      return `${prefix}${isMine ? "Bạn đã hủy" : "Cuộc gọi nhỡ"}`;
     }
     if (callStatus === "declined") {
-      return isMe ? "Người nhận từ chối" : "Bạn đã từ chối";
+      return `${prefix}${isMine ? "Người nhận từ chối" : "Bạn đã từ chối"}`;
     }
     if (callStatus === "active") {
-      return "Cuộc gọi nhóm đang diễn ra";
+      return `${prefix}Cuộc gọi nhóm đang diễn ra`;
     }
-    return `Cuộc gọi ${callTypeLabel}`;
+    return `${prefix}Cuộc gọi ${callTypeLabel}`;
   }
 
-  const senderLabel = senderId === currentUserId ? "You: " : "";
-  return `${senderLabel}${content || "No messages yet"}`;
+  return `${prefix}${content || "No messages yet"}`;
 };
 
 /**
@@ -160,17 +197,30 @@ const convertConversationToChatItem = (
     }
   };
 
+  // Để sort last msg
+  const lastMessageAt =
+    lastMessage?.createdAt ||
+    lastMessage?.timestamp ||
+    conversation.createdAt ||
+    "";
+
   return {
     id: conversation.conversationId,
     name,
-    lastMessage: getLastMessagePreview(lastMessage, currentUserId),
+    lastMessage: getLastMessagePreview(lastMessage, currentUserId, {
+      isGroup,
+      participants: conversation.participants,
+    }),
     time: formatTime(lastMessage?.createdAt || lastMessage?.timestamp),
+    lastMessageAt,
     unread: unreadByConversation[conversation.conversationId] || 0,
     isGroup,
     isMuted: conversation.myIsHidden || false,
     isPinned: conversation.myIsPinned || false,
     pinnedAt: conversation.myPinnedAt || undefined,
-    isSentByMe: !!currentUserId && lastMessage?.senderId === currentUserId,
+    isSentByMe:
+      !!currentUserId &&
+      getLastMessageSenderId(lastMessage) === String(currentUserId).trim(),
     isRead: true,
     avatarUri,
     avatarUris,
@@ -179,6 +229,29 @@ const convertConversationToChatItem = (
       .map((p: any) => p.userId)
       .filter(Boolean),
   };
+};
+
+/**
+ * Sort ChatItem theo lastMessageAt (mới nhất trước), ghim lên đầu. Nếu cùng ghim thì sort theo pinnedAt.
+ */
+const sortChatItems = (items: ChatItem[]) => {
+  return [...items].sort((a, b) => {
+    if (!!a.isPinned !== !!b.isPinned) {
+      return a.isPinned ? -1 : 1;
+    }
+
+    if (a.isPinned && b.isPinned) {
+      return (
+        new Date(b.pinnedAt || 0).getTime() -
+        new Date(a.pinnedAt || 0).getTime()
+      );
+    }
+
+    const timeA = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+    const timeB = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+
+    return timeB - timeA;
+  });
 };
 
 /**
@@ -197,30 +270,16 @@ const buildSortedChatItems = (
     }
   });
 
-  return Array.from(uniqueConversations.values())
-    .map((conversation) =>
+  const chatItems = Array.from(uniqueConversations.values()).map(
+    (conversation) =>
       convertConversationToChatItem(
         conversation,
         currentUserId,
         unreadByConversation,
       ),
-    )
-    .sort((a, b) => {
-      if (!!a.isPinned !== !!b.isPinned) {
-        return a.isPinned ? -1 : 1;
-      }
+  );
 
-      if (a.isPinned && b.isPinned) {
-        return (
-          new Date(b.pinnedAt || 0).getTime() -
-          new Date(a.pinnedAt || 0).getTime()
-        );
-      }
-
-      const timeA = a.time ? new Date(a.time).getTime() : 0;
-      const timeB = b.time ? new Date(b.time).getTime() : 0;
-      return timeB - timeA;
-    });
+  return sortChatItems(chatItems);
 };
 
 export default function ChatsScreen() {
@@ -377,6 +436,61 @@ export default function ChatsScreen() {
     }, [authState.user?.userId, loadConversations]),
   );
 
+  // Listen real-time updates từ WebSocket
+  useEffect(() => {
+    if (!authState.user?.userId) return;
+
+    const handleAnyMessage = (socketMsg: SocketMessage) => {
+      const msg = socketMsg.message;
+      const messageTime = msg.createdAt || new Date().toISOString();
+
+      setConversations((prev) => {
+        const exists = prev.some(
+          (item) => item.id === socketMsg.conversationId,
+        );
+
+        if (!exists) {
+          void loadConversations();
+          return prev;
+        }
+
+        return sortChatItems(
+          prev.map((item) =>
+            item.id === socketMsg.conversationId
+              ? {
+                  ...item,
+                  lastMessage: getLastMessagePreview(
+                    {
+                      content: msg.content,
+                      createdAt: messageTime,
+                      senderId: msg.senderBy,
+                      senderName: msg.senderName,
+                      messageType: msg.messageType,
+                      messageStatus: msg.messageStatus,
+                      callData: msg.callData,
+                    },
+                    authState.user?.userId,
+                    {
+                      isGroup: item.isGroup,
+                    },
+                  ),
+                  time: formatTime(messageTime),
+                  lastMessageAt: messageTime,
+                  isSentByMe: msg.senderBy === authState.user?.userId,
+                }
+              : item,
+          ),
+        );
+      });
+    };
+
+    chatSocketService.onAnyMessage(handleAnyMessage);
+
+    return () => {
+      chatSocketService.offAnyMessage(handleAnyMessage);
+    };
+  }, [authState.user?.userId, loadConversations]);
+
   const filteredChats = useMemo(() => {
     let list = conversations;
 
@@ -402,8 +516,8 @@ export default function ChatsScreen() {
       const nextPinnedAt = nextPinned ? new Date().toISOString() : undefined;
 
       setConversations((prev) =>
-        prev
-          .map((conversation) =>
+        sortChatItems(
+          prev.map((conversation) =>
             conversation.id === item.id
               ? {
                   ...conversation,
@@ -411,19 +525,8 @@ export default function ChatsScreen() {
                   pinnedAt: nextPinnedAt,
                 }
               : conversation,
-          )
-          .sort((a, b) => {
-            if (!!a.isPinned !== !!b.isPinned) {
-              return a.isPinned ? -1 : 1;
-            }
-            if (a.isPinned && b.isPinned) {
-              return (
-                new Date(b.pinnedAt || 0).getTime() -
-                new Date(a.pinnedAt || 0).getTime()
-              );
-            }
-            return 0;
-          }),
+          ),
+        ),
       );
 
       try {

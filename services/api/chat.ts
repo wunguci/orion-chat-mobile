@@ -94,6 +94,7 @@ export interface ConversationResponse {
     createdAt?: string;
     senderId?: string;
     senderBy?: string;
+    senderName?: string;
     messageType?: string;
     messageStatus?: string;
   };

@@ -68,6 +68,8 @@ class ChatSocketService {
   private deleteListeners: Map<string, (data: any) => void> = new Map();
   private conversationDeletedListeners: Set<(data: any) => void> = new Set();
   private connectedListeners: Set<() => void> = new Set();
+  private globalMessageListeners: Set<(message: SocketMessage) => void> =
+    new Set();
 
   /**
    * Khởi tạo WebSocket connection
@@ -259,6 +261,8 @@ class ChatSocketService {
         // );
         callback(data);
       }
+
+      this.globalMessageListeners.forEach((listener) => listener(data));
     });
 
     // Listen ACK từ server (xác nhận tin nhắn được lưu)
@@ -727,6 +731,14 @@ class ChatSocketService {
     //   conversationId,
     // );
     this.messageListeners.set(conversationId, callback);
+  }
+
+  onAnyMessage(callback: (message: SocketMessage) => void): void {
+    this.globalMessageListeners.add(callback);
+  }
+
+  offAnyMessage(callback: (message: SocketMessage) => void): void {
+    this.globalMessageListeners.delete(callback);
   }
 
   onConnected(callback: () => void): void {

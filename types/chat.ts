@@ -3,6 +3,7 @@ export type ChatItem = {
   name: string;
   lastMessage: string;
   time: string;
+  lastMessageAt?: string;
   unread: number;
   isGroup: boolean;
   isMuted: boolean;
