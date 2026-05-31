@@ -5,7 +5,7 @@ import {
   useCameraPermissions,
 } from "expo-camera";
 import { useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Linking,
@@ -23,8 +23,29 @@ function extractQrLoginToken(rawValue: string) {
   if (!value) return "";
 
   try {
+    const json = JSON.parse(value) as {
+      token?: unknown;
+      qrToken?: unknown;
+      qrData?: unknown;
+    };
+    const jsonToken =
+      typeof json.qrToken === "string"
+        ? json.qrToken
+        : typeof json.token === "string"
+          ? json.token
+          : typeof json.qrData === "string"
+            ? extractQrLoginToken(json.qrData)
+            : "";
+
+    if (jsonToken) return jsonToken;
+  } catch {
+    // Not JSON, continue with URL/plain token parsing.
+  }
+
+  try {
     const url = new URL(value);
-    const token = url.searchParams.get("token") || url.searchParams.get("qrToken");
+    const token =
+      url.searchParams.get("token") || url.searchParams.get("qrToken");
     if (
       token &&
       (url.protocol === "orionchatmobile:" ||
@@ -32,6 +53,14 @@ function extractQrLoginToken(rawValue: string) {
         url.hostname.includes("qr-login"))
     ) {
       return token;
+    }
+
+    if (
+      url.protocol === "orionchatmobile:" &&
+      url.hostname.includes("qr-login")
+    ) {
+      const pathToken = url.pathname.replace(/^\//, "");
+      if (pathToken) return decodeURIComponent(pathToken);
     }
   } catch {
     // Plain token fallback for development QR values.
@@ -46,11 +75,11 @@ export default function QrScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
 
-  const handleBarcodeScanned = useCallback(
-    (result: BarcodeScanningResult) => {
+  const processScannedValue = useCallback(
+    (rawValue: string) => {
       if (scanned) return;
 
-      const token = extractQrLoginToken(result.data || "");
+      const token = extractQrLoginToken(rawValue || "");
       if (!token) {
         setScanned(true);
         Alert.alert(
@@ -66,6 +95,40 @@ export default function QrScanScreen() {
     },
     [router, scanned],
   );
+
+  const handleBarcodeScanned = useCallback(
+    (result: BarcodeScanningResult) => {
+      processScannedValue(result.data || result.raw || "");
+    },
+    [processScannedValue],
+  );
+
+  useEffect(() => {
+    const subscription = CameraView.onModernBarcodeScanned((result) => {
+      processScannedValue(result.data || result.raw || "");
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [processScannedValue]);
+
+  const openSystemScanner = useCallback(async () => {
+    if (scanned) return;
+
+    try {
+      await CameraView.launchScanner({
+        barcodeTypes: ["qr"],
+        isGuidanceEnabled: true,
+        isHighlightingEnabled: true,
+      });
+    } catch (error) {
+      Alert.alert(
+        "KhÃ´ng thá»ƒ má»Ÿ trÃ¬nh quÃ©t",
+        error instanceof Error ? error.message : "Vui lÃ²ng thá»­ láº¡i.",
+      );
+    }
+  }, [scanned]);
 
   const openSettings = () => {
     void Linking.openSettings();
@@ -148,8 +211,15 @@ export default function QrScanScreen() {
       <CameraView
         style={{ flex: 1 }}
         facing="back"
+        autofocus="on"
         barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
         onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+        onMountError={(error) => {
+          Alert.alert(
+            "KhÃ´ng thá»ƒ má»Ÿ camera",
+            error.message || "Vui lÃ²ng kiá»ƒm tra quyá»n camera.",
+          );
+        }}
       />
 
       <View
@@ -242,6 +312,22 @@ export default function QrScanScreen() {
           Sau khi quét, bạn sẽ xác nhận để đăng nhập web bằng tài khoản mobile
           này.
         </Text>
+        <TouchableOpacity
+          onPress={openSystemScanner}
+          activeOpacity={0.8}
+          style={{
+            marginTop: 12,
+            minHeight: 40,
+            borderRadius: 20,
+            backgroundColor: PRIMARY,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ color: "#fff", fontSize: 13, fontWeight: "800" }}>
+            Má»Ÿ trÃ¬nh quÃ©t QR há»‡ thá»‘ng
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
