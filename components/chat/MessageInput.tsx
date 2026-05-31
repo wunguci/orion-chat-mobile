@@ -286,12 +286,12 @@ export default function MessageInput({
                 }}
               >
                 {isRewriting ? (
-                  <ActivityIndicator size="small" color="#00B14F" />
+                  <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
                   <Ionicons
                     name="color-wand-outline"
                     size={18}
-                    color="#00B14F"
+                    color={colors.primary}
                   />
                 )}
               </TouchableOpacity>
@@ -307,7 +307,7 @@ export default function MessageInput({
                   height: 36,
                   borderRadius: 18,
                   backgroundColor:
-                    isRewriting || disabled ? colors.border : "#00B14F",
+                    isRewriting || disabled ? colors.border : colors.primary,
                   alignItems: "center",
                   justifyContent: "center",
                   marginBottom: 2,

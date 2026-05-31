@@ -14,9 +14,6 @@ const TABS: { key: ChatTab; label: string }[] = [
     { key: 'unread', label: 'Chưa đọc' },
 ];
 
-// Zalo-like green active color
-const ACTIVE_COLOR = '#00B14F';
-
 export default function ChatTabFilter({
     activeTab,
     onTabChange,
@@ -42,7 +39,7 @@ export default function ChatTabFilter({
                             paddingHorizontal: 20,
                             paddingVertical: 12,
                             borderBottomWidth: isActive ? 2 : 0,
-                            borderBottomColor: ACTIVE_COLOR,
+                            borderBottomColor: colors.primary,
                         }}
                     >
                         <Text
@@ -50,7 +47,7 @@ export default function ChatTabFilter({
                                 fontSize: 15,
                                 fontWeight: isActive ? '700' : '400',
                                 color: isActive
-                                    ? ACTIVE_COLOR
+                                    ? colors.primary
                                     : colors.textSecondary,
                             }}
                         >

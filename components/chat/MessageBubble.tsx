@@ -29,6 +29,8 @@ const HIGHLIGHT_BORDER_COLOR = "rgba(0, 177, 79, 0.28)";
 
 // ── Status checkmarks ────────────────────────────────────────
 function MessageStatus({ status }: { status?: Message["status"] }) {
+  const { colors } = useTheme();
+
   if (!status) return null;
   if (status === "sending") {
     return (
@@ -41,7 +43,11 @@ function MessageStatus({ status }: { status?: Message["status"] }) {
   }
   if (status === "read") {
     return (
-      <MaterialCommunityIcons name="check-all" size={14} color="#00B14F" />
+      <MaterialCommunityIcons
+        name="check-all"
+        size={14}
+        color={colors.primary}
+      />
     );
   }
   return (
@@ -1190,13 +1196,13 @@ function CallBubble({
     return (
       <View
         style={{
-          backgroundColor: "#EDE9FE", // Light purple
+          backgroundColor: colors.primaryLight,
           borderWidth: 1,
-          borderColor: isHighlighted ? HIGHLIGHT_BORDER_COLOR : "#8B5CF6",
+          borderColor: isHighlighted ? HIGHLIGHT_BORDER_COLOR : colors.primary,
           borderRadius: 16,
           padding: 14,
           width: 240,
-          shadowColor: "#8B5CF6",
+          shadowColor: colors.primary,
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.1,
           shadowRadius: 4,
@@ -1216,7 +1222,7 @@ function CallBubble({
               width: 38,
               height: 38,
               borderRadius: 19,
-              backgroundColor: "#8B5CF6",
+              backgroundColor: colors.primary,
               justifyContent: "center",
               alignItems: "center",
             }}
@@ -1244,11 +1250,15 @@ function CallBubble({
                   width: 8,
                   height: 8,
                   borderRadius: 4,
-                  backgroundColor: "#10B981", // Green
+                  backgroundColor: colors.success,
                 }}
               />
               <Text
-                style={{ color: "#6D28D9", fontSize: 12, fontWeight: "600" }}
+                style={{
+                  color: colors.primaryDark,
+                  fontSize: 12,
+                  fontWeight: "600",
+                }}
               >
                 Đang diễn ra...
               </Text>
@@ -1260,7 +1270,7 @@ function CallBubble({
           onPress={handleJoin}
           activeOpacity={0.8}
           style={{
-            backgroundColor: "#8B5CF6",
+            backgroundColor: colors.primary,
             borderRadius: 10,
             paddingVertical: 8,
             alignItems: "center",
@@ -1278,7 +1288,7 @@ function CallBubble({
     );
   }
 
-  let cardBg = isMe ? "#00B14F" : colors.backgroundSecondary;
+  let cardBg = isMe ? colors.chatBubbleSent : colors.backgroundSecondary;
   let titleColor = isMe ? "#FFFFFF" : colors.text;
   let descColor = isMe ? "rgba(255, 255, 255, 0.8)" : colors.textSecondary;
   let iconBg = "";
@@ -1291,7 +1301,7 @@ function CallBubble({
     titleText = "Cuộc gọi nhóm";
     if (callStatus === "completed") {
       statusText = `Đã kết thúc · ${formatDurationText(duration)}`;
-      iconColor = isMe ? "#FFFFFF" : "#10B981";
+      iconColor = isMe ? "#FFFFFF" : colors.success;
       iconBg = isMe ? "rgba(255, 255, 255, 0.25)" : "#E6F4EA";
     } else {
       statusText = "Đã kết thúc";
@@ -1304,7 +1314,7 @@ function CallBubble({
     if (callStatus === "completed") {
       titleText = `Cuộc gọi ${isVideo ? "video" : "thoại"} ${isMe ? "đi" : "đến"}`;
       statusText = formatDurationText(duration);
-      iconColor = isMe ? "#FFFFFF" : "#10B981";
+      iconColor = isMe ? "#FFFFFF" : colors.success;
       iconBg = isMe ? "rgba(255, 255, 255, 0.25)" : "#E6F4EA";
     } else if (callStatus === "missed") {
       titleText = isMe ? "Bạn đã hủy" : "Bạn bị nhỡ";
@@ -1467,7 +1477,6 @@ interface MessageBubbleProps {
   onImagePress?: (message: Message) => void;
 }
 
-const SENT_BG = "#00B14F";
 const SENT_TEXT = "#FFFFFF";
 
 export default function MessageBubble({
@@ -1486,6 +1495,7 @@ export default function MessageBubble({
 
   const receivedBg = colors.backgroundSecondary;
   const receivedText = colors.text;
+  const sentBg = colors.chatBubbleSent || colors.primary;
 
   const messageType = String(message.type || "").toUpperCase();
   if (messageType === "SYSTEM") {
@@ -1594,7 +1604,7 @@ export default function MessageBubble({
         return (
           <TextBubble
             message={message}
-            bubbleBg={message.isMine ? SENT_BG : receivedBg}
+            bubbleBg={message.isMine ? sentBg : receivedBg}
             textColor={message.isMine ? SENT_TEXT : receivedText}
             onReplyPreviewPress={onReplyPreviewPress}
             isHighlighted={isHighlighted}

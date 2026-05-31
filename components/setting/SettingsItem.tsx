@@ -48,11 +48,17 @@ export default function SettingsItem({
           <View className="flex-1 flex-row items-center">
             {icon && <View className="mr-3">{icon}</View>}
             <View className="ml-3 flex-1">
-              <Text className="text-base font-semibold text-gray-primary">
+              <Text
+                className="text-base font-semibold"
+                style={{ color: colors.text }}
+              >
                 {title}
               </Text>
               {subtitle && (
-                <Text className="mt-0.5 text-xs text-gray-secondary">
+                <Text
+                  className="mt-0.5 text-xs"
+                  style={{ color: colors.textSecondary }}
+                >
                   {subtitle}
                 </Text>
               )}
@@ -60,13 +66,14 @@ export default function SettingsItem({
           </View>
           <View className="flex-row items-center gap-3">
             <View className="flex-row items-center gap-1">
-              <Text className="text-sm text-gray-secondary">
+              <Text className="text-sm" style={{ color: colors.textSecondary }}>
                 {ringtoneValue}
               </Text>
-              <ChevronDown size={16} color="#9CA3AF" />
+              <ChevronDown size={16} color={colors.textSecondary} />
             </View>
             <TouchableOpacity
-              className="rounded-full bg-orange-primary p-2"
+              className="rounded-full p-2"
+              style={{ backgroundColor: colors.primary }}
               onPress={onPlayRingtone}
             >
               <Play size={16} color="white" fill="white" />
@@ -75,27 +82,39 @@ export default function SettingsItem({
         </TouchableOpacity>
 
         {dropdownOpen && (
-          <View className="border-t border-gray-100 bg-gray-50">
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderTopColor: colors.border,
+              backgroundColor: colors.backgroundSecondary,
+            }}
+          >
             {ringtoneOptions.map((option) => (
               <TouchableOpacity
                 key={option}
-                className="flex-row items-center justify-between border-b border-gray-100 px-4 py-3 last:border-b-0"
+                className="flex-row items-center justify-between px-4 py-3"
+                style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
                 onPress={() => {
                   onRingtoneChange?.(option);
                   setDropdownOpen(false);
                 }}
               >
                 <Text
-                  className={
-                    option === ringtoneValue
-                      ? "font-semibold text-gray-primary"
-                      : "text-gray-secondary"
-                  }
+                  className={option === ringtoneValue ? "font-semibold" : ""}
+                  style={{
+                    color:
+                      option === ringtoneValue
+                        ? colors.text
+                        : colors.textSecondary,
+                  }}
                 >
                   {option}
                 </Text>
                 {option === ringtoneValue && (
-                  <View className="h-2 w-2 rounded-full bg-orange-primary" />
+                  <View
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: colors.primary }}
+                  />
                 )}
               </TouchableOpacity>
             ))}
@@ -109,16 +128,23 @@ export default function SettingsItem({
     <TouchableOpacity
       onPress={onPress}
       disabled={isToggle || !onPress}
-      className="flex-row items-center justify-between border-b border-gray-100 bg-white px-5 py-4 gap-1"
+      className="flex-row items-center justify-between px-5 py-4 gap-1"
+      style={{
+        backgroundColor: colors.card,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+      }}
     >
       <View className="flex-1 flex-row items-center gap-2 shrink">
         {icon && <View className="mr-3">{icon}</View>}
         <View className="flex-1">
-          <Text className="text-base font-medium text-gray-primary">
+          <Text className="text-base font-medium" style={{ color: colors.text }}>
             {title}
           </Text>
           {subtitle && (
-            <Text className="mt-1 text-sm text-gray-secondary">{subtitle}</Text>
+            <Text className="mt-1 text-sm" style={{ color: colors.textSecondary }}>
+              {subtitle}
+            </Text>
           )}
         </View>
       </View>

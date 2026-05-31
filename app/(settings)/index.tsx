@@ -61,15 +61,27 @@ export default function Setting() {
   };
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1" style={{ backgroundColor: colors.background }}>
       {/* Header */}
-      <View className="border-b border-gray-200 bg-white px-4 pb-4 pt-4">
-        <Text className="text-2xl font-bold text-orange-primary">Cài đặt</Text>
+      <View
+        className="px-4 pb-4 pt-4"
+        style={{
+          backgroundColor: colors.card,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        }}
+      >
+        <Text className="text-2xl font-bold" style={{ color: colors.primary }}>
+          Cài đặt
+        </Text>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Profile Section */}
-        <View className="mt-4 bg-white px-4 py-6">
+        <View
+          className="mt-4 px-4 py-6"
+          style={{ backgroundColor: colors.card }}
+        >
           <TouchableOpacity
             className="flex-row items-center"
             onPress={() => router.push("/(settings)/profile")}
@@ -79,11 +91,15 @@ export default function Setting() {
               className="h-16 w-16 rounded-full"
             />
             <View className="ml-4 flex-1">
-              <Text className="text-lg font-semibold text-gray-800">
+              <Text className="text-lg font-semibold" style={{ color: colors.text }}>
                 {user.name}
               </Text>
-              <Text className="mt-1 text-sm text-gray-500">{user.email}</Text>
-              <Text className="mt-0.5 text-sm text-gray-500">{user.phone}</Text>
+              <Text className="mt-1 text-sm" style={{ color: colors.textSecondary }}>
+                {user.email}
+              </Text>
+              <Text className="mt-0.5 text-sm" style={{ color: colors.textSecondary }}>
+                {user.phone}
+              </Text>
             </View>
             <ChevronRight size={24} color={colors.graySecondary} />
           </TouchableOpacity>
@@ -93,7 +109,7 @@ export default function Setting() {
         <SettingsSection title="Cài đặt Chung">
           <View className="overflow-hidden rounded-lg">
             <SettingsItem
-              icon={<User size={24} color={colors.orangePrimary} />}
+              icon={<User size={24} color={colors.primary} />}
               title="Thông tin cá nhân"
               subtitle="Chỉnh sửa thông tin của bạn"
               onPress={() => router.push("/(settings)/profile-settings")}
@@ -102,13 +118,13 @@ export default function Setting() {
             <SettingsItem
               title="Bảo mật & Quyền riêng tư"
               subtitle="Cập nhật mức độ bảo mật và quyền riêng tư"
-              icon={<Shield size={24} color={colors.orangePrimary} />}
+              icon={<Shield size={24} color={colors.primary} />}
               onPress={() => {
                 navigate("/(settings)/privacy-security");
               }}
             />
             <SettingsItem
-              icon={<Bell size={24} color={colors.orangePrimary} />}
+              icon={<Bell size={24} color={colors.primary} />}
               title="Thông báo"
               subtitle="Cập nhật cài đặt thông báo của bạn"
               onPress={() => {
@@ -117,7 +133,7 @@ export default function Setting() {
             />
 
             <SettingsItem
-              icon={<Smartphone size={24} color={colors.orangePrimary} />}
+              icon={<Smartphone size={24} color={colors.primary} />}
               title="Thiết bị đã đăng nhập"
               subtitle="Quản lý các thiết bị đã đăng nhập vào tài khoản"
               onPress={() => {
@@ -139,7 +155,7 @@ export default function Setting() {
         <SettingsSection title="Giao diện">
           <View className="overflow-hidden rounded-lg">
             <SettingsItem
-              icon={<Moon size={24} color={colors.orangePrimary} />}
+              icon={<Moon size={24} color={colors.primary} />}
               title="Chế độ tối"
               subtitle="Bật/tắt giao diện tối"
               toggleValue={darkMode}
@@ -147,7 +163,7 @@ export default function Setting() {
               showChevron={false}
             />
             <SettingsItem
-              icon={<Palette size={24} color={colors.orangePrimary} />}
+              icon={<Palette size={24} color={colors.primary} />}
               title="Chủ đề"
               subtitle="Tùy chỉnh màu sắc giao diện"
               onPress={() => {
@@ -161,7 +177,7 @@ export default function Setting() {
         <SettingsSection title="Hỗ trợ">
           <View className="overflow-hidden rounded-lg">
             <SettingsItem
-              icon={<HelpCircle size={24} color={colors.orangePrimary} />}
+              icon={<HelpCircle size={24} color={colors.primary} />}
               title="Trung tâm trợ giúp"
               subtitle="Câu hỏi thường gặp và hướng dẫn"
               onPress={() => {
@@ -169,7 +185,7 @@ export default function Setting() {
               }}
             />
             <SettingsItem
-              icon={<HelpCircle size={24} color={colors.orangePrimary} />}
+              icon={<HelpCircle size={24} color={colors.primary} />}
               title="Về ứng dụng"
               subtitle="Phiên bản 1.0.0"
               onPress={() => {

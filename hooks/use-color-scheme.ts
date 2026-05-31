@@ -1,5 +1,6 @@
-import type { ColorSchemeName } from 'react-native';
+import { useAppearance } from "@/context/AppearanceContext";
 
 export function useColorScheme() {
-  return 'light' as ColorSchemeName;
+  const { colorScheme } = useAppearance();
+  return colorScheme;
 }

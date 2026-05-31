@@ -15,6 +15,7 @@ interface VisibilitySelectorProps {
 }
 
 function VisibilitySelector({ value, onChange }: VisibilitySelectorProps) {
+  const colors = useThemeColors();
   const options: { key: VisibilityOption; label: string }[] = [
     { key: "everyone", label: "Everyone" },
     { key: "contacts", label: "My Contacts" },
@@ -27,21 +28,30 @@ function VisibilitySelector({ value, onChange }: VisibilitySelectorProps) {
         <TouchableOpacity
           key={option.key}
           onPress={() => onChange(option.key)}
-          className={`flex-1 items-center rounded-2xl border-2 py-4 ${
-            value === option.key
-              ? "border-orange-primary bg-orange-50"
-              : "border-orange-border-light bg-white justify-center"
-          }`}
+          className="flex-1 items-center rounded-2xl py-4"
+          style={{
+            borderWidth: 2,
+            borderColor:
+              value === option.key ? colors.primary : colors.border,
+            backgroundColor:
+              value === option.key ? colors.primaryLight : colors.card,
+            justifyContent: value === option.key ? undefined : "center",
+          }}
         >
           {value === option.key && (
-            <View className="mb-2 h-6 w-6 items-center justify-center rounded-full bg-orange-primary">
+            <View
+              className="mb-2 h-6 w-6 items-center justify-center rounded-full"
+              style={{ backgroundColor: colors.primary }}
+            >
               <Check size={16} color="white" strokeWidth={3} />
             </View>
           )}
           <Text
-            className={`text-base font-medium ${
-              value === option.key ? "text-gray-primary" : "text-gray-600"
-            }`}
+            className="text-base font-medium"
+            style={{
+              color:
+                value === option.key ? colors.text : colors.textSecondary,
+            }}
           >
             {option.label}
           </Text>
@@ -62,15 +72,18 @@ export default function PrivacySecurity() {
   const [readReceipts, setReadReceipts] = useState(true);
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView
+      className="flex-1"
+      style={{ backgroundColor: colors.background }}
+    >
       {/* Content */}
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Title Section */}
         <View className="px-4 pb-4 pt-6">
-          <Text className="text-2xl font-bold text-gray-primary">
+          <Text className="text-2xl font-bold" style={{ color: colors.text }}>
             Privacy & Security
           </Text>
-          <Text className="mt-1 text-base text-gray-secondary">
+          <Text className="mt-1 text-base" style={{ color: colors.textSecondary }}>
             Manage who can see your info
           </Text>
         </View>
@@ -79,7 +92,7 @@ export default function PrivacySecurity() {
         <SettingsSection title="WHO CAN SEE MY INFO">
           {/* Last seen visibility */}
           <View className="mb-6">
-            <Text className="mb-3 text-base font-semibold text-gray-primary">
+            <Text className="mb-3 text-base font-semibold" style={{ color: colors.text }}>
               Last seen visibility
             </Text>
             <VisibilitySelector
@@ -90,7 +103,7 @@ export default function PrivacySecurity() {
 
           {/* Profile Photo */}
           <View className="mb-6">
-            <Text className="mb-3 text-base font-semibold text-gray-primary">
+            <Text className="mb-3 text-base font-semibold" style={{ color: colors.text }}>
               Profile Photo
             </Text>
             <VisibilitySelector
@@ -101,7 +114,7 @@ export default function PrivacySecurity() {
 
           {/* About info */}
           <View className="mb-6">
-            <Text className="mb-3 text-base font-semibold text-gray-primary">
+            <Text className="mb-3 text-base font-semibold" style={{ color: colors.text }}>
               About info
             </Text>
             <VisibilitySelector
@@ -113,18 +126,25 @@ export default function PrivacySecurity() {
 
         {/* MESSAGE & SAFETY Section */}
         <View className="mt-6 px-4">
-          <Text className="mb-4 text-[18px] font-semibold uppercase tracking-wider text-gray-secondary">
+          <Text className="mb-4 text-[18px] font-semibold uppercase tracking-wider" style={{ color: colors.textSecondary }}>
             MESSAGE & SAFETY
           </Text>
 
           {/* Read Receipts */}
-          <View className="mb-4 rounded-2xl bg-white border border-orange-border-light p-4">
+          <View
+            className="mb-4 rounded-2xl p-4"
+            style={{
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
             <View className="flex-row items-center justify-between">
               <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-primary">
+                <Text className="text-base font-semibold" style={{ color: colors.text }}>
                   Read Receipts
                 </Text>
-                <Text className="mt-1 text-sm leading-5 text-gray-primary">
+                <Text className="mt-1 text-sm leading-5" style={{ color: colors.textSecondary }}>
                   If turned off, you will not send or receive Read Receipts.
                   Read receipts are always sent for group chats
                 </Text>
@@ -139,39 +159,62 @@ export default function PrivacySecurity() {
           </View>
 
           {/* Blocked Contacts */}
-          <TouchableOpacity className="mb-4 flex-row items-center justify-between rounded-2xl border border-orange-border-light bg-white p-4">
+          <TouchableOpacity
+            className="mb-4 flex-row items-center justify-between rounded-2xl p-4"
+            style={{
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
             <View className="flex-row items-center">
-              <View className="mr-4 h-12 w-12 items-center justify-center rounded-full bg-orange-100">
-                <Ban size={20} color={colors.orangePrimary}></Ban>
+              <View
+                className="mr-4 h-12 w-12 items-center justify-center rounded-full"
+                style={{ backgroundColor: colors.primaryLight }}
+              >
+                <Ban size={20} color={colors.primary}></Ban>
               </View>
               <View>
-                <Text className="text-base font-semibold text-gray-primary">
+                <Text className="text-base font-semibold" style={{ color: colors.text }}>
                   Blocked Contacts
                 </Text>
-                <Text className="mt-1 text-sm text-gray-secondary">
+                <Text className="mt-1 text-sm" style={{ color: colors.textSecondary }}>
                   14 contacts blocked
                 </Text>
               </View>
             </View>
-            <ChevronRight size={24} className="text-orange-primary" />
+            <ChevronRight size={24} color={colors.primary} />
           </TouchableOpacity>
 
           {/* Two-step Verification */}
-          <View className="mb-6 flex-row items-center justify-between rounded-2xl border border-orange-border-light bg-white p-4">
+          <View
+            className="mb-6 flex-row items-center justify-between rounded-2xl p-4"
+            style={{
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
             <View className="flex-row items-center shrink">
-              <View className="mr-4 h-12 w-12 items-center justify-center rounded-full bg-orange-100">
-                <Shield size={20} color={colors.orangePrimary} />
+              <View
+                className="mr-4 h-12 w-12 items-center justify-center rounded-full"
+                style={{ backgroundColor: colors.primaryLight }}
+              >
+                <Shield size={20} color={colors.primary} />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-primary">
+                <Text className="text-base font-semibold" style={{ color: colors.text }}>
                   Two-step Verification
                 </Text>
-                <Text className="mt-1 text-sm text-gray-primary">
+                <Text className="mt-1 text-sm" style={{ color: colors.textSecondary }}>
                   Add extra security to your account
                 </Text>
               </View>
             </View>
-            <TouchableOpacity className="ml-auto rounded-full bg-orange-primary px-6 py-3">
+            <TouchableOpacity
+              className="ml-auto rounded-full px-6 py-3"
+              style={{ backgroundColor: colors.primary }}
+            >
               <Text className="text-base font-semibold text-white">Enable</Text>
             </TouchableOpacity>
           </View>

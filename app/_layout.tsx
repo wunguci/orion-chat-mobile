@@ -17,6 +17,7 @@ import { NotificationProvider } from '@/context/NotificationContext';
 import { GroupCallProvider } from '@/context/GroupCallContext';
 import { StreamVideoProvider } from '@/context/StreamVideoContext';
 import { SlideMenuProvider } from '@/context/SlideMenuContext';
+import { AppearanceProvider, useAppearance } from '@/context/AppearanceContext';
 import { useSessionConflictListener } from '@/hooks/useSessionConflictListener';
 import { useAuth } from '@/hooks/useAuth';
 import IncomingGroupCallModal from '@/components/call/IncomingGroupCallModal';
@@ -32,6 +33,7 @@ SplashScreen.preventAutoHideAsync();
 function RootLayoutContent() {
     const router = useRouter();
     const { state } = useAuth();
+    const { colors, colorScheme } = useAppearance();
     const isInitialMount = useRef(true);
     const wasAuthenticated = useRef(state.isAuthenticated);
 
@@ -64,7 +66,7 @@ function RootLayoutContent() {
             <Stack
                 screenOptions={{
                     headerShown: false,
-                    contentStyle: { backgroundColor: '#fff' },
+                    contentStyle: { backgroundColor: colors.background },
                 }}
             >
                 <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -99,7 +101,7 @@ function RootLayoutContent() {
                     options={{ presentation: 'modal', title: 'Modal' }}
                 />
             </Stack>
-            <StatusBar style="dark" />
+            <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
         </ThemeProvider>
     );
 }
@@ -140,10 +142,12 @@ export default function RootLayout() {
                             <CallProvider>
                                 <GroupCallProvider>
                                     <NotificationProvider>
-                                        <SlideMenuProvider>
-                                            <RootLayoutContent />
-                                            <IncomingGroupCallModal />
-                                        </SlideMenuProvider>
+                                        <AppearanceProvider>
+                                            <SlideMenuProvider>
+                                                <RootLayoutContent />
+                                                <IncomingGroupCallModal />
+                                            </SlideMenuProvider>
+                                        </AppearanceProvider>
                                     </NotificationProvider>
                                 </GroupCallProvider>
                             </CallProvider>

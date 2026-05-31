@@ -5,18 +5,25 @@ import {
 } from "@react-navigation/native";
 import { Menu } from "lucide-react-native";
 import React from "react";
-import { StyleSheet, TouchableOpacity } from "react-native";
-import { whColors } from "@/constants/tailwindColors";
+import { TouchableOpacity } from "react-native";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import CustomDrawerContent from "./CustomDrawerContent";
 
 function HamburgerButton({ onPress }: { onPress: () => void }) {
+  const colors = useThemeColors();
+
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={styles.hamburger}
+      style={{
+        marginLeft: 12,
+        padding: 4,
+        borderRadius: 8,
+        backgroundColor: colors.primaryLight,
+      }}
       activeOpacity={0.7}
     >
-      <Menu size={20} color={whColors.primary} strokeWidth={2} />
+      <Menu size={20} color={colors.primary} strokeWidth={2} />
     </TouchableOpacity>
   );
 }
@@ -38,6 +45,8 @@ function getMainTitle(route: any) {
 }
 
 export default function DrawerNavigator() {
+  const colors = useThemeColors();
+
   return (
     <Drawer
       initialRouteName="(main)"
@@ -46,16 +55,16 @@ export default function DrawerNavigator() {
         headerShown: true,
         headerShadowVisible: false,
         headerStyle: {
-          backgroundColor: whColors.bgLight,
+          backgroundColor: colors.card,
           borderBottomWidth: 1,
-          borderBottomColor: whColors.borderLight,
+          borderBottomColor: colors.border,
         },
         headerTitleStyle: {
-          color: whColors.textPrimary,
+          color: colors.text,
           fontWeight: "600",
           fontSize: 16,
         },
-        headerTintColor: whColors.primary,
+        headerTintColor: colors.primary,
         headerLeft: () => (
           <HamburgerButton
             onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
@@ -64,13 +73,13 @@ export default function DrawerNavigator() {
         drawerType: "slide",
         drawerPosition: "left",
         drawerStyle: {
-          backgroundColor: whColors.bgLight,
+          backgroundColor: colors.card,
           width: 260,
         },
-        overlayColor: "rgba(13, 148, 136, 0.16)",
+        overlayColor: `${colors.primary}29`,
         swipeEdgeWidth: 60,
         sceneStyle: {
-          backgroundColor: whColors.bgHeavy,
+          backgroundColor: colors.background,
         },
       })}
     >
@@ -132,12 +141,3 @@ export default function DrawerNavigator() {
     </Drawer>
   );
 }
-
-const styles = StyleSheet.create({
-  hamburger: {
-    marginLeft: 12,
-    padding: 4,
-    borderRadius: 8,
-    backgroundColor: whColors.bgHeavy,
-  },
-});

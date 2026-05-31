@@ -45,9 +45,11 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import { useFocusEffect } from "@react-navigation/native";
 
 export default function Friends() {
+  const colors = useThemeColors();
   const router = useRouter();
   const params = useLocalSearchParams<{ activeCategory?: string }>();
   const callContext = useContext(CallContext);
@@ -643,7 +645,10 @@ export default function Friends() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={[]}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      edges={[]}
+    >
       <View className="border-b border-gray-200 bg-white px-4 pb-4 pt-4 flex-row items-center justify-between">
         <Text className="text-2xl font-bold text-gray-primary">Friends</Text>
         <TouchableOpacity>
@@ -659,7 +664,7 @@ export default function Friends() {
             onRefresh={() => {
               void loadData(true);
             }}
-            colors={["#00B14F"]}
+            colors={[colors.primary]}
           />
         }
       >
@@ -690,7 +695,7 @@ export default function Friends() {
 
         {loading && (
           <View className="py-10 items-center">
-            <ActivityIndicator size="large" color="#00B14F" />
+            <ActivityIndicator size="large" color={colors.primary} />
           </View>
         )}
 
@@ -774,7 +779,7 @@ export default function Friends() {
                   onPress={() => void handleAddFriend(friend.id)}
                   className="bg-gray-light px-4 py-2 rounded-lg disabled:opacity-70"
                 >
-                  <Text className="text-green-primary font-semibold">
+                  <Text style={{ color: colors.primary, fontWeight: "600" }}>
                     {pendingSentRequestIds.has(friend.id)
                       ? "Da gui loi moi"
                       : "Add"}

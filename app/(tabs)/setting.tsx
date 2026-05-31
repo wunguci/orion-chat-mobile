@@ -30,7 +30,6 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useAuth, useAuthUser } from '../../hooks/useAuth';
 import { API_BASE_URL } from '../../services/api/profile';
 import { useSlideMenu } from '@/context/SlideMenuContext';
-import { whColors } from '@/constants/tailwindColors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const resolveImageUrl = (value: string | undefined, fallback: string) => {
@@ -89,7 +88,10 @@ export default function Setting() {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#f9fafb' }} edges={[]}>
+        <SafeAreaView
+            style={{ flex: 1, backgroundColor: colors.background }}
+            edges={[]}
+        >
             {/* Header with hamburger */}
             <View
                 style={{
@@ -98,9 +100,9 @@ export default function Setting() {
                     paddingHorizontal: 12,
                     paddingTop: insets.top + 12,
                     paddingBottom: 10,
-                    backgroundColor: '#fff',
+                    backgroundColor: colors.card,
                     borderBottomWidth: 0,
-                    borderBottomColor: whColors.borderLight,
+                    borderBottomColor: colors.border,
                 }}
             >
                 <TouchableOpacity
@@ -110,12 +112,12 @@ export default function Setting() {
                         width: 38,
                         height: 38,
                         borderRadius: 10,
-                        backgroundColor: whColors.bgHeavy,
+                        backgroundColor: colors.primaryLight,
                         alignItems: 'center',
                         justifyContent: 'center',
                     }}
                 >
-                    <Menu size={20} color={whColors.primary} strokeWidth={2.5} />
+                    <Menu size={20} color={colors.primary} strokeWidth={2.5} />
                 </TouchableOpacity>
                 <Text
                     style={{
@@ -123,7 +125,7 @@ export default function Setting() {
                         textAlign: 'center',
                         fontSize: 17,
                         fontWeight: '700',
-                        color: whColors.textPrimary,
+                        color: colors.text,
                     }}
                 >
                     Profile
@@ -133,14 +135,20 @@ export default function Setting() {
 
             <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
                 {/* Profile Section */}
-                <View className="mt-4 bg-white px-4 py-6">
+                <View
+                    className="mt-4 px-4 py-6"
+                    style={{ backgroundColor: colors.card }}
+                >
                     {loading ? (
                         <View className="flex-row items-center py-4">
                             <ActivityIndicator
                                 size="large"
-                                color={colors.orangePrimary}
+                                color={colors.primary}
                             />
-                            <Text className="ml-4 text-gray-600">
+                            <Text
+                                className="ml-4"
+                                style={{ color: colors.textSecondary }}
+                            >
                                 Loading profile...
                             </Text>
                         </View>
@@ -159,13 +167,22 @@ export default function Setting() {
                                 className="h-16 w-16 rounded-full bg-gray-300"
                             />
                             <View className="ml-4 flex-1">
-                                <Text className="text-lg font-semibold text-gray-800">
+                                <Text
+                                    className="text-lg font-semibold"
+                                    style={{ color: colors.text }}
+                                >
                                     {user?.fullName || 'User'}
                                 </Text>
-                                <Text className="mt-1 text-sm text-gray-500">
+                                <Text
+                                    className="mt-1 text-sm"
+                                    style={{ color: colors.textSecondary }}
+                                >
                                     {user?.email || 'No email'}
                                 </Text>
-                                <Text className="mt-0.5 text-sm text-gray-500">
+                                <Text
+                                    className="mt-0.5 text-sm"
+                                    style={{ color: colors.textSecondary }}
+                                >
                                     {user?.phoneNumber || 'No phone'}
                                 </Text>
                             </View>
@@ -182,7 +199,7 @@ export default function Setting() {
                     <View className="overflow-hidden rounded-lg">
                         <SettingsItem
                             icon={
-                                <User size={24} color={colors.orangePrimary} />
+                                <User size={24} color={colors.primary} />
                             }
                             title="Thông tin cá nhân"
                             subtitle="Chỉnh sửa thông tin của bạn"
@@ -195,7 +212,7 @@ export default function Setting() {
                             icon={
                                 <Shield
                                     size={24}
-                                    color={colors.orangePrimary}
+                                    color={colors.primary}
                                 />
                             }
                             onPress={() => {
@@ -204,7 +221,7 @@ export default function Setting() {
                         />
                         <SettingsItem
                             icon={
-                                <Bell size={24} color={colors.orangePrimary} />
+                                <Bell size={24} color={colors.primary} />
                             }
                             title="Thông báo"
                             subtitle="Cập nhật cài đặt thông báo của bạn"
@@ -217,7 +234,7 @@ export default function Setting() {
                             icon={
                                 <Smartphone
                                     size={24}
-                                    color={colors.orangePrimary}
+                                    color={colors.primary}
                                 />
                             }
                             title="Thiết bị đã đăng nhập"
@@ -247,7 +264,7 @@ export default function Setting() {
                     <View className="overflow-hidden rounded-lg">
                         <SettingsItem
                             icon={
-                                <Moon size={24} color={colors.orangePrimary} />
+                                <Moon size={24} color={colors.primary} />
                             }
                             title="Chế độ tối"
                             subtitle="Bật/tắt giao diện tối"
@@ -259,7 +276,7 @@ export default function Setting() {
                             icon={
                                 <Palette
                                     size={24}
-                                    color={colors.orangePrimary}
+                                    color={colors.primary}
                                 />
                             }
                             title="Chủ đề"
@@ -278,7 +295,7 @@ export default function Setting() {
                             icon={
                                 <HelpCircle
                                     size={24}
-                                    color={colors.orangePrimary}
+                                    color={colors.primary}
                                 />
                             }
                             title="Trung tâm trợ giúp"
@@ -291,7 +308,7 @@ export default function Setting() {
                             icon={
                                 <HelpCircle
                                     size={24}
-                                    color={colors.orangePrimary}
+                                    color={colors.primary}
                                 />
                             }
                             title="Về ứng dụng"

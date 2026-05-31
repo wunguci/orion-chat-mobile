@@ -23,8 +23,8 @@ import {
     Video,
     X,
 } from 'lucide-react-native';
-import { whColors } from '@/constants/tailwindColors';
 import { useAuthUser } from '@/hooks/useAuth';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { API_BASE_URL } from '@/services/api/profile';
 
 const DRAWER_WIDTH = 272;
@@ -132,22 +132,40 @@ function DrawerRow({
     isActive: boolean;
     onPress: () => void;
 }) {
+    const colors = useThemeColors();
+
     return (
         <TouchableOpacity
-            style={[styles.item, isActive && styles.itemActive]}
+            style={[
+                styles.item,
+                isActive && { backgroundColor: colors.primaryLight },
+            ]}
             onPress={onPress}
             activeOpacity={0.7}
         >
-            <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
+            <View
+                style={[
+                    styles.iconWrap,
+                    isActive && { backgroundColor: colors.backgroundSecondary },
+                ]}
+            >
                 {React.isValidElement<{ color?: string }>(icon)
                     ? React.cloneElement(icon, {
                           color: isActive
-                              ? whColors.primary
-                              : whColors.textSecondary,
+                              ? colors.primary
+                              : colors.textSecondary,
                       })
                     : icon}
             </View>
-            <Text style={[styles.itemLabel, isActive && styles.itemLabelActive]}>
+            <Text
+                style={[
+                    styles.itemLabel,
+                    {
+                        color: isActive ? colors.primaryDark : colors.textSecondary,
+                        fontWeight: isActive ? '700' : '500',
+                    },
+                ]}
+            >
                 {label}
             </Text>
         </TouchableOpacity>
@@ -165,6 +183,7 @@ function SlideMenuDrawer({
     const insets = useSafeAreaInsets();
     const pathname = usePathname();
     const { user, loading } = useAuthUser();
+    const colors = useThemeColors();
     const displayName = user?.fullName || user?.phoneNumber || 'User';
     const subtitle = user?.phoneNumber || user?.email || '';
     const avatarUri = resolveImageUrl(user?.avatarUrl);
@@ -222,7 +241,7 @@ function SlideMenuDrawer({
                     style={[
                         StyleSheet.absoluteFillObject,
                         {
-                            backgroundColor: 'rgba(13,148,136,0.18)',
+                            backgroundColor: `${colors.primary}2E`,
                             opacity: backdropOpacity,
                         },
                     ]}
@@ -235,17 +254,21 @@ function SlideMenuDrawer({
                     styles.drawer,
                     {
                         paddingTop: insets.top + 8,
+                        backgroundColor: colors.card,
                         transform: [{ translateX }],
                     },
                 ]}
             >
                 {/* Close button */}
                 <TouchableOpacity
-                    style={styles.closeBtn}
+                    style={[
+                        styles.closeBtn,
+                        { backgroundColor: colors.backgroundSecondary },
+                    ]}
                     onPress={onClose}
                     activeOpacity={0.7}
                 >
-                    <X size={18} color={whColors.textSecondary} />
+                    <X size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
 
                 {/* Profile header */}
@@ -254,31 +277,48 @@ function SlideMenuDrawer({
                     onPress={() => navigate('/(settings)/profile')}
                     activeOpacity={0.8}
                 >
-                    <View style={styles.avatar}>
+                    <View
+                        style={[
+                            styles.avatar,
+                            {
+                                backgroundColor: colors.primaryLight,
+                                borderColor: colors.primary,
+                            },
+                        ]}
+                    >
                         {avatarUri ? (
                             <Image
                                 source={{ uri: avatarUri }}
                                 style={styles.avatarImage}
                             />
                         ) : (
-                            <Text style={styles.avatarText}>
+                            <Text style={[styles.avatarText, { color: colors.primary }]}>
                                 {getInitials(displayName)}
                             </Text>
                         )}
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.userName} numberOfLines={1}>
+                        <Text
+                            style={[styles.userName, { color: colors.text }]}
+                            numberOfLines={1}
+                        >
                             {loading ? 'Loading...' : displayName}
                         </Text>
                         {!!subtitle && (
-                            <Text style={styles.userSub} numberOfLines={1}>
+                            <Text
+                                style={[
+                                    styles.userSub,
+                                    { color: colors.textSecondary },
+                                ]}
+                                numberOfLines={1}
+                            >
                                 {subtitle}
                             </Text>
                         )}
                     </View>
                 </TouchableOpacity>
 
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
                 {/* Main nav items */}
                 {MAIN_ITEMS.map((item) => (
@@ -291,8 +331,15 @@ function SlideMenuDrawer({
                     />
                 ))}
 
-                <View style={styles.divider} />
-                <Text style={styles.sectionLabel}>OTHER FEATURES</Text>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <Text
+                    style={[
+                        styles.sectionLabel,
+                        { color: colors.textSecondary },
+                    ]}
+                >
+                    OTHER FEATURES
+                </Text>
 
                 {EXTRA_ITEMS.map((item) => (
                     <DrawerRow
@@ -331,7 +378,6 @@ const styles = StyleSheet.create({
         top: 0,
         bottom: 0,
         width: DRAWER_WIDTH,
-        backgroundColor: whColors.bgLight,
         shadowColor: '#000',
         shadowOffset: { width: 4, height: 0 },
         shadowOpacity: 0.12,
@@ -344,7 +390,6 @@ const styles = StyleSheet.create({
         right: 12,
         padding: 8,
         borderRadius: 20,
-        backgroundColor: whColors.bgHeavy,
         zIndex: 10,
     },
     header: {
@@ -359,9 +404,7 @@ const styles = StyleSheet.create({
         width: 46,
         height: 46,
         borderRadius: 23,
-        backgroundColor: whColors.bgMedium,
         borderWidth: 2,
-        borderColor: whColors.primary,
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
@@ -371,29 +414,24 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     avatarText: {
-        color: whColors.primary,
         fontWeight: '700',
         fontSize: 15,
     },
     userName: {
-        color: whColors.textPrimary,
         fontWeight: '700',
         fontSize: 15,
     },
     userSub: {
-        color: whColors.textSecondary,
         fontSize: 12,
         marginTop: 2,
     },
     divider: {
         height: 0.5,
-        backgroundColor: whColors.borderLight,
         marginHorizontal: 12,
         marginVertical: 6,
     },
     sectionLabel: {
         fontSize: 10,
-        color: whColors.textMuted,
         letterSpacing: 1,
         marginHorizontal: 16,
         marginTop: 8,
@@ -410,9 +448,6 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         marginBottom: 2,
     },
-    itemActive: {
-        backgroundColor: whColors.bgHeavy,
-    },
     iconWrap: {
         width: 32,
         height: 32,
@@ -420,16 +455,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    iconWrapActive: {
-        backgroundColor: whColors.bgMedium,
-    },
     itemLabel: {
         fontSize: 14,
-        color: whColors.textSecondary,
-        fontWeight: '500',
-    },
-    itemLabelActive: {
-        color: whColors.primaryHover,
-        fontWeight: '700',
     },
 });
