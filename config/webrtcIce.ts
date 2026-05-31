@@ -1,3 +1,5 @@
+import { getIceRuntimeOptions } from "./connectionSettings";
+
 const parseIceUrls = (value?: string) =>
   (value || "")
     .split(",")
@@ -15,17 +17,13 @@ export const isStreamVideoEnabled = () =>
   process.env.EXPO_PUBLIC_ENABLE_STREAM_VIDEO === "true";
 
 export const getIceConfiguration = (): RTCConfiguration => {
-  const iceUrls =
-    process.env.EXPO_PUBLIC_ICE_URLS || process.env.EXPO_PUBLIC_TURN_URLS;
-  const iceUsername =
-    process.env.EXPO_PUBLIC_ICE_USERNAME ||
-    process.env.EXPO_PUBLIC_TURN_USERNAME;
-  const iceCredential =
-    process.env.EXPO_PUBLIC_ICE_CREDENTIAL ||
-    process.env.EXPO_PUBLIC_TURN_CREDENTIAL;
-  const forceRelay = process.env.EXPO_PUBLIC_FORCE_TURN_RELAY === "true";
-  const allowPublicStun =
-    process.env.EXPO_PUBLIC_ALLOW_PUBLIC_STUN !== "false";
+  const {
+    iceUrls,
+    iceUsername,
+    iceCredential,
+    forceRelay,
+    allowPublicStun,
+  } = getIceRuntimeOptions();
 
   const iceServers: RTCIceServer[] = [];
   const parsedIceUrls = parseIceUrls(iceUrls);

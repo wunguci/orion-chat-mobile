@@ -7,6 +7,7 @@ import {
   LogOut,
   Moon,
   Palette,
+  Server,
   Shield,
   Smartphone,
   User,
@@ -121,6 +122,14 @@ export default function Setting() {
               subtitle="Quản lý các thiết bị đã đăng nhập vào tài khoản"
               onPress={() => {
                 navigate("/(settings)/linked-devices");
+              }}
+            />
+            <SettingsItem
+              icon={<Server size={24} color={colors.orangePrimary} />}
+              title="Cấu hình Mobile"
+              subtitle="API, Socket va TURN cho mobile"
+              onPress={() => {
+                navigate("/(settings)/mobile-config" as any);
               }}
             />
           </View>

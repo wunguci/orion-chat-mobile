@@ -3,10 +3,11 @@ import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import 'react-native-reanimated';
 import { Provider } from 'react-redux';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ActivityIndicator, View } from 'react-native';
 
 import { store } from '@/store';
 import { AuthProvider } from '@/context/AuthContext';
@@ -19,6 +20,7 @@ import { SlideMenuProvider } from '@/context/SlideMenuContext';
 import { useSessionConflictListener } from '@/hooks/useSessionConflictListener';
 import { useAuth } from '@/hooks/useAuth';
 import IncomingGroupCallModal from '@/components/call/IncomingGroupCallModal';
+import { loadConnectionSettings } from '@/config/api';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -103,10 +105,31 @@ function RootLayoutContent() {
 }
 
 export default function RootLayout() {
+    const [settingsLoaded, setSettingsLoaded] = useState(false);
+
     useEffect(() => {
-        // Hide splash screen after layout
-        SplashScreen.hideAsync();
+        void loadConnectionSettings().finally(() => {
+            setSettingsLoaded(true);
+            SplashScreen.hideAsync();
+        });
     }, []);
+
+    if (!settingsLoaded) {
+        return (
+            <GestureHandlerRootView style={{ flex: 1 }}>
+                <View
+                    style={{
+                        flex: 1,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: '#fff',
+                    }}
+                >
+                    <ActivityIndicator size="large" color="#0d9488" />
+                </View>
+            </GestureHandlerRootView>
+        );
+    }
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>

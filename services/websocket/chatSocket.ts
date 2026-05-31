@@ -1,6 +1,6 @@
 import { io, Socket } from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import API_BASE_URL from "@/config/api";
+import { getSocketNamespaceUrl } from "@/config/api";
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
@@ -100,8 +100,8 @@ class ChatSocketService {
       }
 
       // Tạo Socket.io connection với JWT token
-      const socketUrl = API_BASE_URL?.replace(/\/$/, ""); // Loại bỏ trailing slash
-      this.socket = io(`${socketUrl}/chat` || "http://localhost:3000/chat", {
+      const socketUrl = getSocketNamespaceUrl("chat");
+      this.socket = io(socketUrl || "http://localhost:3000/chat", {
         path: "/socket.io",
         auth: {
           token,
