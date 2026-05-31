@@ -110,4 +110,13 @@ export interface Message {
     callId?: string;
     callMode?: "direct" | "group" | string;
   };
+  // reply message
+  replyToMessageId?: string | null;
+  replyToMessagePreview?: {
+    messageId?: string;
+    senderName?: string;
+    content?: string;
+    snippet?: string;
+    createdAt?: string;
+  };
 }

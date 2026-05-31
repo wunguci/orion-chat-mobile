@@ -1,11 +1,12 @@
 import AttachmentPickerModal from "@/components/chat/AttachmentPickerModal";
+import { Camera, Reply } from "lucide-react-native";
 import { useTheme } from "@/hooks/useTheme";
 import {
   extractPrimaryText,
   orionAiApi,
   RewriteTone,
 } from "@/services/api/orionAi";
-import { AttachmentAsset } from "@/types/chat";
+import { AttachmentAsset, Message } from "@/types/chat";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
@@ -23,7 +24,9 @@ interface MessageInputProps {
   value: string;
   onChangeText: (text: string) => void;
   onSend: () => void;
-  onAttach?: (asset: AttachmentAsset) => void;
+  onAttach?: (asset: AttachmentAsset[]) => void;
+  replyToMessage?: Message | null;
+  onCancelReply?: () => void;
 }
 
 export default function MessageInput({
@@ -31,6 +34,8 @@ export default function MessageInput({
   onChangeText,
   onSend,
   onAttach,
+  replyToMessage,
+  onCancelReply,
 }: MessageInputProps) {
   const { colors } = useTheme();
   const { bottom } = useSafeAreaInsets();
@@ -66,7 +71,10 @@ export default function MessageInput({
 
   const showRewriteOptions = () => {
     Alert.alert("Rewrite message", "Choose a tone", [
-      { text: "Professional", onPress: () => void handleRewrite("professional") },
+      {
+        text: "Professional",
+        onPress: () => void handleRewrite("professional"),
+      },
       { text: "Polite", onPress: () => void handleRewrite("polite") },
       { text: "Concise", onPress: () => void handleRewrite("concise") },
       { text: "Cancel", style: "cancel" },
@@ -125,6 +133,77 @@ export default function MessageInput({
           </View>
         ) : null}
 
+        {/* Reply preview */}
+        {replyToMessage ? (
+          <View
+            style={{
+              marginHorizontal: 12,
+              marginTop: 8,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              borderRadius: 6,
+              backgroundColor: "#f6f6f6",
+              borderLeftWidth: 3,
+              borderLeftColor: "#4F9BFF",
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 4,
+                  gap: 6,
+                }}
+              >
+                <View
+                  style={{
+                    width: 16,
+                    height: 16,
+                    transform: [{ rotate: "180deg" }],
+                  }}
+                >
+                  <Reply size={16} color="#505050" strokeWidth={2.4} />
+                </View>
+
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    flex: 1,
+                    color: "#505050",
+                    fontSize: 15,
+                    fontWeight: "700",
+                  }}
+                >
+                  Trả lời{" "}
+                  {replyToMessage.isMine
+                    ? "Bạn"
+                    : replyToMessage.senderName || "Unknown"}
+                </Text>
+              </View>
+
+              <Text
+                numberOfLines={1}
+                style={{
+                  color: "#505050",
+                  fontSize: 15,
+                }}
+              >
+                {replyToMessage.text ||
+                  replyToMessage.imageCaption ||
+                  replyToMessage.fileName ||
+                  "Attachment"}
+              </Text>
+            </View>
+
+            <TouchableOpacity onPress={onCancelReply} hitSlop={10}>
+              <Ionicons name="close" size={26} color="#AEB7C2" />
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         <View
           style={{
             flexDirection: "row",
@@ -134,131 +213,131 @@ export default function MessageInput({
             gap: 8,
           }}
         >
-        {/* Attach */}
-        <TouchableOpacity
-          onPress={() => setPickerVisible(true)}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            borderWidth: 1.5,
-            borderColor: colors.border,
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 2,
-          }}
-        >
-          <Ionicons name="add" size={22} color={colors.textSecondary} />
-        </TouchableOpacity>
-
-        {/* Text input */}
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: colors.backgroundSecondary,
-            borderRadius: 22,
-            paddingHorizontal: 14,
-            paddingVertical: Platform.OS === "ios" ? 10 : 5,
-            minHeight: 40,
-            justifyContent: "center",
-          }}
-        >
-          <TextInput
-            value={value}
-            onChangeText={onChangeText}
-            placeholder="Type your message"
-            placeholderTextColor={colors.textSecondary}
+          {/* Attach */}
+          <TouchableOpacity
+            onPress={() => setPickerVisible(true)}
             style={{
-              color: colors.text,
-              fontSize: 15,
-              maxHeight: 100,
-              textAlignVertical: "center",
-            }}
-            multiline
-            returnKeyType="default"
-            editable={!isRewriting}
-          />
-        </View>
-
-        {/* Send or mic + emoji */}
-        {hasText ? (
-          <>
-            <TouchableOpacity
-              onPress={showRewriteOptions}
-              disabled={isRewriting}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: colors.backgroundSecondary,
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 2,
-              }}
-            >
-              {isRewriting ? (
-                <ActivityIndicator size="small" color="#00B14F" />
-              ) : (
-                <Ionicons
-                  name="color-wand-outline"
-                  size={18}
-                  color="#00B14F"
-                />
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => {
-                setPreviousValue(null);
-                onSend();
-              }}
-              disabled={isRewriting}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: isRewriting ? colors.border : "#00B14F",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 2,
-              }}
-            >
-              <Ionicons name="send" size={18} color="#fff" />
-            </TouchableOpacity>
-          </>
-        ) : (
-          <View
-            style={{
-              flexDirection: "row",
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              borderWidth: 1.5,
+              borderColor: colors.border,
               alignItems: "center",
-              gap: 4,
+              justifyContent: "center",
               marginBottom: 2,
             }}
           >
-            <TouchableOpacity hitSlop={8}>
-              <Ionicons
-                name="mic-outline"
-                size={24}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity hitSlop={8}>
-              <MaterialCommunityIcons
-                name="sticker-emoji"
-                size={24}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
+            <Ionicons name="add" size={22} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          {/* Text input */}
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: colors.backgroundSecondary,
+              borderRadius: 22,
+              paddingHorizontal: 14,
+              paddingVertical: Platform.OS === "ios" ? 10 : 5,
+              minHeight: 40,
+              justifyContent: "center",
+            }}
+          >
+            <TextInput
+              value={value}
+              onChangeText={onChangeText}
+              placeholder="Type your message"
+              placeholderTextColor={colors.textSecondary}
+              style={{
+                color: colors.text,
+                fontSize: 15,
+                maxHeight: 100,
+                textAlignVertical: "center",
+              }}
+              multiline
+              returnKeyType="default"
+              editable={!isRewriting}
+            />
           </View>
-        )}
+
+          {/* Send or mic + emoji */}
+          {hasText ? (
+            <>
+              <TouchableOpacity
+                onPress={showRewriteOptions}
+                disabled={isRewriting}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: colors.backgroundSecondary,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 2,
+                }}
+              >
+                {isRewriting ? (
+                  <ActivityIndicator size="small" color="#00B14F" />
+                ) : (
+                  <Ionicons
+                    name="color-wand-outline"
+                    size={18}
+                    color="#00B14F"
+                  />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setPreviousValue(null);
+                  onSend();
+                }}
+                disabled={isRewriting}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: isRewriting ? colors.border : "#00B14F",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 2,
+                }}
+              >
+                <Ionicons name="send" size={18} color="#fff" />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                marginBottom: 2,
+              }}
+            >
+              <TouchableOpacity hitSlop={8}>
+                <Ionicons
+                  name="mic-outline"
+                  size={24}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity hitSlop={8}>
+                <MaterialCommunityIcons
+                  name="sticker-emoji"
+                  size={24}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </View>
 
       <AttachmentPickerModal
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
-        onAttach={(asset) => {
+        onAttach={(assets) => {
           setPickerVisible(false);
-          onAttach?.(asset);
+          onAttach?.(assets);
         }}
       />
     </>

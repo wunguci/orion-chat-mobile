@@ -22,7 +22,15 @@ export interface SocketMessage {
     createdAt: string;
 
     clientMessageId?: string;
+    // Reply message
     replyToMessageId?: string;
+    replyToMessagePreview?: {
+      messageId?: string;
+      senderName?: string;
+      content?: string;
+      snippet?: string;
+      createdAt?: string;
+    };
     messageStatus: "SENT" | "DELIVERED" | "READ";
 
     mediaUrl?: string;
@@ -221,6 +229,7 @@ class ChatSocketService {
           createdAt: serverMessage.createdAt || serverMessage.timestamp,
           clientMessageId: serverMessage.clientMessageId,
           replyToMessageId: serverMessage.replyToMessageId,
+          replyToMessagePreview: serverMessage.replyToMessagePreview,
           messageStatus: "SENT",
           mediaUrl: serverMessage.mediaUrl,
           fileName: serverMessage.fileName,
@@ -514,6 +523,7 @@ class ChatSocketService {
     conversationId: string,
     content: string,
     clientMessageId: string,
+    replyToMessageId?: string | null,
   ): Promise<{
     clientMessageId: string;
     messageId: string;
@@ -535,6 +545,7 @@ class ChatSocketService {
           content,
           clientMessageId,
           type: "text",
+          replyToMessageId: replyToMessageId || undefined,
         },
         (error: any, ackData: any) => {
           if (error) {

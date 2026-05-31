@@ -10,6 +10,14 @@ export type PendingTextMessage = {
   createdAt: string;
   retryCount: number;
   status: "pending" | "sending" | "failed";
+  replyToMessageId: string | null;
+  replyToMessagePreview?: {
+    messageId?: string;
+    senderName?: string;
+    content?: string;
+    snippet?: string;
+    createdAt?: string;
+  };
 };
 
 /**

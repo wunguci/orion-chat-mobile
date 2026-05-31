@@ -126,6 +126,8 @@ function pendingTextToMessage(item: PendingTextMessage): Message {
     timestamp: item.createdAt,
     isMine: true,
     status: item.status === "failed" ? "failed" : "pending",
+    replyToMessageId: item.replyToMessageId,
+    replyToMessagePreview: item.replyToMessagePreview,
   };
 }
 
@@ -221,6 +223,7 @@ interface UseChatState {
   inputText: string;
   isLoading: boolean;
   error: string | null;
+  replyToMessage: Message | null;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -243,6 +246,7 @@ export const useChat = (conversationId: string) => {
     inputText: "",
     isLoading: false,
     error: null,
+    replyToMessage: null,
   });
 
   const { state: authState } = useAuth();
@@ -525,6 +529,13 @@ export const useChat = (conversationId: string) => {
                       ...m,
                       id: incomingServerId || m.id,
                       callData: socketMsg.message.callData || m.callData,
+                      replyToMessageId:
+                        socketMsg.message.replyToMessageId ||
+                        m.replyToMessageId ||
+                        null,
+                      replyToMessagePreview:
+                        socketMsg.message.replyToMessagePreview ||
+                        m.replyToMessagePreview,
                       status: "read",
                     };
                   }
@@ -565,6 +576,8 @@ export const useChat = (conversationId: string) => {
                 socketMsg.message.mimeType,
                 socketMsg.message.fileSize,
               ),
+              replyToMessageId: socketMsg.message.replyToMessageId || null,
+              replyToMessagePreview: socketMsg.message.replyToMessagePreview,
             };
 
             const nextMessages = dedupeMessages([
@@ -719,6 +732,7 @@ export const useChat = (conversationId: string) => {
           pending.conversationId,
           pending.content,
           pending.clientMessageId,
+          pending.replyToMessageId,
         );
 
         await removePendingTextMessage(pending.clientMessageId);
@@ -822,6 +836,13 @@ export const useChat = (conversationId: string) => {
       //   content: text.trim(),
       // });
 
+      const replyToMessage = state.replyToMessage;
+      // console.log("[useChat-sendMessage] replyToMessage", {
+      //   id: replyToMessage?.id,
+      //   text: replyToMessage?.text,
+      //   senderName: replyToMessage?.senderName,
+      // });
+
       // Thêm message vào state ngay (Optimistic UI)
       const optimisticMessage: Message = {
         id: clientMessageId,
@@ -832,6 +853,21 @@ export const useChat = (conversationId: string) => {
         timestamp: new Date().toISOString(),
         isMine: true,
         status: "sending",
+        // Thông tin reply (nếu có)
+        replyToMessageId: replyToMessage?.id ?? null,
+        replyToMessagePreview: replyToMessage
+          ? {
+              messageId: replyToMessage.id,
+              senderName:
+                replyToMessage.senderName ||
+                (replyToMessage.isMine ? "Bạn" : "Unknown"),
+              content:
+                replyToMessage.text || replyToMessage.fileName || "Attachment",
+              snippet:
+                replyToMessage.text || replyToMessage.fileName || "Attachment",
+              createdAt: replyToMessage.timestamp,
+            }
+          : undefined,
       };
 
       const pendingItem: PendingTextMessage = {
@@ -841,7 +877,11 @@ export const useChat = (conversationId: string) => {
         content: text.trim(),
         createdAt: optimisticMessage.timestamp,
         retryCount: 0,
-        status: chatSocketService.isConnected() ? "sending" : "pending",
+        status: chatSocketService.isConnected()
+          ? ("sending" as const)
+          : ("pending" as const),
+        replyToMessageId: replyToMessage?.id ?? null,
+        replyToMessagePreview: optimisticMessage.replyToMessagePreview,
       };
 
       await enqueuePendingTextMessage(pendingItem);
@@ -851,7 +891,9 @@ export const useChat = (conversationId: string) => {
           ...prev.messages,
           {
             ...optimisticMessage,
-            status: chatSocketService.isConnected() ? "sending" : "pending",
+            status: chatSocketService.isConnected()
+              ? ("sending" as const)
+              : ("pending" as const),
           },
         ];
 
@@ -861,6 +903,7 @@ export const useChat = (conversationId: string) => {
           ...prev,
           messages: nextMessages,
           inputText: "",
+          replyToMessage: null,
         };
       });
 
@@ -906,7 +949,7 @@ export const useChat = (conversationId: string) => {
 
       await resendPendingMessage(pendingItem);
     },
-    [currentUserId, conversationId],
+    [currentUserId, conversationId, state.replyToMessage, resendPendingMessage],
   );
 
   const sendAttachment = useCallback(
@@ -1038,10 +1081,27 @@ export const useChat = (conversationId: string) => {
     }));
   }, []);
 
+  const setReplyToMessage = useCallback((message: Message) => {
+    setState((prev) => ({
+      ...prev,
+      replyToMessage: message,
+    }));
+  }, []);
+
+  const clearReplyToMessage = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      replyToMessage: null,
+    }));
+  }, []);
+
   return {
     messages: state.messages,
     inputText: state.inputText,
+    replyToMessage: state.replyToMessage,
     setInputText,
+    setReplyToMessage,
+    clearReplyToMessage,
     sendMessage,
     sendAttachment,
     isLoading: state.isLoading,
@@ -1095,6 +1155,8 @@ function convertApiMessageToUIMessage(
     status: "read",
     isRecalled: apiMsg.isRevoked || false,
     reactions: apiMsg.reactions || [],
+    replyToMessageId: apiMsg.replyToMessageId || null,
+    replyToMessagePreview: apiMsg.replyToMessagePreview,
   };
 
   if (apiMsg.isRevoked) {

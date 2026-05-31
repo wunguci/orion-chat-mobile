@@ -6,12 +6,13 @@ import MessageActionMenu from "@/components/chat/MessageActionMenu";
 import ConversationInfoModal from "@/components/chat/ConversationInfoModal";
 import { formatTime, getDiffMinutes, useChat } from "@/hooks/useChat";
 import { useTheme } from "@/hooks/useTheme";
-import { Message } from "@/types/chat";
+import { AttachmentAsset, Message } from "@/types/chat";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -33,14 +34,115 @@ import { CallContext } from "@/context/CallContext";
 import { GroupCallContext } from "@/context/GroupCallContext";
 import { useAuth } from "@/hooks/useAuth";
 
-function shouldShowAvatar(messages: Message[], index: number): boolean {
-  const curr = messages[index];
+const IMAGE_GROUP_WINDOW_MS = 1 * 60 * 1000; // gom ảnh trong 1 phút
+
+type ChatMessageListItem =
+  | {
+      kind: "message";
+      id: string;
+      message: Message;
+    }
+  | {
+      kind: "imageGroup";
+      id: string;
+      messages: Message[];
+    };
+
+function getMessageTime(message: Message): number {
+  const time = new Date(message.timestamp).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function getItemFirstMessage(item: ChatMessageListItem): Message {
+  return item.kind === "imageGroup" ? item.messages[0] : item.message;
+}
+
+function getItemLastMessage(item: ChatMessageListItem): Message {
+  return item.kind === "imageGroup"
+    ? item.messages[item.messages.length - 1]
+    : item.message;
+}
+
+function canGroupImageMessage(message: Message): boolean {
+  return (
+    String(message.type || "").toUpperCase() === "IMAGE" &&
+    Boolean(message.imageUri) &&
+    !message.imageCaption &&
+    !message.isRecalled &&
+    !message.reactions?.length
+  );
+}
+
+function isSameImageGroup(first: Message, candidate: Message): boolean {
+  return (
+    canGroupImageMessage(candidate) &&
+    first.senderId === candidate.senderId &&
+    first.isMine === candidate.isMine &&
+    Math.abs(getMessageTime(candidate) - getMessageTime(first)) <=
+      IMAGE_GROUP_WINDOW_MS
+  );
+}
+
+function buildMessageListItems(messages: Message[]): ChatMessageListItem[] {
+  const items: ChatMessageListItem[] = [];
+  let index = 0;
+
+  while (index < messages.length) {
+    const current = messages[index];
+
+    if (!canGroupImageMessage(current)) {
+      items.push({
+        kind: "message",
+        id: current.id,
+        message: current,
+      });
+      index += 1;
+      continue;
+    }
+
+    const group = [current];
+    let nextIndex = index + 1;
+
+    while (
+      nextIndex < messages.length &&
+      isSameImageGroup(current, messages[nextIndex])
+    ) {
+      group.push(messages[nextIndex]);
+      nextIndex += 1;
+    }
+
+    if (group.length > 1) {
+      items.push({
+        kind: "imageGroup",
+        id: `image-group-${group.map((message) => message.id).join("-")}`,
+        messages: group,
+      });
+    } else {
+      items.push({
+        kind: "message",
+        id: current.id,
+        message: current,
+      });
+    }
+
+    index = nextIndex;
+  }
+
+  return items;
+}
+
+function shouldShowAvatar(
+  items: ChatMessageListItem[],
+  index: number,
+): boolean {
+  const curr = getItemFirstMessage(items[index]);
 
   // Don't show avatar for sent messages
   if (curr.isMine) return false;
 
   // Get previous message to check if sender changed
-  const prev = messages[index - 1];
+  const prevItem = items[index - 1];
+  const prev = prevItem ? getItemLastMessage(prevItem) : undefined;
 
   // Show avatar if:
   // 1. This is the first received message, OR
@@ -52,11 +154,15 @@ function shouldShowAvatar(messages: Message[], index: number): boolean {
   return false; // Sender same as previous, hide avatar
 }
 
-function shouldShowSenderName(messages: Message[], index: number): boolean {
-  const curr = messages[index];
+function shouldShowSenderName(
+  items: ChatMessageListItem[],
+  index: number,
+): boolean {
+  const curr = getItemFirstMessage(items[index]);
   if (curr.isMine) return false;
 
-  const prev = messages[index - 1];
+  const prevItem = items[index - 1];
+  const prev = prevItem ? getItemLastMessage(prevItem) : undefined;
   if (!prev) return true;
   if (prev.isMine) return true;
 
@@ -174,8 +280,16 @@ export default function ChatScreen() {
   const callContext = useContext(CallContext);
   const groupCallContext = useContext(GroupCallContext);
   const { markConversationNotificationsAsRead } = useNotificationContext();
-  const { messages, inputText, setInputText, sendMessage, sendAttachment } =
-    useChat(id || "");
+  const {
+    messages,
+    inputText,
+    setInputText,
+    sendMessage,
+    sendAttachment,
+    replyToMessage,
+    setReplyToMessage,
+    clearReplyToMessage,
+  } = useChat(id || "");
   const listRef = useRef<FlatList>(null);
 
   const [forwardVisible, setForwardVisible] = useState(false);
@@ -185,6 +299,9 @@ export default function ChatScreen() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [infoVisible, setInfoVisible] = useState(false);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     if (!id) {
@@ -225,6 +342,15 @@ export default function ChatScreen() {
     setForwardMessageId(messageId);
     setForwardVisible(true);
   }, []);
+
+  const handleAttach = useCallback(
+    (assets: AttachmentAsset[]) => {
+      assets.forEach((asset) => {
+        void sendAttachment(asset);
+      });
+    },
+    [sendAttachment],
+  );
 
   const handleStartCall = useCallback(
     async (callType: "audio" | "video") => {
@@ -281,11 +407,14 @@ export default function ChatScreen() {
     ],
   );
 
-  function shouldShowTimestamp(messages: Message[], index: number): boolean {
+  function shouldShowTimestamp(
+    messages: ChatMessageListItem[],
+    index: number,
+  ): boolean {
     if (index === 0) return true;
 
-    const prev = messages[index - 1];
-    const curr = messages[index];
+    const prev = getItemLastMessage(messages[index - 1]);
+    const curr = getItemFirstMessage(messages[index]);
 
     const diffMinutes = getDiffMinutes(prev.timestamp, curr.timestamp);
     return diffMinutes > 30;
@@ -300,27 +429,91 @@ export default function ChatScreen() {
 
   // console.log("LAST MSG TIME AGO ", lastMessageTimeAgo);
 
+  const messageItems = useMemo(
+    () => buildMessageListItems(messages),
+    [messages],
+  );
+
+  const handleReplyPreviewPress = useCallback(
+    (messageId: string) => {
+      const targetIndex = messageItems.findIndex((item) => {
+        if (item.kind === "imageGroup") {
+          return item.messages.some((message) => message.id === messageId);
+        }
+
+        return item.message.id === messageId;
+      });
+
+      if (targetIndex === -1) {
+        Alert.alert("Khong tim thay tin nhan", "Tin nhan nay chua duoc tai.");
+        return;
+      }
+
+      listRef.current?.scrollToIndex({
+        index: targetIndex,
+        animated: true,
+        viewPosition: 0.5,
+      });
+
+      setHighlightedMessageId(messageId);
+
+      setTimeout(() => {
+        setHighlightedMessageId((current) =>
+          current === messageId ? null : current,
+        );
+      }, 2000);
+    },
+    [messageItems],
+  );
+
   const renderItem = useCallback(
-    ({ item, index }: { item: Message; index: number }) => (
-      <View>
-        {shouldShowTimestamp(messages, index) && (
-          <MessageTimestamp time={formatTime(item.timestamp)} />
-        )}
-        <MessageBubble
-          message={item}
-          showAvatar={shouldShowAvatar(messages, index)}
-          avatarUri={!item.isMine ? item.senderAvatar || avatarUri : undefined}
-          senderName={
-            shouldShowSenderName(messages, index)
-              ? item.senderName || name
-              : undefined
-          }
-          onLongPress={handleMessageLongPress}
-          onCallBack={(callType) => void handleStartCall(callType)}
-        />
-      </View>
-    ),
-    [messages, avatarUri, name, handleMessageLongPress, handleStartCall],
+    ({ item, index }: { item: ChatMessageListItem; index: number }) => {
+      const firstMessage = getItemFirstMessage(item);
+      const displayMessage = getItemLastMessage(item);
+      const imageGroup = item.kind === "imageGroup" ? item.messages : undefined;
+
+      return (
+        <View>
+          {shouldShowTimestamp(messageItems, index) && (
+            <MessageTimestamp time={formatTime(firstMessage.timestamp)} />
+          )}
+          <MessageBubble
+            message={displayMessage}
+            imageGroup={imageGroup}
+            isHighlighted={
+              item.kind === "imageGroup"
+                ? item.messages.some(
+                    (message) => message.id === highlightedMessageId,
+                  )
+                : displayMessage.id === highlightedMessageId
+            }
+            showAvatar={shouldShowAvatar(messageItems, index)}
+            avatarUri={
+              !firstMessage.isMine
+                ? firstMessage.senderAvatar || avatarUri
+                : undefined
+            }
+            senderName={
+              shouldShowSenderName(messageItems, index)
+                ? firstMessage.senderName || name
+                : undefined
+            }
+            onLongPress={handleMessageLongPress}
+            onCallBack={(callType) => void handleStartCall(callType)}
+            onReplyPreviewPress={handleReplyPreviewPress}
+          />
+        </View>
+      );
+    },
+    [
+      messageItems,
+      highlightedMessageId,
+      avatarUri,
+      name,
+      handleMessageLongPress,
+      handleStartCall,
+      handleReplyPreviewPress,
+    ],
   );
 
   return (
@@ -351,8 +544,8 @@ export default function ChatScreen() {
       >
         <FlatList
           ref={listRef}
-          data={messages}
-          keyExtractor={(m) => m.id}
+          data={messageItems}
+          keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={{
             paddingVertical: 12,
@@ -360,6 +553,20 @@ export default function ChatScreen() {
           onContentSizeChange={() =>
             listRef.current?.scrollToEnd({ animated: false })
           }
+          onScrollToIndexFailed={(info) => {
+            listRef.current?.scrollToOffset({
+              offset: info.averageItemLength * info.index,
+              animated: true,
+            });
+
+            setTimeout(() => {
+              listRef.current?.scrollToIndex({
+                index: info.index,
+                animated: true,
+                viewPosition: 0.5,
+              });
+            }, 250);
+          }}
           showsVerticalScrollIndicator={false}
         />
 
@@ -368,7 +575,9 @@ export default function ChatScreen() {
           value={inputText}
           onChangeText={setInputText}
           onSend={handleSend}
-          onAttach={sendAttachment}
+          onAttach={handleAttach}
+          replyToMessage={replyToMessage}
+          onCancelReply={clearReplyToMessage}
         />
       </KeyboardAvoidingView>
 
@@ -385,6 +594,11 @@ export default function ChatScreen() {
           conversationId={id || ""}
           onMessageDeleted={handleMessageDeleted}
           onMessageRecalled={handleMessageRecalled}
+          onReply={(message) => {
+            setReplyToMessage(message);
+            setShowActionMenu(false);
+            setSelectedMessage(null);
+          }}
         />
       )}
       <ConversationInfoModal
