@@ -1,117 +1,126 @@
 import type {
-  SendOtpResponse,
-  VerifyOtpResponse,
-  RegisterResponse,
-  LoginResponse,
-  ErrorResponse,
-} from "../../types/auth";
-import { API_BASE_URL, fetchWithTimeout } from "../../config/api";
-import { tokenUtils } from "../../utils/tokenUtils";
+    SendOtpResponse,
+    VerifyOtpResponse,
+    RegisterResponse,
+    LoginResponse,
+    ErrorResponse,
+} from '../../types/auth';
+import { API_BASE_URL, fetchWithTimeout } from '../../config/api';
+import { tokenUtils } from '../../utils/tokenUtils';
 
 /**
  * Send OTP to phone number
  */
 export async function sendOtp(phoneNumber: string): Promise<SendOtpResponse> {
-  try {
-    const response = await fetchWithTimeout(`${API_BASE_URL}/auth/send-otp`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Platform": "mobile",
-      },
-      body: JSON.stringify({ phoneNumber }),
-    });
+    try {
+        const response = await fetchWithTimeout(
+            `${API_BASE_URL}/auth/send-otp`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Platform': 'mobile',
+                },
+                body: JSON.stringify({ phoneNumber }),
+            },
+        );
 
-    if (!response.ok) {
-      const errorData: ErrorResponse = await response.json();
-      throw new Error(
-        errorData.message || `Failed to send OTP: ${response.statusText}`,
-      );
+        if (!response.ok) {
+            const errorData: ErrorResponse = await response.json();
+            throw new Error(
+                errorData.message ||
+                    `Failed to send OTP: ${response.statusText}`,
+            );
+        }
+
+        const result = await response.json();
+        if (result && result.success === false) {
+            throw new Error(result.message || 'Gửi OTP thất bại');
+        }
+
+        return result;
+    } catch (error) {
+        throw error;
     }
-
-    const result = await response.json();
-    if (result && result.success === false) {
-      throw new Error(result.message || "Gửi OTP thất bại");
-    }
-
-    return result;
-  } catch (error) {
-    console.error("[sendOtp] Error:", error);
-    throw error;
-  }
 }
 
 /**
  * Verify OTP
  */
 export async function verifyOtp(
-  phoneNumber: string,
-  otp: string,
+    phoneNumber: string,
+    otp: string,
 ): Promise<VerifyOtpResponse> {
-  try {
-    const response = await fetchWithTimeout(`${API_BASE_URL}/auth/verify-otp`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Platform": "mobile",
-      },
-      body: JSON.stringify({ phoneNumber, otp }),
-    });
+    try {
+        const response = await fetchWithTimeout(
+            `${API_BASE_URL}/auth/verify-otp`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Platform': 'mobile',
+                },
+                body: JSON.stringify({ phoneNumber, otp }),
+            },
+        );
 
-    if (!response.ok) {
-      const errorData: ErrorResponse = await response.json();
-      throw new Error(
-        errorData.message || `Failed to verify OTP: ${response.statusText}`,
-      );
+        if (!response.ok) {
+            const errorData: ErrorResponse = await response.json();
+            throw new Error(
+                errorData.message ||
+                    `Failed to verify OTP: ${response.statusText}`,
+            );
+        }
+
+        return response.json();
+    } catch (error) {
+        throw error;
     }
-
-    return response.json();
-  } catch (error) {
-    console.error("[verifyOtp] Error:", error);
-    throw error;
-  }
 }
 
 /**
  * Complete Registration
  */
 export async function completeRegister(formData: {
-  phoneNumber: string;
-  password: string;
-  fullName: string;
-  birthDate: string;
-  gender: "male" | "female" | "other";
+    phoneNumber: string;
+    password: string;
+    fullName: string;
+    birthDate: string;
+    gender: 'male' | 'female' | 'other';
 }): Promise<RegisterResponse> {
-  try {
-    const response = await fetchWithTimeout(`${API_BASE_URL}/auth/complete-register`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Platform": "mobile",
-      },
-      body: JSON.stringify(formData),
-    });
+    try {
+        const response = await fetchWithTimeout(
+            `${API_BASE_URL}/auth/complete-register`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Platform': 'mobile',
+                },
+                body: JSON.stringify(formData),
+            },
+        );
 
-    if (!response.ok) {
-      const errorData: ErrorResponse = await response.json();
-      throw new Error(
-        errorData.message || `Failed to register: ${response.statusText}`,
-      );
+        if (!response.ok) {
+            const errorData: ErrorResponse = await response.json();
+            throw new Error(
+                errorData.message ||
+                    `Failed to register: ${response.statusText}`,
+            );
+        }
+
+        return response.json();
+    } catch (error) {
+        throw error;
     }
-
-    return response.json();
-  } catch (error) {
-    console.error("[completeRegister] Error:", error);
-    throw error;
-  }
 }
 
 /**
  * Login
  */
 export async function login(
-  phoneNumber: string,
-  password: string,
+    phoneNumber: string,
+    password: string,
 ): Promise<LoginResponse> {
     try {
         const response = await fetchWithTimeout(`${API_BASE_URL}/auth/login`, {
@@ -134,13 +143,13 @@ export async function login(
                 const errorData = await response.json();
                 // Extract error message - handle multiple possible formats
                 const message = Array.isArray(errorData?.message)
-                  ? errorData?.message.join(", ")
-                  : errorData?.message;
+                    ? errorData?.message.join(', ')
+                    : errorData?.message;
                 errorMessage =
-                  message ||
-                  errorData?.error ||
-                  (typeof errorData === 'string' ? errorData : null) ||
-                  errorMessage;
+                    message ||
+                    errorData?.error ||
+                    (typeof errorData === 'string' ? errorData : null) ||
+                    errorMessage;
             } catch {
                 // Failed to parse error response
             }
@@ -151,13 +160,12 @@ export async function login(
     } catch (error) {
         if (
             error instanceof TypeError &&
-            error.message.includes("Failed to fetch")
+            error.message.includes('Failed to fetch')
         ) {
             throw new Error(
-                "Không thể kết nối tới server. Vui lòng kiểm tra backend đang chạy",
+                'Không thể kết nối tới server. Vui lòng kiểm tra backend đang chạy',
             );
         }
-        console.error("[login] Error:", error);
         throw error;
     }
 }
@@ -172,14 +180,17 @@ export async function logout(token: string): Promise<{ message: string }> {
             token ? `${token.substring(0, 20)}...` : 'NO TOKEN',
         );
 
-        const response = await fetchWithTimeout(`${API_BASE_URL}/auth/logout-with-token`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Platform': 'mobile',
+        const response = await fetchWithTimeout(
+            `${API_BASE_URL}/auth/logout-with-token`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Platform': 'mobile',
+                },
+                body: JSON.stringify({ token, platform: 'mobile' }),
             },
-            body: JSON.stringify({ token, platform: 'mobile' }),
-        });
+        );
 
         console.log(
             '[logout] Response status:',
@@ -190,7 +201,6 @@ export async function logout(token: string): Promise<{ message: string }> {
         if (!response.ok) {
             try {
                 const errorData: ErrorResponse = await response.json();
-                console.error('[logout] Error response:', errorData);
                 throw new Error(
                     errorData.message ||
                         `Failed to logout: ${response.statusText}`,
@@ -206,155 +216,158 @@ export async function logout(token: string): Promise<{ message: string }> {
         console.log('[logout] Logout successful:', result);
         return result;
     } catch (error) {
-        console.error('[logout] Error:', error);
         throw error;
     }
-
 }
 
 export async function confirmQrLogin(qrToken: string): Promise<{
-  success: boolean;
-  message?: string;
-  data?: { status: "confirmed" };
+    success: boolean;
+    message?: string;
+    data?: { status: 'confirmed' };
 }> {
-  const token = await tokenUtils.getToken();
-  if (!token) {
-    throw new Error("Bạn cần đăng nhập trên mobile trước khi quét QR.");
-  }
+    const token = await tokenUtils.getToken();
+    if (!token) {
+        throw new Error('Bạn cần đăng nhập trên mobile trước khi quét QR.');
+    }
 
-  const response = await fetchWithTimeout(`${API_BASE_URL}/auth/qr/confirm`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Platform": "mobile",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ qrToken }),
-  });
+    const response = await fetchWithTimeout(`${API_BASE_URL}/auth/qr/confirm`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Platform': 'mobile',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ qrToken }),
+    });
 
-  if (!response.ok) {
-    const errorData: ErrorResponse = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || "Không thể xác nhận đăng nhập QR");
-  }
+    if (!response.ok) {
+        const errorData: ErrorResponse = await response
+            .json()
+            .catch(() => ({}));
+        throw new Error(errorData.message || 'Không thể xác nhận đăng nhập QR');
+    }
 
-  return response.json();
+    return response.json();
 }
 
 /**
  * Validate phone number
  */
 export function validatePhoneNumber(phone: string): boolean {
-  return phone.length >= 10;
+    return phone.length >= 10;
 }
 
 /**
  * Validate password
  */
 export function validatePassword(password: string): boolean {
-  return password.length >= 8;
+    return password.length >= 8;
 }
 
 /**
  * Send OTP for Forgot Password
  */
 export async function sendOtpForgetPassword(
-  phoneNumber: string,
+    phoneNumber: string,
 ): Promise<SendOtpResponse> {
-  try {
-    const response = await fetchWithTimeout(
-      `${API_BASE_URL}/auth/send-otp-forget-password`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Platform": "mobile",
-        },
-        body: JSON.stringify({ phoneNumber }),
-      },
-    );
+    try {
+        const response = await fetchWithTimeout(
+            `${API_BASE_URL}/auth/send-otp-forget-password`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Platform': 'mobile',
+                },
+                body: JSON.stringify({ phoneNumber }),
+            },
+        );
 
-    if (!response.ok) {
-      const errorData: ErrorResponse = await response.json();
-      throw new Error(
-        errorData.message || `Failed to send OTP: ${response.statusText}`,
-      );
+        if (!response.ok) {
+            const errorData: ErrorResponse = await response.json();
+            throw new Error(
+                errorData.message ||
+                    `Failed to send OTP: ${response.statusText}`,
+            );
+        }
+
+        const result = await response.json();
+        if (result && result.success === false) {
+            throw new Error(result.message || 'Gửi OTP thất bại');
+        }
+
+        return result;
+    } catch (error) {
+        throw error;
     }
-
-    const result = await response.json();
-    if (result && result.success === false) {
-      throw new Error(result.message || "Gửi OTP thất bại");
-    }
-
-    return result;
-  } catch (error) {
-    console.error("[sendOtpForgetPassword] Error:", error);
-    throw error;
-  }
 }
 
 /**
  * Verify OTP for Forgot Password
  */
 export async function verifyOtpForgetPassword(
-  phoneNumber: string,
-  otp: string,
+    phoneNumber: string,
+    otp: string,
 ): Promise<VerifyOtpResponse> {
-  try {
-    const response = await fetchWithTimeout(
-      `${API_BASE_URL}/auth/verify-otp-forget-password`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Platform": "mobile",
-        },
-        body: JSON.stringify({ phoneNumber, otp }),
-      },
-    );
+    try {
+        const response = await fetchWithTimeout(
+            `${API_BASE_URL}/auth/verify-otp-forget-password`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Platform': 'mobile',
+                },
+                body: JSON.stringify({ phoneNumber, otp }),
+            },
+        );
 
-    if (!response.ok) {
-      const errorData: ErrorResponse = await response.json();
-      throw new Error(
-        errorData.message || `Failed to verify OTP: ${response.statusText}`,
-      );
+        if (!response.ok) {
+            const errorData: ErrorResponse = await response.json();
+            throw new Error(
+                errorData.message ||
+                    `Failed to verify OTP: ${response.statusText}`,
+            );
+        }
+
+        return response.json();
+    } catch (error) {
+        throw error;
     }
-
-    return response.json();
-  } catch (error) {
-    console.error("[verifyOtpForgetPassword] Error:", error);
-    throw error;
-  }
 }
 
 /**
  * Reset Password
  */
 export async function resetPassword(formData: {
-  phoneNumber: string;
-  otp: string;
-  newPassword: string;
-  confirmPassword: string;
+    phoneNumber: string;
+    otp: string;
+    newPassword: string;
+    confirmPassword: string;
 }): Promise<{ success: boolean; message: string; data: any }> {
-  try {
-    const response = await fetchWithTimeout(`${API_BASE_URL}/auth/reset-password`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Platform": "mobile",
-      },
-      body: JSON.stringify(formData),
-    });
+    try {
+        const response = await fetchWithTimeout(
+            `${API_BASE_URL}/auth/reset-password`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Platform': 'mobile',
+                },
+                body: JSON.stringify(formData),
+            },
+        );
 
-    if (!response.ok) {
-      const errorData: ErrorResponse = await response.json();
-      throw new Error(
-        errorData.message || `Failed to reset password: ${response.statusText}`,
-      );
+        if (!response.ok) {
+            const errorData: ErrorResponse = await response.json();
+            throw new Error(
+                errorData.message ||
+                    `Failed to reset password: ${response.statusText}`,
+            );
+        }
+
+        return response.json();
+    } catch (error) {
+        throw error;
     }
-
-    return response.json();
-  } catch (error) {
-    console.error("[resetPassword] Error:", error);
-    throw error;
-  }
 }

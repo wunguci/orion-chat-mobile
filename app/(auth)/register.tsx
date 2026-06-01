@@ -89,7 +89,15 @@ export default function RegisterScreen() {
             setStep(3);
             setError(null);
         } catch (err: any) {
-            setError(err.message || 'Invalid OTP');
+            let errorMessage = 'Invalid OTP';
+            if (err instanceof Error) {
+                errorMessage = err.message || 'Invalid OTP';
+            } else if (typeof err === 'string') {
+                errorMessage = err;
+            } else if (err?.message) {
+                errorMessage = err.message;
+            }
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }

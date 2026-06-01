@@ -18,7 +18,10 @@ export const useSessionConflictListener = () => {
             newPlatform: string;
             timestamp: number;
         }) => {
-            if (data.oldPlatform !== 'mobile') return;
+            // Chỉ xử lý khi phiên cũ là mobile (thiết bị này bị chiếm)
+            // và phiên mới cũng là mobile (mobile khác đăng nhập)
+            if (data.oldPlatform !== 'mobile' || data.newPlatform !== 'mobile')
+                return;
 
             const timeSinceSetup = Date.now() - loginTimeRef.current;
             if (timeSinceSetup < 1000) return;

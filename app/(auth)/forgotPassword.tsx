@@ -85,10 +85,8 @@ export default function ForgotPasswordScreen() {
             await sendOtpForgetPassword(phone);
             setStep(2);
             setError(null);
-            console.log('[handleSendOtp] OTP sent successfully');
         } catch (err: any) {
             setError(err.message || 'Failed to send OTP');
-            console.error('[handleSendOtp] Error:', err.message);
         } finally {
             setLoading(false);
         }
@@ -111,8 +109,15 @@ export default function ForgotPasswordScreen() {
             setError(null);
             console.log('[handleVerifyOtp] OTP verified successfully');
         } catch (err: any) {
-            setError(err.message || 'Invalid OTP');
-            console.error('[handleVerifyOtp] Error:', err.message);
+            let errorMessage = 'Invalid OTP';
+            if (err instanceof Error) {
+                errorMessage = err.message || 'Invalid OTP';
+            } else if (typeof err === 'string') {
+                errorMessage = err;
+            } else if (err?.message) {
+                errorMessage = err.message;
+            }
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -152,7 +157,6 @@ export default function ForgotPasswordScreen() {
                 confirmPassword: confirmPassword,
             });
 
-            console.log('[handleResetPassword] Password reset successfully');
             Alert.alert(
                 'Success',
                 'Password reset successfully! Please log in.',
@@ -165,7 +169,6 @@ export default function ForgotPasswordScreen() {
             );
         } catch (err: any) {
             setError(err.message || 'Failed to reset password');
-            console.error('[handleResetPassword] Error:', err.message);
         } finally {
             setLoading(false);
         }
