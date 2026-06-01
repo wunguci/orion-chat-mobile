@@ -55,7 +55,7 @@ function PinnedBadge({ isMine }: { isMine?: boolean }) {
           fontWeight: "700",
         }}
       >
-        Đã ghim
+        Pinned
       </Text>
     </View>
   );
@@ -105,7 +105,7 @@ function ReplyPreviewInBubble({
   if (!message.replyToMessageId && !preview) return null;
   const targetMessageId = message.replyToMessageId || preview?.messageId;
 
-  const senderName = preview?.senderName || "tin nhắn";
+  const senderName = preview?.senderName || "message";
   const snippet = preview?.snippet || preview?.content || "Attachment";
 
   return (
@@ -165,7 +165,7 @@ function ReplyPreviewInBubble({
             fontWeight: "700",
           }}
         >
-          Trả lời {senderName}
+          Reply to {senderName}
         </Text>
       </View>
 
@@ -290,7 +290,7 @@ function VideoBubble({
           }}
         >
           <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-            {message.text || "[Tin nhắn đã bị thu hồi]"}
+            {message.text || "[Message has been recalled]"}
           </Text>
           <Text style={{ fontSize: 11, color: colors.textSecondary }}>
             {formatTime(message.timestamp)}
@@ -614,7 +614,7 @@ function ImageBubble({
           }}
         >
           <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-            {message.text || "[Tin nhắn đã bị thu hồi]"}
+            {message.text || "[Message has been recalled]"}
           </Text>
           <Text style={{ fontSize: 11, color: colors.textSecondary }}>
             {formatTime(message.timestamp)}
@@ -909,7 +909,7 @@ function FileBubble({
           }}
         >
           <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-            {message.text || "[Tin nhắn đã bị thu hồi]"}
+            {message.text || "[Message has been recalled]"}
           </Text>
           <Text style={{ fontSize: 11, color: colors.textSecondary }}>
             {formatTime(message.timestamp)}
@@ -927,7 +927,7 @@ function FileBubble({
     // });
 
     if (!message.fileUri) {
-      Alert.alert("Lỗi", "Không có liên kết file");
+      Alert.alert("Error", "No file link available");
       return;
     }
 
@@ -1203,7 +1203,7 @@ function CallBubble({
           borderRadius: 14,
         }}
       >
-        <Text style={{ color: colors.text }}>Cuộc gọi</Text>
+        <Text style={{ color: colors.text }}>Call</Text>
       </View>
     );
   }
@@ -1220,19 +1220,19 @@ function CallBubble({
       }
     } catch (error) {
       console.error("[CallBubble] Join call failed:", error);
-      Alert.alert("Lỗi", "Không thể tham gia cuộc gọi nhóm");
+      Alert.alert("Error", "Cannot join group call");
     }
   };
 
   // Formatter cho thời lượng cuộc gọi
   const formatDurationText = (seconds?: number) => {
-    if (seconds === undefined) return "0 phút";
+    if (seconds === undefined) return "0 min";
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    if (mins === 0 && secs === 0) return "0 phút";
-    if (mins === 0) return `${secs} giây`;
-    if (secs === 0) return `${mins} phút`;
-    return `${mins} phút ${secs} giây`;
+    if (mins === 0 && secs === 0) return "0 min";
+    if (mins === 0) return `${secs}s`;
+    if (secs === 0) return `${mins}m`;
+    return `${mins}m ${secs}s`;
   };
 
   if (callStatus === "active") {
@@ -1278,7 +1278,7 @@ function CallBubble({
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: "#4C1D95", fontWeight: "700", fontSize: 14 }}>
-              Cuộc gọi nhóm
+              Group Call
             </Text>
             <View
               style={{
@@ -1303,7 +1303,7 @@ function CallBubble({
                   fontWeight: "600",
                 }}
               >
-                Đang diễn ra...
+                Ongoing...
               </Text>
             </View>
           </View>
@@ -1324,7 +1324,7 @@ function CallBubble({
         >
           <Ionicons name="enter-outline" size={16} color="#FFFFFF" />
           <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 13 }}>
-            Tham gia
+            Join
           </Text>
         </TouchableOpacity>
       </View>
@@ -1341,13 +1341,13 @@ function CallBubble({
   let statusText = "";
 
   if (callMode === "group") {
-    titleText = "Cuộc gọi nhóm";
+    titleText = "Group Call";
     if (callStatus === "completed") {
-      statusText = `Đã kết thúc · ${formatDurationText(duration)}`;
+      statusText = `Ended · ${formatDurationText(duration)}`;
       iconColor = isMe ? "#FFFFFF" : colors.success;
       iconBg = isMe ? "rgba(255, 255, 255, 0.25)" : "#E6F4EA";
     } else {
-      statusText = "Đã kết thúc";
+      statusText = "Ended";
       titleColor = isMe ? "#FFFFFF" : "#DC2626";
       iconColor = isMe ? "#FFFFFF" : "#DC2626";
       iconBg = isMe ? "rgba(255, 255, 255, 0.25)" : "#FEE2E2";
@@ -1355,20 +1355,20 @@ function CallBubble({
     }
   } else {
     if (callStatus === "completed") {
-      titleText = `Cuộc gọi ${isVideo ? "video" : "thoại"} ${isMe ? "đi" : "đến"}`;
+      titleText = `${isMe ? "Outgoing" : "Incoming"} ${isVideo ? "Video" : "Voice"} Call`;
       statusText = formatDurationText(duration);
       iconColor = isMe ? "#FFFFFF" : colors.success;
       iconBg = isMe ? "rgba(255, 255, 255, 0.25)" : "#E6F4EA";
     } else if (callStatus === "missed") {
-      titleText = isMe ? "Bạn đã hủy" : "Bạn bị nhỡ";
-      statusText = "Cuộc gọi nhỡ";
+      titleText = isMe ? "Canceled by you" : "Missed Call";
+      statusText = "Missed call";
       titleColor = isMe ? "#FFFFFF" : "#DC2626";
       iconColor = isMe ? "#FFFFFF" : "#DC2626";
       iconBg = isMe ? "rgba(255, 255, 255, 0.25)" : "#FEE2E2";
       iconName = isVideo ? "videocam-off" : "call-outline";
     } else if (callStatus === "declined") {
-      titleText = isMe ? "Người nhận từ chối" : "Bạn đã từ chối";
-      statusText = "Cuộc gọi bị từ chối";
+      titleText = isMe ? "Declined by recipient" : "Declined by you";
+      statusText = "Call declined";
       titleColor = isMe ? "#FFFFFF" : "#DC2626";
       iconColor = isMe ? "#FFFFFF" : "#DC2626";
       iconBg = isMe ? "rgba(255, 255, 255, 0.25)" : "#FEE2E2";
@@ -1434,7 +1434,7 @@ function CallBubble({
             fontSize: 13,
           }}
         >
-          Gọi lại
+          Call Back
         </Text>
       </TouchableOpacity>
     </View>
@@ -1812,7 +1812,7 @@ export default function MessageBubble({
               fontWeight: "600",
             }}
           >
-            Trả lời
+            Reply
           </Text>
         </View>
       )}

@@ -18,33 +18,33 @@ import { SafeAreaView } from "react-native-safe-area-context";
 type NotificationFilter = "all" | "unread" | NotificationType;
 
 const FILTER_OPTIONS: Array<{ key: NotificationFilter; label: string }> = [
-  { key: "all", label: "Tất cả" },
-  { key: "unread", label: "Chưa đọc" },
-  { key: "message", label: "Tin nhắn" },
-  { key: "call", label: "Cuộc gọi" },
-  { key: "friend_request", label: "Kết bạn" },
-  { key: "group_invite", label: "Nhóm" },
-  { key: "event_invite", label: "Lịch" },
-  { key: "event_reminder", label: "Nhắc lịch" },
-  { key: "system", label: "Hệ thống" },
+  { key: "all", label: "All" },
+  { key: "unread", label: "Unread" },
+  { key: "message", label: "Messages" },
+  { key: "call", label: "Calls" },
+  { key: "friend_request", label: "Friend Requests" },
+  { key: "group_invite", label: "Groups" },
+  { key: "event_invite", label: "Calendar" },
+  { key: "event_reminder", label: "Reminders" },
+  { key: "system", label: "System" },
 ];
 
 function formatTimeLabel(value: string) {
   const createdAt = new Date(value).getTime();
-  if (Number.isNaN(createdAt)) return "Vừa xong";
+  if (Number.isNaN(createdAt)) return "Just now";
 
   const diffMs = Date.now() - createdAt;
   const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return "Vừa xong";
-  if (diffMin < 60) return `${diffMin} phút trước`;
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
 
   const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour} giờ trước`;
+  if (diffHour < 24) return `${diffHour}h ago`;
 
   const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 7) return `${diffDay} ngày trước`;
+  if (diffDay < 7) return `${diffDay}d ago`;
 
-  return new Date(value).toLocaleDateString("vi-VN", {
+  return new Date(value).toLocaleDateString("en-US", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -78,7 +78,7 @@ function NotificationCard({
       <View className="flex-row items-start justify-between">
         <View className="mr-3 flex-1">
           <Text className="text-base font-semibold" style={{ color: colors.text }}>
-            {item.title || "Thông báo"}
+            {item.title || "Notification"}
           </Text>
           <Text className="mt-1 text-sm" style={{ color: colors.textSecondary }}>{item.body}</Text>
           <Text className="mt-2 text-xs" style={{ color: colors.textSecondary }}>
@@ -105,7 +105,7 @@ function NotificationCard({
               onMarkRead();
             }}
           >
-            <Text className="text-xs font-semibold" style={{ color: colors.text }}>Đánh dấu đã đọc</Text>
+            <Text className="text-xs font-semibold" style={{ color: colors.text }}>Mark as read</Text>
           </TouchableOpacity>
         )}
 
@@ -118,7 +118,7 @@ function NotificationCard({
             onDelete();
           }}
         >
-          <Text className="text-xs font-semibold" style={{ color: "#ef4444" }}>Xoá</Text>
+          <Text className="text-xs font-semibold" style={{ color: "#ef4444" }}>Delete</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -192,7 +192,7 @@ export default function NotificationsScreen() {
                   color: colors.text,
               }}
           >
-              Thông báo
+              Notifications
           </Text>
           <View style={{ width: 38 }} />
       </View>
@@ -209,10 +209,10 @@ export default function NotificationsScreen() {
           <View className="mb-3 flex-row items-center justify-between">
             <View>
               <Text className="text-xl font-bold" style={{ color: colors.text }}>
-                Trung tâm thông báo
+                Notification Center
               </Text>
               <Text className="mt-1 text-xs" style={{ color: colors.textSecondary }}>
-                {unreadCount} chưa đọc
+                {unreadCount} unread
               </Text>
             </View>
 
@@ -229,7 +229,7 @@ export default function NotificationsScreen() {
                 void markAllAsRead();
               }}
             >
-              <Text className="text-xs font-semibold text-white">Đánh dấu tất cả</Text>
+              <Text className="text-xs font-semibold text-white">Mark all as read</Text>
             </TouchableOpacity>
           </View>
 
@@ -267,7 +267,7 @@ export default function NotificationsScreen() {
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="small" color={colors.primary} />
             <Text className="mt-2 text-sm" style={{ color: colors.textSecondary }}>
-              Đang tải thông báo...
+              Loading notifications...
             </Text>
           </View>
         ) : (
@@ -286,10 +286,10 @@ export default function NotificationsScreen() {
             ListEmptyComponent={
               <View className="mt-14 items-center px-8">
                 <Text className="text-base font-semibold" style={{ color: colors.text }}>
-                  Không có thông báo
+                  No notifications
                 </Text>
                 <Text className="mt-1 text-center text-sm" style={{ color: colors.textSecondary }}>
-                  Khi có hoạt động mới, thông báo sẽ xuất hiện tại đây.
+                  When there is new activity, notifications will appear here.
                 </Text>
               </View>
             }

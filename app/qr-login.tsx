@@ -41,7 +41,7 @@ export default function QrLoginScreen() {
 
   const handleConfirm = async () => {
     if (!qrToken) {
-      Alert.alert("Mã QR không hợp lệ", "Vui lòng quét lại mã QR trên web.");
+      Alert.alert("Invalid QR Code", "Please scan the QR code on the web again.");
       return;
     }
 
@@ -49,8 +49,8 @@ export default function QrLoginScreen() {
     try {
       await confirmQrLogin(qrToken);
       Alert.alert(
-        "Đăng nhập web thành công",
-        "Trình duyệt web sẽ tự động chuyển vào Orion Chat.",
+        "Web Login Successful",
+        "The web browser will automatically redirect to Orion Chat.",
         [
           {
             text: "OK",
@@ -60,8 +60,8 @@ export default function QrLoginScreen() {
       );
     } catch (error) {
       Alert.alert(
-        "Không thể đăng nhập bằng QR",
-        error instanceof Error ? error.message : "Vui lòng thử lại.",
+        "Unable to log in via QR",
+        error instanceof Error ? error.message : "Please try again.",
       );
     } finally {
       setSubmitting(false);
@@ -109,7 +109,7 @@ export default function QrLoginScreen() {
             textAlign: "center",
           }}
         >
-          Đăng nhập web bằng QR
+          Log In to Web via QR
         </Text>
         <Text
           style={{
@@ -120,8 +120,7 @@ export default function QrLoginScreen() {
             marginTop: 10,
           }}
         >
-          Xác nhận để đăng nhập Orion Chat trên trình duyệt bằng tài khoản đang
-          đăng nhập trên điện thoại này.
+          Confirm to log in to Orion Chat on the web browser using the account currently logged in on this phone.
         </Text>
 
         {checkingAuth ? (
@@ -138,7 +137,7 @@ export default function QrLoginScreen() {
             }}
           >
             <Text style={{ color: "#b91c1c", textAlign: "center" }}>
-              Bạn cần đăng nhập trên mobile trước khi xác nhận mã QR.
+              You need to log in on the mobile app before confirming the QR code.
             </Text>
           </View>
         ) : !qrToken ? (
@@ -151,7 +150,7 @@ export default function QrLoginScreen() {
             }}
           >
             <Text style={{ color: "#92400e", textAlign: "center" }}>
-              Mã QR không hợp lệ hoặc đã thiếu token.
+              Invalid QR code or token is missing.
             </Text>
           </View>
         ) : (
@@ -173,7 +172,7 @@ export default function QrLoginScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={{ color: "#fff", fontSize: 16, fontWeight: "800" }}>
-                Xác nhận đăng nhập
+                Confirm Login
               </Text>
             )}
           </TouchableOpacity>

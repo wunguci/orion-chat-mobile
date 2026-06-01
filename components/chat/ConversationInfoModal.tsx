@@ -54,16 +54,16 @@ type PasswordMode = 'hide' | 'reveal' | null;
 const LOGIN_PRIMARY = '#006275';
 
 const PRIVATE_AUTO_DELETE_OPTIONS = [
-    { label: 'Không bao giờ', value: 0 },
-    { label: '1 ngày', value: 1 },
-    { label: '7 ngày', value: 7 },
-    { label: '30 ngày', value: 30 },
+    { label: 'Never', value: 0 },
+    { label: '1 day', value: 1 },
+    { label: '7 days', value: 7 },
+    { label: '30 days', value: 30 },
 ];
 
 const GROUP_AUTO_DELETE_OPTIONS = [
-    { label: 'Không bao giờ', value: 0 },
-    { label: '1 giờ', value: 3600 },
-    { label: '1 ngày', value: 86400 },
+    { label: 'Never', value: 0 },
+    { label: '1 hour', value: 3600 },
+    { label: '1 day', value: 86400 },
 ];
 
 const toAbsoluteUrl = (url?: string | null) => {
@@ -86,13 +86,13 @@ const getAutoDeleteLabel = (duration?: number, groupMode?: boolean) =>
     (groupMode ? GROUP_AUTO_DELETE_OPTIONS : PRIVATE_AUTO_DELETE_OPTIONS).find(
         (item) => item.value === Number(duration || 0),
     )
-        ?.label || `${duration} ngày`;
+        ?.label || `${duration} days`;
 
 const formatPinnedDate = (value?: string | null) => {
     const date = value ? new Date(value) : null;
     if (!date || Number.isNaN(date.getTime())) return '';
 
-    return date.toLocaleDateString('vi-VN', {
+    return date.toLocaleDateString('en-US', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
@@ -100,9 +100,9 @@ const formatPinnedDate = (value?: string | null) => {
 };
 
 const getRoleLabel = (role?: string | null) => {
-    if (role === 'admin' || role === 'leader') return 'Trưởng nhóm';
-    if (role === 'co-admin' || role === 'deputy') return 'Phó nhóm';
-    return 'Thành viên';
+    if (role === 'admin' || role === 'leader') return 'Leader';
+    if (role === 'co-admin' || role === 'deputy') return 'Deputy Leader';
+    return 'Member';
 };
 
 export default function ConversationInfoModal({
@@ -203,7 +203,7 @@ export default function ConversationInfoModal({
                 pathname: '/chat/media',
                 params: {
                     conversationId,
-                    name: 'Ảnh, file, link',
+                    name: 'Photos, files, links',
                 },
             });
         }, 120);
@@ -298,8 +298,8 @@ export default function ConversationInfoModal({
             }
         } catch (error) {
             Alert.alert(
-                'Không tải được thông tin hội thoại',
-                error instanceof Error ? error.message : 'Vui lòng thử lại sau',
+                'Unable to load conversation info',
+                error instanceof Error ? error.message : 'Please try again later',
             );
         } finally {
             setLoading(false);
@@ -328,13 +328,13 @@ export default function ConversationInfoModal({
             setActionLoading(true);
             try {
                 await action();
-                if (successMessage) Alert.alert('Thành công', successMessage);
+                if (successMessage) Alert.alert('Success', successMessage);
             } catch (error) {
                 Alert.alert(
-                    'Không thể thực hiện',
+                    'Unable to perform action',
                     error instanceof Error
                         ? error.message
-                        : 'Vui lòng thử lại sau',
+                        : 'Please try again later',
                 );
             } finally {
                 setActionLoading(false);
@@ -346,9 +346,9 @@ export default function ConversationInfoModal({
     const confirmAction = useCallback(
         (title: string, message: string, action: () => Promise<void>) => {
             Alert.alert(title, message, [
-                { text: 'Hủy', style: 'cancel' },
+                { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'Đồng ý',
+                    text: 'Confirm',
                     style: 'destructive',
                     onPress: () => void runAction(action),
                 },
@@ -376,8 +376,8 @@ export default function ConversationInfoModal({
 
     const handleAutoDelete = () => {
         Alert.alert(
-            'Tin nhắn tự xóa',
-            'Chọn thời gian tự xóa tin nhắn cho hội thoại này.',
+            'Auto-delete messages',
+            'Select the auto-deletion duration for this conversation.',
             [
                 ...(groupMode
                     ? GROUP_AUTO_DELETE_OPTIONS
@@ -400,7 +400,7 @@ export default function ConversationInfoModal({
                             setAutoDeleteDuration(option.value);
                         }),
                 })),
-                { text: 'Hủy', style: 'cancel' as const },
+                { text: 'Cancel', style: 'cancel' as const },
             ],
         );
     };
@@ -427,14 +427,14 @@ export default function ConversationInfoModal({
                 setPasswordMode(null);
                 setPassword('');
             },
-            passwordMode === 'hide' ? undefined : 'Đã bỏ ẩn hội thoại',
+            passwordMode === 'hide' ? undefined : 'Conversation unhidden',
         );
     };
 
     const handleClearHistory = () => {
         confirmAction(
-            'Xóa lịch sử trò chuyện',
-            `Xóa toàn bộ lịch sử trò chuyện với ${displayName}?`,
+            'Clear chat history',
+            `Clear all chat history with ${displayName}?`,
             async () => {
                 await chatApi.clearConversationHistory(conversationId);
                 onClose();
@@ -444,8 +444,8 @@ export default function ConversationInfoModal({
 
     const handleDeleteConversation = () => {
         confirmAction(
-            'Xóa cuộc hội thoại',
-            `Xóa cuộc hội thoại với ${displayName}?`,
+            'Delete conversation',
+            `Delete conversation with ${displayName}?`,
             async () => {
                 await chatApi.deleteConversation(conversationId);
                 onConversationDeleted?.(conversationId);
@@ -456,10 +456,10 @@ export default function ConversationInfoModal({
 
     const handleBlockToggle = () => {
         confirmAction(
-            iAmTheBlocker ? 'Bỏ chặn người dùng' : 'Chặn người dùng',
+            iAmTheBlocker ? 'Unblock user' : 'Block user',
             iAmTheBlocker
-                ? `Bỏ chặn ${displayName}?`
-                : `${displayName} sẽ không thể nhắn tin hoặc gọi cho bạn.`,
+                ? `Unblock ${displayName}?`
+                : `${displayName} will not be able to message or call you.`,
             async () => {
                 if (iAmTheBlocker) {
                     await chatApi.unblockUser(conversationId);
@@ -476,8 +476,8 @@ export default function ConversationInfoModal({
         if (isOwner) {
             if (!ownerTransferCandidates.length) {
                 Alert.alert(
-                    'Không thể rời nhóm',
-                    'Bạn đang là trưởng nhóm. Cần có thành viên khác để chuyển quyền trưởng nhóm trước khi rời.',
+                    'Cannot leave group',
+                    'You are the group leader. You must transfer the leadership to another member before leaving.',
                 );
                 return;
             }
@@ -487,7 +487,7 @@ export default function ConversationInfoModal({
             return;
         }
 
-        confirmAction('Rời nhóm', `Rời khỏi nhóm ${displayName}?`, async () => {
+        confirmAction('Leave group', `Leave group ${displayName}?`, async () => {
             await chatApi.leaveGroup(conversationId);
             onConversationDeleted?.(conversationId);
             onClose();
@@ -502,19 +502,19 @@ export default function ConversationInfoModal({
 
         if (!newAdminUserId || !newOwner) {
             Alert.alert(
-                'Chưa chọn trưởng nhóm mới',
-                'Vui lòng chọn một thành viên khác làm trưởng nhóm trước khi rời.',
+                'New leader not selected',
+                'Please select another member as the new leader before leaving.',
             );
             return;
         }
 
         Alert.alert(
-            'Rời nhóm',
-            `Chuyển quyền trưởng nhóm cho ${newOwner.fullName || 'thành viên này'} và rời khỏi nhóm ${displayName}?`,
+            'Leave group',
+            `Transfer group leadership to ${newOwner.fullName || 'this member'} and leave the group ${displayName}?`,
             [
-                { text: 'Hủy', style: 'cancel' },
+                { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'Đồng ý',
+                    text: 'Confirm',
                     style: 'destructive',
                     onPress: () =>
                         void runAction(async () => {
@@ -534,8 +534,8 @@ export default function ConversationInfoModal({
 
     const handleDissolveGroup = () => {
         confirmAction(
-            'Giải tán nhóm',
-            `Giải tán nhóm ${displayName}? Tất cả thành viên sẽ mất quyền truy cập nhóm.`,
+            'Disband group',
+            `Disband group ${displayName}? All members will lose access to the group.`,
             async () => {
                 await chatApi.dissolveGroup(conversationId);
                 onConversationDeleted?.(conversationId);
@@ -547,7 +547,7 @@ export default function ConversationInfoModal({
     const handleCopyConversationId = () => {
         void runAction(async () => {
             await Clipboard.setStringAsync(conversationId);
-        }, 'Đã sao chép ID nhóm');
+        }, 'Group ID copied');
     };
 
     const handleUnpinMessage = (messageId: string) => {
@@ -556,7 +556,7 @@ export default function ConversationInfoModal({
             setPinnedMessages((prev) =>
                 prev.filter((item) => item.messageId !== messageId),
             );
-        }, 'Đã bỏ ghim tin nhắn');
+        }, 'Message unpinned');
     };
 
     const openGroupNameDialog = () => {
@@ -567,7 +567,7 @@ export default function ConversationInfoModal({
     const handleUpdateGroupName = () => {
         const nextName = groupNameInput.trim();
         if (!nextName) {
-            Alert.alert('Tên nhóm không hợp lệ', 'Vui lòng nhập tên nhóm.');
+            Alert.alert('Invalid group name', 'Please enter a group name.');
             return;
         }
 
@@ -588,7 +588,7 @@ export default function ConversationInfoModal({
                     : prev,
             );
             setGroupNameDialogVisible(false);
-        }, 'Đã đổi tên nhóm');
+        }, 'Group name updated');
     };
 
     const handleUpdateGroupAvatar = async () => {
@@ -596,8 +596,8 @@ export default function ConversationInfoModal({
             await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!permission.granted) {
             Alert.alert(
-                'Chưa có quyền truy cập ảnh',
-                'Vui lòng cấp quyền thư viện ảnh để đổi ảnh nhóm.',
+                'No photo library permission',
+                'Please grant photo library permission to change the group avatar.',
             );
             return;
         }
@@ -635,7 +635,7 @@ export default function ConversationInfoModal({
                       }
                     : prev,
             );
-        }, 'Đã đổi ảnh nhóm');
+        }, 'Group avatar updated');
     };
 
     const canModifyMember = (member: GroupMemberItem) => {
@@ -650,7 +650,7 @@ export default function ConversationInfoModal({
         const actions = [
             member.role === 'member' && isOwner
                 ? {
-                      text: 'Cấp phó nhóm',
+                      text: 'Promote to deputy',
                       onPress: () =>
                           void runAction(async () => {
                               await chatApi.updateGroupMemberRole(
@@ -659,12 +659,12 @@ export default function ConversationInfoModal({
                                   'co-admin',
                               );
                               await refreshData();
-                          }, 'Đã cấp phó nhóm'),
+                          }, 'Promoted to deputy'),
                   }
                 : null,
             member.role === 'co-admin' && isOwner
                 ? {
-                      text: 'Hạ xuống thành viên',
+                      text: 'Demote to member',
                       onPress: () =>
                           void runAction(async () => {
                               await chatApi.updateGroupMemberRole(
@@ -673,16 +673,16 @@ export default function ConversationInfoModal({
                                   'member',
                               );
                               await refreshData();
-                          }, 'Đã cập nhật vai trò'),
+                          }, 'Role updated'),
                   }
                 : null,
             {
-                text: 'Xóa khỏi nhóm',
+                text: 'Remove from group',
                 style: 'destructive' as const,
                 onPress: () =>
                     confirmAction(
-                        'Xóa thành viên',
-                        `Xóa ${member.fullName || 'thành viên này'} khỏi nhóm?`,
+                        'Remove member',
+                        `Remove ${member.fullName || 'this member'} from the group?`,
                         async () => {
                             await chatApi.removeGroupMember(
                                 conversationId,
@@ -692,7 +692,7 @@ export default function ConversationInfoModal({
                         },
                     ),
             },
-            { text: 'Hủy', style: 'cancel' as const },
+            { text: 'Cancel', style: 'cancel' as const },
         ].filter(Boolean) as {
             text: string;
             style?: 'default' | 'cancel' | 'destructive';
@@ -700,7 +700,7 @@ export default function ConversationInfoModal({
         }[];
 
         Alert.alert(
-            member.fullName || 'Thành viên',
+            member.fullName || 'Member',
             getRoleLabel(member.role),
             actions,
         );
@@ -766,7 +766,7 @@ export default function ConversationInfoModal({
                             }}
                             numberOfLines={1}
                         >
-                            Thông tin hội thoại
+                            Conversation Info
                         </Text>
                     </View>
                     <View style={{ width: 26 }} />
@@ -851,12 +851,12 @@ export default function ConversationInfoModal({
                             >
                                 <QuickAction
                                     icon="notifications-off-outline"
-                                    label="Tắt thông báo"
+                                    label="Mute"
                                 />
                                 <QuickAction
                                     icon={isPinned ? 'pin' : 'pin-outline'}
                                     label={
-                                        isPinned ? 'Bỏ ghim' : 'Ghim hội thoại'
+                                        isPinned ? 'Unpin' : 'Pin chat'
                                     }
                                     onPress={handleTogglePin}
                                 />
@@ -875,21 +875,21 @@ export default function ConversationInfoModal({
                                             : undefined
                                     }
                                     label={
-                                        groupMode ? 'Quản lý nhóm' : 'Tạo nhóm'
+                                        groupMode ? 'Manage group' : 'Create group'
                                     }
                                 />
                             </View>
                         </View>
 
-                        <Section title={groupMode ? 'Thành viên' : 'Images'}>
+                        <Section title={groupMode ? 'Members' : 'Images'}>
                             {groupMode ? (
                                 <>
                                     <InfoRow
                                         icon="account-multiple-outline"
-                                        title={`${memberCount} thành viên`}
+                                        title={`${memberCount} members`}
                                         subtitle={
                                             myRole
-                                                ? `Vai trò của bạn: ${myRole}`
+                                                ? `Your role: ${myRole}`
                                                 : undefined
                                         }
                                         showChevron
@@ -897,13 +897,13 @@ export default function ConversationInfoModal({
                                     />
                                     <InfoRow
                                         icon="pencil-outline"
-                                        title="Đổi tên nhóm"
+                                        title="Change group name"
                                         showChevron
                                         onPress={openGroupNameDialog}
                                     />
                                     <InfoRow
                                         icon="camera-outline"
-                                        title="Đổi ảnh nhóm"
+                                        title="Change group avatar"
                                         showChevron
                                         onPress={() =>
                                             void handleUpdateGroupAvatar()
@@ -911,7 +911,7 @@ export default function ConversationInfoModal({
                                     />
                                     <InfoRow
                                         icon="account-cog-outline"
-                                        title="Quản lý nhóm"
+                                        title="Manage group"
                                         subtitle={getRoleLabel(myRole)}
                                         showChevron
                                         onPress={() =>
@@ -921,7 +921,7 @@ export default function ConversationInfoModal({
                                     {canManageGroup ? (
                                         <InfoRow
                                             icon="account-plus-outline"
-                                            title="Thêm thành viên"
+                                            title="Add members"
                                             showChevron
                                             onPress={() =>
                                                 setAddMembersVisible(true)
@@ -955,7 +955,7 @@ export default function ConversationInfoModal({
                                                     fontWeight: '600',
                                                 }}
                                             >
-                                                Link tham gia nhóm
+                                                Group invite link
                                             </Text>
                                             <Text
                                                 style={{
@@ -1015,19 +1015,19 @@ export default function ConversationInfoModal({
                                         paddingVertical: 22,
                                     }}
                                 >
-                                    Không có hình ảnh
+                                    No images
                                 </Text>
                             )}
                         </Section>
 
-                        <Section title="Ảnh, file, link">
+                        <Section title="Photos, files, links">
                             <InfoRow
                                 icon="folder-multiple-image"
-                                title="Ảnh, file, link"
+                                title="Photos, files, links"
                                 subtitle={
                                     mediaPreviewItems.length
-                                        ? `${mediaPreviewItems.length} mục gần đây`
-                                        : 'Chưa có nội dung'
+                                        ? `${mediaPreviewItems.length} recent items`
+                                        : 'No content'
                                 }
                                 showChevron
                                 onPress={openMediaManager}
@@ -1147,36 +1147,36 @@ export default function ConversationInfoModal({
                         </Section>
 
                         <Section
-                            title={groupMode ? 'Bảng tin nhóm' : 'Bảng tin'}
+                            title={groupMode ? 'Group bulletin board' : 'Bulletin board'}
                         >
                             <InfoRow
                                 icon="alarm-check"
-                                title="Danh sách nhắc hẹn"
+                                title="Reminders list"
                             />
                             <InfoRow
                                 icon="notebook-outline"
-                                title="Ghi chú, ghim, bình chọn"
+                                title="Notes, pins, polls"
                             />
                         </Section>
 
-                        <Section title="Thiết lập bảo mật">
+                        <Section title="Security settings">
                             <InfoRow
                                 icon="pin-outline"
-                                title="Tin nhắn đã ghim"
+                                title="Pinned messages"
                                 subtitle={
                                     pinnedMessages.length
-                                        ? `${pinnedMessages.length} tin nhắn`
-                                        : 'Chưa có tin nhắn ghim'
+                                        ? `${pinnedMessages.length} messages`
+                                        : 'No pinned messages'
                                 }
                                 showChevron
                                 onPress={() => setPinnedMessagesVisible(true)}
                             />
                         </Section>
 
-                        <Section title="Thiết lập bảo mật">
+                        <Section title="Security settings">
                             <InfoRow
                                 icon="timer-outline"
-                                title="Tin nhắn tự xóa"
+                                title="Auto-delete messages"
                                 subtitle={getAutoDeleteLabel(
                                     autoDeleteDuration,
                                     groupMode,
@@ -1188,8 +1188,8 @@ export default function ConversationInfoModal({
                                 icon="eye-off-outline"
                                 title={
                                     isHidden
-                                        ? 'Bỏ ẩn trò chuyện'
-                                        : 'Ẩn trò chuyện'
+                                        ? 'Unhide chat'
+                                        : 'Hide chat'
                                 }
                                 showChevron
                                 onPress={() => {
@@ -1204,25 +1204,25 @@ export default function ConversationInfoModal({
                         <Section>
                             <DangerRow
                                 icon="alert-box-outline"
-                                title="Báo xấu"
+                                title="Report"
                                 muted
                             />
                             <DangerRow
                                 icon="delete-outline"
-                                title="Xóa lịch sử trò chuyện"
+                                title="Clear chat history"
                                 onPress={handleClearHistory}
                             />
                             {groupMode ? (
                                 <>
                                     <DangerRow
                                         icon="logout"
-                                        title="Rời nhóm"
+                                        title="Leave group"
                                         onPress={handleLeaveGroup}
                                     />
                                     {isOwner ? (
                                         <DangerRow
                                             icon="trash-can-outline"
-                                            title="Giải tán nhóm"
+                                            title="Disband group"
                                             onPress={handleDissolveGroup}
                                         />
                                     ) : null}
@@ -1231,7 +1231,7 @@ export default function ConversationInfoModal({
                                 <>
                                     <DangerRow
                                         icon="delete-outline"
-                                        title="Xóa cuộc hội thoại"
+                                        title="Delete conversation"
                                         onPress={handleDeleteConversation}
                                     />
                                     <DangerRow
@@ -1242,8 +1242,8 @@ export default function ConversationInfoModal({
                                         }
                                         title={
                                             iAmTheBlocker
-                                                ? 'Bỏ chặn người dùng'
-                                                : 'Chặn người dùng'
+                                                ? 'Unblock user'
+                                                : 'Block user'
                                         }
                                         onPress={handleBlockToggle}
                                     />
@@ -1399,7 +1399,7 @@ function GroupMembersModal({
                     paddingBottom: insets.bottom,
                 }}
             >
-                <HeaderBar title={`Thành viên (${members.length})`} onBack={onClose} />
+                <HeaderBar title={`Members (${members.length})`} onBack={onClose} />
                 <View style={{ padding: 16, borderBottomWidth: 0.5, borderBottomColor: colors.divider }}>
                     <View
                         style={{
@@ -1416,7 +1416,7 @@ function GroupMembersModal({
                         <TextInput
                             value={searchText}
                             onChangeText={setSearchText}
-                            placeholder="Tìm kiếm thành viên"
+                            placeholder="Search members"
                             placeholderTextColor={colors.textSecondary}
                             style={{ flex: 1, color: colors.text, fontSize: 15 }}
                         />
@@ -1440,7 +1440,7 @@ function GroupMembersModal({
                                 paddingVertical: 28,
                             }}
                         >
-                            Không tìm thấy thành viên
+                            No members found
                         </Text>
                     )}
                 </ScrollView>
@@ -1478,7 +1478,7 @@ function PinnedMessagesModal({
                     paddingBottom: insets.bottom,
                 }}
             >
-                <HeaderBar title="Tin nhắn đã ghim" onBack={onClose} />
+                <HeaderBar title="Pinned messages" onBack={onClose} />
                 <ScrollView showsVerticalScrollIndicator={false}>
                     {messages.length ? (
                         messages.map((message) => (
@@ -1496,7 +1496,7 @@ function PinnedMessagesModal({
                                 paddingVertical: 32,
                             }}
                         >
-                            Chưa có tin nhắn ghim
+                            No pinned messages
                         </Text>
                     )}
                 </ScrollView>
@@ -1516,7 +1516,7 @@ function PinnedMessageRow({
     const content =
         message.content ||
         message.attachment?.fileName ||
-        (message.messageType ? `Tin nhắn ${message.messageType.toLowerCase()}` : 'Tin nhắn');
+        (message.messageType ? `${message.messageType} Message` : 'Message');
 
     return (
         <View
@@ -1599,14 +1599,14 @@ function PasswordDialog({
                         }}
                     >
                         {mode === 'reveal'
-                            ? 'Nhập mật khẩu để bỏ ẩn'
-                            : 'Đặt mật khẩu để ẩn hội thoại'}
+                            ? 'Enter password to unhide'
+                            : 'Set password to hide conversation'}
                     </Text>
                     <TextInput
                         value={value}
                         onChangeText={onChangeText}
                         secureTextEntry
-                        placeholder="Mật khẩu"
+                        placeholder="Password"
                         placeholderTextColor={colors.textSecondary}
                         style={{
                             borderWidth: 1,
@@ -1633,7 +1633,7 @@ function PasswordDialog({
                                     fontWeight: '700',
                                 }}
                             >
-                                Hủy
+                                Cancel
                             </Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={onSubmit}>
@@ -1643,7 +1643,7 @@ function PasswordDialog({
                                     fontWeight: '800',
                                 }}
                             >
-                                Xác nhận
+                                Confirm
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -1697,12 +1697,12 @@ function GroupNameDialog({
                             marginBottom: 8,
                         }}
                     >
-                        Đổi tên nhóm
+                        Change group name
                     </Text>
                     <TextInput
                         value={value}
                         onChangeText={onChangeText}
-                        placeholder="Tên nhóm"
+                        placeholder="Group name"
                         placeholderTextColor={colors.textSecondary}
                         style={{
                             borderWidth: 1,
@@ -1729,7 +1729,7 @@ function GroupNameDialog({
                                     fontWeight: '700',
                                 }}
                             >
-                                Hủy
+                                Cancel
                             </Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={onSubmit}>
@@ -1739,7 +1739,7 @@ function GroupNameDialog({
                                     fontWeight: '800',
                                 }}
                             >
-                                Lưu
+                                Save
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -1796,7 +1796,7 @@ function TransferOwnerDialog({
                                 fontWeight: '800',
                             }}
                         >
-                            Chọn trưởng nhóm mới
+                            Select new leader
                         </Text>
                         <Text
                             style={{
@@ -1804,10 +1804,10 @@ function TransferOwnerDialog({
                                 fontSize: 13,
                                 marginTop: 6,
                                 lineHeight: 19,
-                            }}
-                        >
-                            Bạn đang là trưởng nhóm. Hãy chọn một thành viên
-                            khác làm trưởng nhóm trước khi rời.
+                             }}
+                         >
+                            You are the leader. Please select another member
+                            as the new leader before leaving.
                         </Text>
                     </View>
 
@@ -1880,7 +1880,7 @@ function TransferOwnerDialog({
                                             }}
                                             numberOfLines={1}
                                         >
-                                            {member.fullName || 'Thành viên'}
+                                            {member.fullName || 'Member'}
                                         </Text>
                                         <Text
                                             style={{
@@ -1927,7 +1927,7 @@ function TransferOwnerDialog({
                                     fontWeight: '700',
                                 }}
                             >
-                                Hủy
+                                Cancel
                             </Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={onSubmit}>
@@ -1937,7 +1937,7 @@ function TransferOwnerDialog({
                                     fontWeight: '800',
                                 }}
                             >
-                                Tiếp tục
+                                Continue
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -1994,7 +1994,7 @@ function AddMembersModal({
             );
 
             if (!userId) {
-                setError('Không thể xác định userId');
+                setError('Cannot identify userId');
                 return;
             }
 
@@ -2004,7 +2004,7 @@ function AddMembersModal({
             setError(
                 err instanceof Error
                     ? err.message
-                    : 'Không thể tải danh sách bạn bè',
+                    : 'Unable to load friends list',
             );
         } finally {
             setLoading(false);
@@ -2048,13 +2048,13 @@ function AddMembersModal({
             setAdding(true);
             setError(null);
             await chatApi.addGroupMembers(conversationId, selectedFriends);
-            Alert.alert('Thành công', 'Đã thêm thành viên vào nhóm');
+            Alert.alert('Success', 'Added members to the group');
             onAdded();
         } catch (err) {
             setError(
                 err instanceof Error
                     ? err.message
-                    : 'Không thể thêm thành viên',
+                    : 'Unable to add members',
             );
         } finally {
             setAdding(false);
@@ -2096,7 +2096,7 @@ function AddMembersModal({
                             color: colors.text,
                         }}
                     >
-                        Thêm thành viên
+                        Add members
                     </Text>
                     <TouchableOpacity onPress={onClose} disabled={adding}>
                         <MaterialCommunityIcons
@@ -2127,7 +2127,7 @@ function AddMembersModal({
                             style={{ marginRight: 8 }}
                         />
                         <TextInput
-                            placeholder="Tìm kiếm bạn bè"
+                            placeholder="Search friends"
                             placeholderTextColor={colors.textSecondary}
                             value={searchText}
                             onChangeText={setSearchText}
@@ -2167,8 +2167,8 @@ function AddMembersModal({
                                 }}
                             >
                                 {friends.length === 0
-                                    ? 'Không tìm thấy bạn bè nào.'
-                                    : 'Tất cả bạn bè đã tham gia nhóm này.'}
+                                    ? 'No friends found.'
+                                    : 'All friends have joined this group.'}
                             </Text>
                         </View>
                     ) : (
@@ -2259,7 +2259,7 @@ function AddMembersModal({
                                 color: colors.textSecondary,
                             }}
                         >
-                            Đã chọn {selectedFriends.length} thành viên
+                            Selected {selectedFriends.length} members
                         </Text>
                     )}
 
@@ -2309,7 +2309,7 @@ function AddMembersModal({
                                 fontWeight: '600',
                             }}
                         >
-                            Hủy
+                            Cancel
                         </Text>
                     </TouchableOpacity>
 
@@ -2333,7 +2333,7 @@ function AddMembersModal({
                                 fontWeight: '600',
                             }}
                         >
-                            Thêm
+                            Add
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -2421,7 +2421,7 @@ function GroupManagementModalV2({
                 .updateGroupJoinApproval(conversationId, nextValue)
                 .catch(() => {
                     setSettings((prev) => ({ ...prev, [key]: !nextValue }));
-                    Alert.alert('Không thể cập nhật', 'Vui lòng thử lại sau.');
+                    Alert.alert('Unable to update', 'Please try again later.');
                 });
         }
     };
@@ -2437,10 +2437,10 @@ function GroupManagementModalV2({
             setShowJoinRequests(true);
         } catch (error) {
             Alert.alert(
-                'Không tải được yêu cầu tham gia',
+                'Unable to load join requests',
                 error instanceof Error
                     ? error.message
-                    : 'Vui lòng thử lại sau.',
+                    : 'Please try again later.',
             );
         } finally {
             setLoadingRequests(false);
@@ -2464,18 +2464,18 @@ function GroupManagementModalV2({
                     onDataChanged();
                 }
                 Alert.alert(
-                    'Thành công',
+                    'Success',
                     approved
-                        ? 'Đã duyệt yêu cầu tham gia.'
-                        : 'Đã từ chối yêu cầu tham gia.',
+                        ? 'Join request approved.'
+                        : 'Join request rejected.',
                 );
             })
             .catch((error) => {
                 Alert.alert(
-                    'Không thể thực hiện',
+                    'Unable to perform action',
                     error instanceof Error
                         ? error.message
-                        : 'Vui lòng thử lại sau.',
+                        : 'Please try again later.',
                 );
             });
     };
@@ -2486,12 +2486,12 @@ function GroupManagementModalV2({
 
     const refreshGroupLink = () => {
         Alert.alert(
-            'Chưa hỗ trợ làm mới link',
-            'Backend hiện tại chưa có endpoint tạo lại link nhóm.',
+            'Refreshing link not supported yet',
+            'The backend does not support link regeneration yet.',
         );
     };
 
-    const renderShell = (children: React.ReactNode, title = 'Quản lý nhóm') => (
+    const renderShell = (children: React.ReactNode, title = 'Group Management') => (
         <Modal
             visible={visible}
             animationType="slide"
@@ -2554,11 +2554,11 @@ function GroupManagementModalV2({
                             paddingVertical: 28,
                         }}
                     >
-                        Không có yêu cầu tham gia
+                    No join requests
                     </Text>
                 )}
             </ScrollView>,
-            'Yêu cầu tham gia',
+            'Join Requests',
         );
     }
 
@@ -2574,7 +2574,7 @@ function GroupManagementModalV2({
                     />
                 ))}
             </ScrollView>,
-            'Trưởng & phó nhóm',
+            'Leaders & Deputies',
         );
     }
 
@@ -2593,30 +2593,30 @@ function GroupManagementModalV2({
                         marginBottom: 12,
                     }}
                 >
-                    Cho phép các thành viên trong nhóm:
+                    Allow group members to:
                 </Text>
                 <PermissionRow
-                    title="Thay đổi tên & ảnh đại diện của nhóm"
+                    title="Change group name & avatar"
                     checked={permissions.changeNameAvatar}
                     onPress={() => togglePermission('changeNameAvatar')}
                 />
                 <PermissionRow
-                    title="Ghim tin nhắn, ghi chú, bình chọn lên đầu hội thoại"
+                    title="Pin messages, notes, polls to the top of conversation"
                     checked={permissions.pinMessages}
                     onPress={() => togglePermission('pinMessages')}
                 />
                 <PermissionRow
-                    title="Tạo mới ghi chú, nhắc hẹn"
+                    title="Create new notes, reminders"
                     checked={permissions.createNotes}
                     onPress={() => togglePermission('createNotes')}
                 />
                 <PermissionRow
-                    title="Tạo mới bình chọn"
+                    title="Create new polls"
                     checked={permissions.createPolls}
                     onPress={() => togglePermission('createPolls')}
                 />
                 <PermissionRow
-                    title="Gửi tin nhắn"
+                    title="Send messages"
                     checked={permissions.sendMessages}
                     onPress={() => togglePermission('sendMessages')}
                 />
@@ -2631,25 +2631,25 @@ function GroupManagementModalV2({
                 }}
             >
                 <SettingSwitchRow
-                    title="Chế độ phê duyệt thành viên mới"
+                    title="Approve new members mode"
                     value={settings.approveNewMembers}
                     onValueChange={() => toggleSetting('approveNewMembers')}
                     disabled={!canManage}
                 />
                 <SettingSwitchRow
-                    title="Đánh dấu tin nhắn từ trưởng/phó nhóm"
+                    title="Highlight leader/deputy messages"
                     value={settings.markLeaderMessages}
                     onValueChange={() => toggleSetting('markLeaderMessages')}
                 />
                 <SettingSwitchRow
-                    title="Cho phép thành viên mới đọc tin nhắn gần nhất"
+                    title="Allow new members to read recent messages"
                     value={settings.allowReadRecentMessages}
                     onValueChange={() =>
                         toggleSetting('allowReadRecentMessages')
                     }
                 />
                 <SettingSwitchRow
-                    title="Cho phép dùng link tham gia nhóm"
+                    title="Allow joining via link"
                     value={settings.allowJoinLink}
                     onValueChange={() => toggleSetting('allowJoinLink')}
                 />
@@ -2716,17 +2716,17 @@ function GroupManagementModalV2({
                 <ManagementMenuRow
                     icon="account-multiple-outline"
                     onPress={() => setShowMembers(true)}
-                    title="Chặn khỏi nhóm"
+                    title="Blocked from group"
                 />
                 <ManagementMenuRow
                     icon="key-outline"
-                    title={`Trưởng & phó nhóm (${members.length}/${memberLimit})`}
+                    title={`Leaders & Deputies (${members.length}/${memberLimit})`}
                     onPress={() => setShowMembers(true)}
                 />
                 {canManage && settings.approveNewMembers ? (
                     <ManagementMenuRow
                         icon="account-clock-outline"
-                        title="Yêu cầu tham gia"
+                        title="Join Requests"
                         onPress={() => void loadJoinRequests()}
                     />
                 ) : null}
@@ -2754,7 +2754,7 @@ function GroupManagementModalV2({
                         fontSize: 16,
                     }}
                 >
-                    Giải tán nhóm
+                    Disband group
                 </Text>
             </TouchableOpacity>
         </ScrollView>,
@@ -2977,8 +2977,8 @@ function MemberManagementRow({
                     }}
                     numberOfLines={1}
                 >
-                    {member.fullName || 'Thành viên'}
-                    {member.isMe ? ' (Bạn)' : ''}
+                    {member.fullName || 'Member'}
+                    {member.isMe ? ' (You)' : ''}
                 </Text>
                 <Text
                     style={{
@@ -3053,7 +3053,7 @@ function JoinRequestRow({
                     }}
                     numberOfLines={1}
                 >
-                    {request.requester.fullName || 'Người dùng'}
+                    {request.requester.fullName || 'User'}
                 </Text>
                 {request.message ? (
                     <Text
@@ -3146,7 +3146,7 @@ function GroupManagementModal({
                             fontWeight: '700',
                         }}
                     >
-                        Quản lý nhóm
+                        Group Management
                     </Text>
                     <View style={{ width: 26 }} />
                 </View>
@@ -3162,8 +3162,8 @@ function GroupManagementModal({
                         }}
                     >
                         {canManage
-                            ? 'Chạm vào thành viên để quản lý vai trò hoặc xóa khỏi nhóm.'
-                            : 'Bạn không có quyền quản lý thành viên nhóm.'}
+                            ? 'Tap on a member to manage roles or remove them from the group.'
+                            : 'You do not have permission to manage group members.'}
                     </Text>
                     {members.map((member) => (
                         <TouchableOpacity
@@ -3226,8 +3226,8 @@ function GroupManagementModal({
                                     }}
                                     numberOfLines={1}
                                 >
-                                    {member.fullName || 'Thành viên'}
-                                    {member.isMe ? ' (Bạn)' : ''}
+                                    {member.fullName || 'Member'}
+                                    {member.isMe ? ' (You)' : ''}
                                 </Text>
                                 <Text
                                     style={{

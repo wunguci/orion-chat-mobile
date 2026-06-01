@@ -1,7 +1,7 @@
 import { Conversation } from "@/types/aichat";
 import { Ionicons } from "@expo/vector-icons";
 import { formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 
@@ -90,7 +90,7 @@ export function ConversationItem({
         <Text className="text-xs text-gray-400">
           {formatDistanceToNow(new Date(conversation.updatedAt), {
             addSuffix: true,
-            locale: vi,
+            locale: enUS,
           })}
         </Text>
       </View>

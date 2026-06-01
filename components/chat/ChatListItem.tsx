@@ -86,7 +86,7 @@ export default function ChatListItem({
     const renderRightActions = () => (
         <View style={{ flexDirection: 'row', backgroundColor: colors.background }}>
             <SwipeAction
-                label={item.isPinned ? 'Bỏ ghim' : 'Ghim'}
+                label={item.isPinned ? 'Unpin' : 'Pin'}
                 icon={item.isPinned ? 'pin-off' : 'pin'}
                 backgroundColor="#f59e0b"
                 onPress={() => {
@@ -95,7 +95,7 @@ export default function ChatListItem({
                 }}
             />
             <SwipeAction
-                label="Xóa lịch sử"
+                label="Clear history"
                 icon="broom"
                 backgroundColor="#64748b"
                 onPress={() => {
@@ -104,7 +104,7 @@ export default function ChatListItem({
                 }}
             />
             <SwipeAction
-                label="Xóa"
+                label="Delete"
                 icon="delete-outline"
                 backgroundColor="#ef4444"
                 onPress={() => {

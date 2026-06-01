@@ -74,7 +74,7 @@ export default function ForwardConversationModal({
                     'Error loading conversations for forward:',
                     error,
                 );
-                Alert.alert('Lỗi', 'Không thể tải danh sách cuộc trò chuyện');
+                Alert.alert('Error', 'Unable to load conversations');
             } finally {
                 setLoading(false);
             }
@@ -89,8 +89,8 @@ export default function ForwardConversationModal({
     const handleForwardMessage = async () => {
         if (selectedConversationIds.size === 0) {
             Alert.alert(
-                'Thông báo',
-                'Vui lòng chọn ít nhất một cuộc trò chuyện',
+                'Notification',
+                'Please select at least one conversation',
             );
             return;
         }
@@ -102,18 +102,18 @@ export default function ForwardConversationModal({
                 await onForward(conversationId);
             }
             Alert.alert(
-                'Thành công',
-                `Tin nhắn đã được chuyển tiếp đến ${selectedConversationIds.size} cuộc trò chuyện`,
+                'Success',
+                `Message has been forwarded to ${selectedConversationIds.size} conversations`,
             );
             onClose();
             setSelectedConversationIds(new Set());
         } catch (error) {
             console.error('Error forwarding message:', error);
             Alert.alert(
-                'Lỗi',
+                'Error',
                 error instanceof Error
                     ? error.message
-                    : 'Không thể chuyển tiếp tin nhắn',
+                    : 'Unable to forward message',
             );
         } finally {
             setForwarding(false);
@@ -135,8 +135,8 @@ export default function ForwardConversationModal({
               )
             : null;
         const displayName = isGroup
-            ? item.groupInfo?.groupName || 'Nhóm'
-            : otherParticipant?.fullName || 'Không xác định';
+            ? item.groupInfo?.groupName || 'Group'
+            : otherParticipant?.fullName || 'Unknown';
 
         const isSelected = selectedConversationIds.has(item.conversationId);
 
@@ -203,8 +203,8 @@ export default function ForwardConversationModal({
                         }}
                     >
                         {isGroup
-                            ? `${item.participants.length} người`
-                            : 'Chat đơn'}
+                            ? `${item.participants.length} members`
+                            : 'Direct Chat'}
                     </Text>
                 </View>
 
@@ -267,7 +267,7 @@ export default function ForwardConversationModal({
                                 color: colors.text,
                             }}
                         >
-                            Chuyển tiếp tới
+                            Forward to
                         </Text>
                         <TouchableOpacity onPress={onClose}>
                             <Text
@@ -277,7 +277,7 @@ export default function ForwardConversationModal({
                                     fontWeight: '600',
                                 }}
                             >
-                                Đóng
+                                Close
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -287,7 +287,7 @@ export default function ForwardConversationModal({
                             color: colors.textSecondary,
                         }}
                     >
-                        Chọn cuộc trò chuyện để chuyển tiếp tin nhắn
+                        Select conversations to forward the message
                     </Text>
                 </View>
 
@@ -319,7 +319,7 @@ export default function ForwardConversationModal({
                                 color: colors.textSecondary,
                             }}
                         >
-                            Không có cuộc trò chuyện nào
+                            No conversations found
                         </Text>
                     </View>
                 ) : (
@@ -382,8 +382,8 @@ export default function ForwardConversationModal({
                                 }}
                             >
                                 {forwarding
-                                    ? 'Đang chuyển tiếp...'
-                                    : 'Chuyển tiếp'}
+                                    ? 'Forwarding...'
+                                    : 'Forward'}
                             </Text>
                         </TouchableOpacity>
                     </View>

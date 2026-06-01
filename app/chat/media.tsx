@@ -32,16 +32,16 @@ type LinkItem = {
 type GroupedMediaItem = ConversationMediaItem | LinkItem;
 
 const TABS: { key: MediaTab; label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }[] = [
-  { key: "image", label: "Ảnh", icon: "image-outline" },
-  { key: "file", label: "File", icon: "file-outline" },
+  { key: "image", label: "Images", icon: "image-outline" },
+  { key: "file", label: "Files", icon: "file-outline" },
   { key: "link", label: "Link", icon: "link-variant" },
-  { key: "audio", label: "Tin nhắn thoại", icon: "microphone-outline" },
+  { key: "audio", label: "Voice", icon: "microphone-outline" },
 ];
 
 const QUICK_FILTERS = [
-  { label: "Theo người gửi", icon: "account-outline" as const },
+  { label: "By sender", icon: "account-outline" as const },
   { label: "Video", icon: "video-outline" as const },
-  { label: "Theo thời gian", icon: "clock-outline" as const },
+  { label: "By time", icon: "clock-outline" as const },
 ];
 
 const toAbsoluteUrl = (url?: string | null) => {
@@ -81,7 +81,7 @@ const formatDate = (value?: string) => {
   const date = value ? new Date(value) : new Date();
   if (Number.isNaN(date.getTime())) return "";
 
-  return date.toLocaleDateString("vi-VN", {
+  return date.toLocaleDateString("en-US", {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -119,7 +119,7 @@ export default function ChatMediaScreen() {
     tab?: MediaTab;
   }>();
   const conversationId = String(params.conversationId || "");
-  const title = String(params.name || "Ảnh, file, link");
+  const title = String(params.name || "Media, files, links");
   const [activeTab, setActiveTab] = useState<MediaTab>(
     params.tab && ["image", "video", "file", "link", "audio"].includes(params.tab)
       ? params.tab
@@ -260,7 +260,7 @@ export default function ChatMediaScreen() {
           />
           <View style={{ flex: 1 }}>
             <Text numberOfLines={1} style={{ color: colors.text, fontWeight: "700" }}>
-              {item.fileName || item.content || "Tệp đính kèm"}
+              {item.fileName || item.content || "Attachment"}
             </Text>
             <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>
               {[item.senderName, formatFileSize(item.fileSize)].filter(Boolean).join(" • ")}
@@ -397,7 +397,7 @@ export default function ChatMediaScreen() {
           }
           ListEmptyComponent={
             <Text style={{ color: colors.textSecondary, textAlign: "center", marginTop: 80 }}>
-              Chưa có nội dung
+              No content
             </Text>
           }
           renderItem={({ item: [date, items] }) => (

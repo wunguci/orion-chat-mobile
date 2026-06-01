@@ -112,10 +112,10 @@ export default function ProfileSettings() {
   };
 
   const handleRemoveAvatar = () => {
-    Alert.alert("Remove Avatar", "Bạn có chắc muốn xóa ảnh đại diện?", [
-      { text: "Hủy", style: "cancel" },
+    Alert.alert("Remove Avatar", "Are you sure you want to remove your avatar?", [
+      { text: "Cancel", style: "cancel" },
       {
-        text: "Xóa",
+        text: "Delete",
         style: "destructive",
         onPress: () => {
           setAvatarPreview("");
@@ -165,10 +165,10 @@ export default function ProfileSettings() {
   };
 
   const handleDiscardChanges = () => {
-    Alert.alert("Hủy thay đổi", "Bạn có chắc muốn hủy tất cả thay đổi?", [
-      { text: "Không", style: "cancel" },
+    Alert.alert("Discard Changes", "Are you sure you want to discard all changes?", [
+      { text: "No", style: "cancel" },
       {
-        text: "Có",
+        text: "Yes",
         onPress: () => {
           if (user) {
             setDisplayName(user.fullName || "");

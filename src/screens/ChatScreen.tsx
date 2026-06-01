@@ -202,14 +202,14 @@ export default function ChatsScreen() {
 
     const handleDeleteConversation = (item: ChatItem) => {
         Alert.alert(
-            'Xoa hoi thoai',
+            'Delete conversation',
             item.isGroup
-                ? 'Hien tai thao tac nay chi ap dung cho hoi thoai 1-1. Ban co muon thu xoa khoi danh sach khong?'
-                : `Xoa hoi thoai voi ${item.name}?`,
+                ? 'Currently this action only applies to 1-1 conversations. Do you want to try removing it from the list?'
+                : `Delete conversation with ${item.name}?`,
             [
-                { text: 'Huy', style: 'cancel' },
+                { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'Xoa',
+                    text: 'Delete',
                     style: 'destructive',
                     onPress: async () => {
                         try {
@@ -222,10 +222,10 @@ export default function ChatsScreen() {
                             );
                         } catch (err) {
                             Alert.alert(
-                                'Khong the xoa',
+                                'Unable to delete',
                                 err instanceof Error
                                     ? err.message
-                                    : 'Vui long thu lai sau',
+                                    : 'Please try again later',
                             );
                         }
                     },
@@ -258,8 +258,8 @@ export default function ChatsScreen() {
             }
         } catch (err) {
             Alert.alert(
-                'Khong the cap nhat ghim',
-                err instanceof Error ? err.message : 'Vui long thu lai sau',
+                'Unable to update pin',
+                err instanceof Error ? err.message : 'Please try again later',
             );
             setConversations((prev) =>
                 prev.map((conversation) =>
@@ -276,10 +276,10 @@ export default function ChatsScreen() {
     };
 
     const handleClearConversationHistory = (item: ChatItem) => {
-        Alert.alert('Xoa lich su', `Xoa lich su hoi thoai voi ${item.name}?`, [
-            { text: 'Huy', style: 'cancel' },
+        Alert.alert('Clear history', `Clear conversation history with ${item.name}?`, [
+            { text: 'Cancel', style: 'cancel' },
             {
-                text: 'Xoa',
+                text: 'Clear',
                 style: 'destructive',
                 onPress: async () => {
                     try {
@@ -296,10 +296,10 @@ export default function ChatsScreen() {
                         );
                     } catch (err) {
                         Alert.alert(
-                            'Khong the xoa lich su',
+                            'Unable to clear history',
                             err instanceof Error
                                 ? err.message
-                                : 'Vui long thu lai sau',
+                                : 'Please try again later',
                         );
                     }
                 },

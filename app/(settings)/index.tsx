@@ -32,7 +32,7 @@ export default function Setting() {
 
   // Mock user data
   const user = {
-    name: "Nguyễn Văn A",
+    name: "John Doe",
     email: "nguyenvana@example.com",
     avatar: "https://via.placeholder.com/100",
     phone: "+84 123 456 789",
@@ -40,15 +40,15 @@ export default function Setting() {
 
   const handleLogout = () => {
     Alert.alert(
-      "Đăng xuất",
-      "Bạn có chắc chắn muốn đăng xuất?",
+      "Log out",
+      "Are you sure you want to log out?",
       [
         {
-          text: "Hủy",
+          text: "Cancel",
           style: "cancel",
         },
         {
-          text: "Đăng xuất",
+          text: "Log out",
           style: "destructive",
           onPress: () => {
             // Handle logout logic here
@@ -72,7 +72,7 @@ export default function Setting() {
         }}
       >
         <Text className="text-2xl font-bold" style={{ color: colors.primary }}>
-          Cài đặt
+          Settings
         </Text>
       </View>
 
@@ -106,18 +106,18 @@ export default function Setting() {
         </View>
 
         {/* Account Settings */}
-        <SettingsSection title="Cài đặt Chung">
+        <SettingsSection title="General Settings">
           <View className="overflow-hidden rounded-lg">
             <SettingsItem
               icon={<User size={24} color={colors.primary} />}
-              title="Thông tin cá nhân"
-              subtitle="Chỉnh sửa thông tin của bạn"
+              title="Personal Information"
+              subtitle="Edit your information"
               onPress={() => router.push("/(settings)/profile-settings")}
             />
 
             <SettingsItem
-              title="Bảo mật & Quyền riêng tư"
-              subtitle="Cập nhật mức độ bảo mật và quyền riêng tư"
+              title="Security & Privacy"
+              subtitle="Update your security and privacy levels"
               icon={<Shield size={24} color={colors.primary} />}
               onPress={() => {
                 navigate("/(settings)/privacy-security");
@@ -125,8 +125,8 @@ export default function Setting() {
             />
             <SettingsItem
               icon={<Bell size={24} color={colors.primary} />}
-              title="Thông báo"
-              subtitle="Cập nhật cài đặt thông báo của bạn"
+              title="Notifications"
+              subtitle="Update your notification settings"
               onPress={() => {
                 navigate("/(settings)/notification-setting");
               }}
@@ -134,16 +134,16 @@ export default function Setting() {
 
             <SettingsItem
               icon={<Smartphone size={24} color={colors.primary} />}
-              title="Thiết bị đã đăng nhập"
-              subtitle="Quản lý các thiết bị đã đăng nhập vào tài khoản"
+              title="Logged-in Devices"
+              subtitle="Manage devices logged into your account"
               onPress={() => {
                 navigate("/(settings)/linked-devices");
               }}
             />
             <SettingsItem
               icon={<Server size={24} color={colors.orangePrimary} />}
-              title="Cấu hình Mobile"
-              subtitle="API, Socket va TURN cho mobile"
+              title="Mobile Configuration"
+              subtitle="API, Socket, and TURN configuration for mobile"
               onPress={() => {
                 navigate("/(settings)/mobile-config" as any);
               }}
@@ -152,20 +152,20 @@ export default function Setting() {
         </SettingsSection>
 
         {/* Appearance */}
-        <SettingsSection title="Giao diện">
+        <SettingsSection title="Appearance">
           <View className="overflow-hidden rounded-lg">
             <SettingsItem
               icon={<Moon size={24} color={colors.primary} />}
-              title="Chế độ tối"
-              subtitle="Bật/tắt giao diện tối"
+              title="Dark Mode"
+              subtitle="Toggle dark theme"
               toggleValue={darkMode}
               onToggle={setDarkMode}
               showChevron={false}
             />
             <SettingsItem
               icon={<Palette size={24} color={colors.primary} />}
-              title="Chủ đề"
-              subtitle="Tùy chỉnh màu sắc giao diện"
+              title="Theme"
+              subtitle="Customize interface colors"
               onPress={() => {
                 navigate("/(settings)/appearance-setting");
               }}
@@ -174,20 +174,20 @@ export default function Setting() {
         </SettingsSection>
 
         {/* Support */}
-        <SettingsSection title="Hỗ trợ">
+        <SettingsSection title="Support">
           <View className="overflow-hidden rounded-lg">
             <SettingsItem
               icon={<HelpCircle size={24} color={colors.primary} />}
-              title="Trung tâm trợ giúp"
-              subtitle="Câu hỏi thường gặp và hướng dẫn"
+              title="Help Center"
+              subtitle="FAQs and guides"
               onPress={() => {
                 /* Navigate to help */
               }}
             />
             <SettingsItem
               icon={<HelpCircle size={24} color={colors.primary} />}
-              title="Về ứng dụng"
-              subtitle="Phiên bản 1.0.0"
+              title="About App"
+              subtitle="Version 1.0.0"
               onPress={() => {
                 /* Show about */
               }}
@@ -203,7 +203,7 @@ export default function Setting() {
           >
             <LogOut size={24} color="#FFFFFF" />
             <Text className="ml-2 text-base font-semibold text-white">
-              Đăng xuất
+              Log Out
             </Text>
           </TouchableOpacity>
         </View>

@@ -65,7 +65,7 @@ export default function AttachmentPickerModal({
     },
     {
       key: "gallery",
-      label: "Thư viện",
+      label: "Gallery",
       icon: (
         <Ionicons
           name="images-outline"
@@ -138,7 +138,7 @@ export default function AttachmentPickerModal({
             marginBottom: 20,
           }}
         >
-          Đính kèm
+          Attachment
         </Text>
 
         {loading ? (

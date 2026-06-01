@@ -32,14 +32,14 @@ export default function ProfileSettings() {
   const [soundEffects, setSoundEffects] = useState(true);
 
   const handleUploadAvatar = () => {
-    Alert.alert("Upload Avatar", "Chức năng upload ảnh sẽ được thêm vào");
+    Alert.alert("Upload Avatar", "Image upload feature will be added");
   };
 
   const handleRemoveAvatar = () => {
-    Alert.alert("Remove Avatar", "Bạn có chắc muốn xóa ảnh đại diện?", [
-      { text: "Hủy", style: "cancel" },
+    Alert.alert("Remove Avatar", "Are you sure you want to delete your avatar?", [
+      { text: "Cancel", style: "cancel" },
       {
-        text: "Xóa",
+        text: "Delete",
         style: "destructive",
         onPress: () =>
           setAvatar(
@@ -50,14 +50,14 @@ export default function ProfileSettings() {
   };
 
   const handleSaveChanges = () => {
-    Alert.alert("Thành công", "Đã lưu thay đổi của bạn!");
+    Alert.alert("Success", "Your changes have been saved!");
   };
 
   const handleDiscardChanges = () => {
-    Alert.alert("Hủy thay đổi", "Bạn có chắc muốn hủy tất cả thay đổi?", [
-      { text: "Không", style: "cancel" },
+    Alert.alert("Discard Changes", "Are you sure you want to discard all changes?", [
+      { text: "No", style: "cancel" },
       {
-        text: "Có",
+        text: "Yes",
         onPress: () => {
           // Reset to original values
           setDisplayName("Huynh Zang");

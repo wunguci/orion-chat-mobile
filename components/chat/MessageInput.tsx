@@ -186,9 +186,9 @@ export default function MessageInput({
                     fontWeight: "700",
                   }}
                 >
-                  Trả lời{" "}
+                  Replying to{" "}
                   {replyToMessage.isMine
-                    ? "Bạn"
+                    ? "You"
                     : replyToMessage.senderName || "Unknown"}
                 </Text>
               </View>

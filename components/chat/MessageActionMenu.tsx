@@ -70,12 +70,12 @@ export default function MessageActionMenu({
 
   const handleRecall = async () => {
     Alert.alert(
-      "Nhắc lại tin nhắn?",
-      "Tin nhắn sẽ bị thu hồi khỏi tất cả các thiết bị",
+      "Recall message?",
+      "Message will be recalled from all devices",
       [
-        { text: "Hủy", onPress: () => {} },
+        { text: "Cancel", onPress: () => {} },
         {
-          text: "Thu hồi",
+          text: "Recall",
           onPress: async () => {
             setIsLoading(true);
             try {
@@ -117,12 +117,12 @@ export default function MessageActionMenu({
 
   const handleDelete = async () => {
     Alert.alert(
-      "Xóa tin nhắn?",
-      "Tin nhắn này sẽ chỉ bị ẩn ở thiết bị của bạn",
+      "Delete message?",
+      "This message will only be hidden on your device",
       [
-        { text: "Hủy", onPress: () => {} },
+        { text: "Cancel", onPress: () => {} },
         {
-          text: "Xóa",
+          text: "Delete",
           onPress: async () => {
             setIsLoading(true);
             try {
@@ -150,12 +150,12 @@ export default function MessageActionMenu({
     try {
       if (message.text) {
         await Clipboard.setString(message.text);
-        Alert.alert("Thành công", "Đã sao chép tin nhắn");
+        Alert.alert("Success", "Message copied to clipboard");
         onClose();
       }
     } catch (error) {
       console.error("Failed to copy message:", error);
-      Alert.alert("Lỗi", "Không thể sao chép tin nhắn");
+      Alert.alert("Error", "Failed to copy message");
     }
   };
 
@@ -176,8 +176,8 @@ export default function MessageActionMenu({
       onClose();
     } catch (error) {
       Alert.alert(
-        "Không thể thực hiện",
-        error instanceof Error ? error.message : "Vui lòng thử lại sau",
+        "Unable to perform action",
+        error instanceof Error ? error.message : "Please try again later",
       );
     } finally {
       setIsLoading(false);
@@ -296,7 +296,7 @@ export default function MessageActionMenu({
                       marginBottom: 10,
                     }}
                   >
-                    Thả cảm xúc
+                    Reactions
                   </Text>
                   <View
                     style={{
@@ -363,7 +363,7 @@ export default function MessageActionMenu({
                     style={{ marginRight: 12 }}
                   />
                   <Text style={{ fontSize: 16, color: colors.text }}>
-                    Trả lời
+                    Reply
                   </Text>
                 </TouchableOpacity>
 
@@ -391,7 +391,7 @@ export default function MessageActionMenu({
                       color: colors.text,
                     }}
                   >
-                    Sao chép
+                    Copy
                   </Text>
                 </TouchableOpacity>
 
@@ -419,7 +419,7 @@ export default function MessageActionMenu({
                       color: colors.text,
                     }}
                   >
-                    Chuyển tiếp
+                    Forward
                   </Text>
                 </TouchableOpacity>
 
@@ -447,7 +447,7 @@ export default function MessageActionMenu({
                       color: colors.text,
                     }}
                   >
-                    {message.isPinned ? "Bỏ ghim tin nhắn" : "Ghim tin nhắn"}
+                    {message.isPinned ? "Unpin message" : "Pin message"}
                   </Text>
                 </TouchableOpacity>
 
@@ -529,7 +529,7 @@ export default function MessageActionMenu({
                         color: colors.text,
                       }}
                     >
-                      Thu hồi
+                      Recall
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -556,7 +556,7 @@ export default function MessageActionMenu({
                       color: "#E53C51",
                     }}
                   >
-                    Xóa
+                    Delete
                   </Text>
                 </TouchableOpacity>
               </ScrollView>
@@ -586,7 +586,7 @@ export default function MessageActionMenu({
                       marginLeft: 12,
                     }}
                   >
-                    Quay lại
+                    Back
                   </Text>
                 </TouchableOpacity>
 

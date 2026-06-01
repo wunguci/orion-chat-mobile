@@ -52,7 +52,7 @@ export const SearchUserRow: React.FC<Props> = ({
           style={{ backgroundColor: colors.primaryLight }}
         >
           <Text className="font-semibold" style={{ color: colors.primary }}>
-            {isPending ? "Đã gửi" : "Kết bạn"}
+            {isPending ? "Sent" : "Add Friend"}
           </Text>
         </TouchableOpacity>
       </View>

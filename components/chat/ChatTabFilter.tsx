@@ -10,8 +10,8 @@ interface ChatTabFilterProps {
 }
 
 const TABS: { key: ChatTab; label: string }[] = [
-    { key: 'all', label: 'Tất cả' },
-    { key: 'unread', label: 'Chưa đọc' },
+    { key: 'all', label: 'All' },
+    { key: 'unread', label: 'Unread' },
 ];
 
 export default function ChatTabFilter({

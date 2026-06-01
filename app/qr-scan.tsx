@@ -83,9 +83,9 @@ export default function QrScanScreen() {
             if (!token) {
                 setScanned(true);
                 Alert.alert(
-                    'QR không hợp lệ',
-                    'Mã này không phải mã đăng nhập Orion Chat web.',
-                    [{ text: 'Quét lại', onPress: () => setScanned(false) }],
+                    'Invalid QR Code',
+                    'This is not an Orion Chat Web login code.',
+                    [{ text: 'Scan again', onPress: () => setScanned(false) }],
                 );
                 return;
             }
@@ -124,8 +124,8 @@ export default function QrScanScreen() {
             });
         } catch (error) {
             Alert.alert(
-                'Không thể mở trình quét',
-                error instanceof Error ? error.message : 'Vui lòng thử lại.',
+                'Unable to open scanner',
+                error instanceof Error ? error.message : 'Please try again.',
             );
         }
     }, [scanned]);
@@ -143,7 +143,7 @@ export default function QrScanScreen() {
                     justifyContent: 'center',
                 }}
             >
-                <Text>Đang kiểm tra quyền camera...</Text>
+                <Text>Checking camera permissions...</Text>
             </View>
         );
     }
@@ -173,7 +173,7 @@ export default function QrScanScreen() {
                         textAlign: 'center',
                     }}
                 >
-                    Cần quyền camera
+                    Camera Permission Required
                 </Text>
                 <Text
                     style={{
@@ -184,7 +184,7 @@ export default function QrScanScreen() {
                         marginTop: 10,
                     }}
                 >
-                    Orion Chat cần camera để quét mã QR đăng nhập web.
+                    Orion Chat needs camera access to scan the web login QR code.
                 </Text>
                 <TouchableOpacity
                     onPress={
@@ -210,8 +210,8 @@ export default function QrScanScreen() {
                         }}
                     >
                         {permission.canAskAgain
-                            ? 'Cấp quyền camera'
-                            : 'Mở cài đặt'}
+                            ? 'Grant Camera Permission'
+                            : 'Open Settings'}
                     </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -219,7 +219,7 @@ export default function QrScanScreen() {
                     style={{ marginTop: 16, alignItems: 'center' }}
                 >
                     <Text style={{ color: '#6b7280', fontWeight: '700' }}>
-                        Quay lại
+                        Back
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -236,8 +236,8 @@ export default function QrScanScreen() {
                 onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
                 onMountError={(error) => {
                     Alert.alert(
-                        'Không thể mở camera',
-                        error.message || 'Vui lòng kiểm tra quyền camera.',
+                        'Unable to open camera',
+                        error.message || 'Please verify camera permissions.',
                     );
                 }}
             />
@@ -303,7 +303,7 @@ export default function QrScanScreen() {
                 <Text
                     style={{ color: '#fff', fontSize: 17, fontWeight: '800' }}
                 >
-                    Quét QR đăng nhập
+                    Scan Login QR
                 </Text>
                 <View style={{ width: 42 }} />
             </View>
@@ -327,7 +327,7 @@ export default function QrScanScreen() {
                         textAlign: 'center',
                     }}
                 >
-                    Đưa mã QR trên web vào khung
+                    Align the web QR code inside the frame
                 </Text>
                 <Text
                     style={{
@@ -338,8 +338,7 @@ export default function QrScanScreen() {
                         marginTop: 6,
                     }}
                 >
-                    Sau khi quét, bạn sẽ xác nhận để đăng nhập web bằng tài
-                    khoản mobile này.
+                    After scanning, you will confirm to log in to the web app using this mobile account.
                 </Text>
                 <TouchableOpacity
                     onPress={openSystemScanner}
@@ -360,7 +359,7 @@ export default function QrScanScreen() {
                             fontWeight: '800',
                         }}
                     >
-                        Mở trình quét QR hệ thống
+                        Open System QR Scanner
                     </Text>
                 </TouchableOpacity>
             </View>

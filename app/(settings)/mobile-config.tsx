@@ -35,18 +35,18 @@ const TURN_OPTIONS: Array<{
 }> = [
   {
     value: "default",
-    title: "Mặc định",
-    subtitle: "Dùng cấu hình trong file .env",
+    title: "Default",
+    subtitle: "Use configuration from .env file",
   },
   {
     value: "metered",
     title: "Metered",
-    subtitle: "Dùng TURN mặc định từ .env",
+    subtitle: "Use default TURN from .env",
   },
   {
     value: "coturn",
-    title: "Coturn local",
-    subtitle: "Nhập IP máy đang chạy coturn",
+    title: "Local Coturn",
+    subtitle: "Enter the IP of the machine running coturn",
   },
 ];
 
@@ -91,20 +91,20 @@ export default function MobileConfigScreen() {
 
   const handleSave = async () => {
     if (!isValidUrl(apiUrl)) {
-      Alert.alert("URL không hợp lệ", "API URL phải bắt đầu bằng http/https.");
+      Alert.alert("Invalid URL", "API URL must start with http/https.");
       return;
     }
 
     if (!isValidUrl(socketUrl)) {
       Alert.alert(
-        "URL không hợp lệ",
-        "Socket URL phải bắt đầu bằng http/https.",
+        "Invalid URL",
+        "Socket URL must start with http/https.",
       );
       return;
     }
 
     if (turnProvider === "coturn" && !coturnHost.trim()) {
-      Alert.alert("Thiếu IP coturn", "Nhập IP máy đang chạy coturn local.");
+      Alert.alert("Missing Coturn IP", "Enter the IP of the machine running local coturn.");
       return;
     }
 
@@ -117,11 +117,11 @@ export default function MobileConfigScreen() {
         coturnHost: turnProvider === "coturn" ? coturnHost : undefined,
       });
       Alert.alert(
-        "Đã lưu cấu hình",
-        "Các kết nối mới sẽ dùng cấu hình vừa lưu. Nếu socket đang kết nối sẵn, hãy vào lại màn hình chat/call để reconnect.",
+        "Configuration Saved",
+        "New connections will use the saved configuration. If the socket is already connected, please re-enter the chat/call screen to reconnect.",
       );
     } catch {
-      Alert.alert("lỗi", "Không thể lưu cấu hình. Vui lòng thử lại.");
+      Alert.alert("Error", "Could not save configuration. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -129,12 +129,12 @@ export default function MobileConfigScreen() {
 
   const handleReset = () => {
     Alert.alert(
-      "Dùng lại mặc định .env",
-      "Xóa cấu hình mobile đã lưu và quay về file .env?",
+      "Restore .env Default",
+      "Delete saved mobile configuration and revert to the .env file?",
       [
-        { text: "Hủy", style: "cancel" },
+        { text: "Cancel", style: "cancel" },
         {
-          text: "Xóa",
+          text: "Delete",
           style: "destructive",
           onPress: async () => {
             setSaving(true);
@@ -175,7 +175,7 @@ export default function MobileConfigScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Server size={20} color={PRIMARY} />
-            <Text style={styles.sectionTitle}>Link server</Text>
+            <Text style={styles.sectionTitle}>Server Links</Text>
           </View>
 
           <Text style={styles.label}>API URL</Text>
@@ -201,7 +201,7 @@ export default function MobileConfigScreen() {
           />
 
           <View style={styles.summaryBox}>
-            <Text style={styles.summaryLabel}>Đang dùng</Text>
+            <Text style={styles.summaryLabel}>Active Configuration</Text>
             <Text style={styles.summaryValue}>{effectiveApiUrl}</Text>
             <Text style={styles.summaryValue}>{effectiveSocketUrl}</Text>
           </View>
@@ -236,19 +236,19 @@ export default function MobileConfigScreen() {
 
           {turnProvider === "coturn" ? (
             <View style={styles.coturnBox}>
-              <Text style={styles.label}>IP may chay coturn</Text>
+              <Text style={styles.label}>IP running coturn</Text>
               <TextInput
                 value={coturnHost}
                 onChangeText={setCoturnHost}
-                placeholder="VD: 192.168.1.10"
+                placeholder="e.g. 192.168.1.10"
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="numbers-and-punctuation"
                 style={styles.input}
               />
               <Text style={styles.helpText}>
-                App se tao stun/turn tu IP nay voi port trong .env
-                (mac dinh 3478).
+                App will generate STUN/TURN using this IP and the port from .env
+                (default 3478).
               </Text>
             </View>
           ) : null}
@@ -262,7 +262,7 @@ export default function MobileConfigScreen() {
             style={[styles.button, styles.secondaryButton]}
           >
             <RotateCcw size={18} color={PRIMARY} />
-            <Text style={styles.secondaryButtonText}>Mac dinh .env</Text>
+            <Text style={styles.secondaryButtonText}>Default .env</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -276,7 +276,7 @@ export default function MobileConfigScreen() {
             ) : (
               <>
                 <Save size={18} color="#fff" />
-                <Text style={styles.primaryButtonText}>Lưu</Text>
+                <Text style={styles.primaryButtonText}>Save</Text>
               </>
             )}
           </TouchableOpacity>

@@ -7,11 +7,11 @@ export const downloadFileDirectly = async (
     try {
         console.log('[FileDownload] Downloading:', { fileUri, fileName });
         await Linking.openURL(fileUri);
-        return { success: true, message: `Đang tải: ${fileName}` };
+        return { success: true, message: `Downloading: ${fileName}` };
     } catch (error) {
         const msg = error instanceof Error ? error.message : 'Unknown error';
         console.error('[FileDownload] Error:', msg);
-        return { success: false, message: `Tải thất bại: ${msg}` };
+        return { success: false, message: `Download failed: ${msg}` };
     }
 };
 
@@ -19,5 +19,5 @@ export const showDownloadAlert = (result: {
     success: boolean;
     message: string;
 }) => {
-    Alert.alert(result.success ? 'Thành công' : 'Lỗi', result.message);
+    Alert.alert(result.success ? 'Success' : 'Error', result.message);
 };

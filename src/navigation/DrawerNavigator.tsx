@@ -33,14 +33,14 @@ function getMainTitle(route: any) {
 
   switch (routeName) {
     case "explore":
-      return "Danh bạ";
+      return "Contacts";
     case "calendar":
-      return "Lịch";
+      return "Calendar";
     case "setting":
       return "Profile";
     case "index":
     default:
-      return "Tin nhắn";
+      return "Messages";
   }
 }
 
@@ -94,7 +94,7 @@ export default function DrawerNavigator() {
       <Drawer.Screen
         name="index"
         options={{
-          title: "Tin nhắn",
+          title: "Messages",
           drawerItemStyle: { display: "none" },
         }}
       />
@@ -110,7 +110,7 @@ export default function DrawerNavigator() {
       <Drawer.Screen
         name="notes"
         options={{
-          title: "Ghi chú",
+          title: "Notes",
           drawerItemStyle: { display: "none" },
         }}
       />

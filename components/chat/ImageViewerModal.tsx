@@ -34,7 +34,7 @@ function formatViewerTime(timestamp?: string) {
   const date = new Date(timestamp);
   if (Number.isNaN(date.getTime())) return "";
 
-  return date.toLocaleString("vi-VN", {
+  return date.toLocaleString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
     day: "2-digit",
@@ -115,8 +115,8 @@ export default function ImageViewerModal({
         await chatApi.addEmojiReaction(currentImage.id, emoji, conversationId);
       } catch (error) {
         Alert.alert(
-          "Khong the gui emoji",
-          error instanceof Error ? error.message : "Vui long thu lai",
+          "Cannot send emoji",
+          error instanceof Error ? error.message : "Please try again",
         );
       }
     },
@@ -133,8 +133,8 @@ export default function ImageViewerModal({
       });
     } catch (error) {
       Alert.alert(
-        "Khong the chia se",
-        error instanceof Error ? error.message : "Vui long thu lai",
+        "Cannot share",
+        error instanceof Error ? error.message : "Please try again",
       );
     }
   }, [currentImage]);
@@ -207,7 +207,7 @@ export default function ImageViewerModal({
               style={{ color: "#fff", fontSize: 17, fontWeight: "700" }}
             >
               {currentImage?.isMine
-                ? "Bạn"
+                ? "You"
                 : currentImage?.senderName || "Unknown"}
             </Text>
             <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 13 }}>

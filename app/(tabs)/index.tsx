@@ -74,15 +74,15 @@ const getLastMessagePreview = (
     "Unknown";
 
   const prefix = isGroup
-    ? `${isMine ? "Bạn" : senderName}: `
+    ? `${isMine ? "You" : senderName}: `
     : isMine
-      ? "Bạn: "
+      ? "You: "
       : "";
 
   const { content, messageType, type, isRecalled, callData } = lastMessage;
 
-  if (isRecalled || content === "Tin nhắn đã được thu hồi") {
-    return `${prefix}Tin nhắn đã được thu hồi`;
+  if (isRecalled || content === "Message was recalled") {
+    return `${prefix}Message was recalled`;
   }
 
   const typeStr = String(messageType || type || "").toUpperCase();
@@ -91,15 +91,15 @@ const getLastMessagePreview = (
     case "TEXT":
       return prefix + (content || "No messages yet");
     case "LINK":
-      return `${prefix}Đã gửi một liên kết`;
+      return `${prefix}Sent a link`;
     case "STICKER":
-      return `${prefix}Đã gửi một sticker`;
+      return `${prefix}Sent a sticker`;
     case "VOICE":
-      return `${prefix}Đã gửi một tin nhắn thoại`;
+      return `${prefix}Sent a voice message`;
     case "IMAGE":
-      return `${prefix}Hình ảnh`;
+      return `${prefix}Photo`;
     case "FILE":
-      return `${prefix}Tệp đính kèm`;
+      return `${prefix}Attachment`;
     case "VIDEO":
       return `${prefix}Video`;
   }
@@ -107,21 +107,21 @@ const getLastMessagePreview = (
   if (typeStr === "CALL" || !!callData) {
     const callStatus = callData?.callStatus || "completed";
     const callType = callData?.callType || "audio";
-    const callTypeLabel = callType === "video" ? "video" : "thoại";
+    const callTypeLabel = callType === "video" ? "video" : "voice";
 
     if (callStatus === "completed") {
-      return `${prefix}Cuộc gọi ${callTypeLabel} ${isMine ? "đi" : "đến"}`;
+      return `${prefix}${isMine ? "Outgoing" : "Incoming"} ${callTypeLabel} call`;
     }
     if (callStatus === "missed") {
-      return `${prefix}${isMine ? "Bạn đã hủy" : "Cuộc gọi nhỡ"}`;
+      return `${prefix}${isMine ? "Canceled call" : "Missed call"}`;
     }
     if (callStatus === "declined") {
-      return `${prefix}${isMine ? "Người nhận từ chối" : "Bạn đã từ chối"}`;
+      return `${prefix}${isMine ? "Recipient declined" : "You declined"}`;
     }
     if (callStatus === "active") {
-      return `${prefix}Cuộc gọi nhóm đang diễn ra`;
+      return `${prefix}Ongoing group call`;
     }
-    return `${prefix}Cuộc gọi ${callTypeLabel}`;
+    return `${prefix}${callType === "video" ? "Video call" : "Voice call"}`;
   }
 
   return `${prefix}${content || "No messages yet"}`;
@@ -180,7 +180,7 @@ const convertConversationToChatItem = (
     );
 
     if (msgDay.getTime() === today.getTime()) {
-      return msgDate.toLocaleTimeString("vi-VN", {
+      return msgDate.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
         hour12: false,
@@ -188,12 +188,12 @@ const convertConversationToChatItem = (
     } else if (msgDay.getTime() === yesterday.getTime()) {
       return "Yesterday";
     } else if (now.getFullYear() === msgDate.getFullYear()) {
-      return msgDate.toLocaleDateString("vi-VN", {
+      return msgDate.toLocaleDateString("en-US", {
         month: "2-digit",
         day: "2-digit",
       });
     } else {
-      return msgDate.toLocaleDateString("vi-VN");
+      return msgDate.toLocaleDateString("en-US");
     }
   };
 
@@ -549,8 +549,8 @@ export default function ChatsScreen() {
         await loadConversations();
       } catch (err) {
         Alert.alert(
-          "Không thể cập nhật ghim",
-          err instanceof Error ? err.message : "Vui lòng thử lại sau",
+          "Could not update pin",
+          err instanceof Error ? err.message : "Please try again later",
         );
         await loadConversations();
       }
@@ -560,10 +560,10 @@ export default function ChatsScreen() {
 
   const handleClearConversationHistory = useCallback(
     (item: ChatItem) => {
-      Alert.alert("Xóa lịch sử", `Xóa lịch sử hội thoại với ${item.name}?`, [
-        { text: "Hủy", style: "cancel" },
+      Alert.alert("Clear History", `Clear conversation history with ${item.name}?`, [
+        { text: "Cancel", style: "cancel" },
         {
-          text: "Xóa",
+          text: "Delete",
           style: "destructive",
           onPress: async () => {
             try {
@@ -571,8 +571,8 @@ export default function ChatsScreen() {
               await loadConversations();
             } catch (err) {
               Alert.alert(
-                "Không thể xóa lịch sử",
-                err instanceof Error ? err.message : "Vui lòng thử lại sau",
+                "Could not clear history",
+                err instanceof Error ? err.message : "Please try again later",
               );
             }
           },
@@ -583,10 +583,10 @@ export default function ChatsScreen() {
   );
 
   const handleDeleteConversation = useCallback((item: ChatItem) => {
-    Alert.alert("Xóa hội thoại", `Xóa hội thoại với ${item.name}?`, [
-      { text: "Hủy", style: "cancel" },
+    Alert.alert("Delete Conversation", `Delete conversation with ${item.name}?`, [
+      { text: "Cancel", style: "cancel" },
       {
-        text: "Xóa",
+        text: "Delete",
         style: "destructive",
         onPress: async () => {
           try {
@@ -596,8 +596,8 @@ export default function ChatsScreen() {
             );
           } catch (err) {
             Alert.alert(
-              "Không thể xóa",
-              err instanceof Error ? err.message : "Vui lòng thử lại sau",
+              "Could not delete",
+              err instanceof Error ? err.message : "Please try again later",
             );
           }
         },

@@ -30,7 +30,7 @@ type DrawerItem = {
 const MAIN_ITEMS: DrawerItem[] = [
   {
     href: "/(tabs)/(main)",
-    label: "Tin nhắn",
+    label: "Messages",
     icon: <MessageCircle size={20} strokeWidth={2} />,
     match: (pathname) =>
       pathname === "/(tabs)/(main)" ||
@@ -38,13 +38,13 @@ const MAIN_ITEMS: DrawerItem[] = [
   },
   {
     href: "/(tabs)/(main)/explore",
-    label: "Danh bạ",
+    label: "Contacts",
     icon: <Users size={20} strokeWidth={2} />,
     match: (pathname) => pathname.startsWith("/(tabs)/(main)/explore"),
   },
   {
     href: "/(tabs)/(main)/calendar",
-    label: "Lịch",
+    label: "Calendar",
     icon: <Calendar size={20} strokeWidth={2} />,
     match: (pathname) => pathname.startsWith("/(tabs)/(main)/calendar"),
   },
@@ -65,7 +65,7 @@ const EXTRA_ITEMS: DrawerItem[] = [
   },
   {
     href: "/(tabs)/notes",
-    label: "Ghi chú",
+    label: "Notes",
     icon: <FileText size={20} strokeWidth={2} />,
     match: (pathname) => pathname.startsWith("/(tabs)/notes"),
   },
@@ -230,7 +230,7 @@ export default function CustomDrawerContent(
 
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-          TÍNH NĂNG KHÁC
+          OTHER FEATURES
         </Text>
 
         {EXTRA_ITEMS.map((item) => (

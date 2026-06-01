@@ -111,7 +111,7 @@ export default function CreateGroupModal({
             );
 
             if (!userId) {
-                setError('Không thể xác định userId');
+                setError('Cannot identify userId');
                 console.error('[CreateGroupModal] No userId found');
                 return;
             }
@@ -131,7 +131,7 @@ export default function CreateGroupModal({
             setError(
                 err instanceof Error
                     ? err.message
-                    : 'Không thể tải danh sách bạn bè',
+                    : 'Unable to load friends list',
             );
             console.error('[CreateGroupModal] Error loading friends:', err);
         } finally {
@@ -166,12 +166,12 @@ export default function CreateGroupModal({
 
     const handleCreateGroup = async () => {
         if (!groupName.trim()) {
-            setError('Vui lòng nhập tên nhóm');
+            setError('Please enter a group name');
             return;
         }
 
         if (selectedFriends.length < 2) {
-            setError('Vui lòng chọn ít nhất 2 thành viên');
+            setError('Please select at least 2 members');
             return;
         }
 
@@ -199,7 +199,7 @@ export default function CreateGroupModal({
             onGroupCreated?.(response.conversationId);
             resetModal();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Không thể tạo nhóm');
+            setError(err instanceof Error ? err.message : 'Unable to create group');
         } finally {
             setCreating(false);
         }
@@ -248,7 +248,7 @@ export default function CreateGroupModal({
                             color: colors.text,
                         }}
                     >
-                        Tạo nhóm mới
+                        Create New Group
                     </Text>
                     <TouchableOpacity onPress={resetModal} disabled={creating}>
                         <MaterialCommunityIcons
@@ -270,10 +270,10 @@ export default function CreateGroupModal({
                                 marginBottom: 8,
                             }}
                         >
-                            Tên nhóm
+                            Group Name
                         </Text>
                         <TextInput
-                            placeholder="Nhập tên nhóm"
+                            placeholder="Enter group name"
                             value={groupName}
                             onChangeText={setGroupName}
                             editable={!creating}
@@ -299,10 +299,10 @@ export default function CreateGroupModal({
                                 marginBottom: 8,
                             }}
                         >
-                            Chọn thành viên
+                            Select members
                         </Text>
                         <TextInput
-                            placeholder="Tìm kiếm bạn bè"
+                            placeholder="Search friends"
                             value={searchText}
                             onChangeText={setSearchText}
                             editable={!loading && !creating}
@@ -325,7 +325,7 @@ export default function CreateGroupModal({
                                 marginBottom: 12,
                             }}
                         >
-                            * Nhóm phải có từ 3 thành viên trở lên (bao gồm cả bạn)
+                            * Group must have at least 3 members (including you)
                         </Text>
 
                         {/* Friends List */}
@@ -350,8 +350,8 @@ export default function CreateGroupModal({
                             >
                                 <Text style={{ color: colors.textSecondary }}>
                                     {searchText
-                                        ? 'Không tìm thấy bạn bè'
-                                        : 'Chưa có bạn bè'}
+                                        ? 'No friends found'
+                                        : 'No friends yet'}
                                 </Text>
                             </View>
                         ) : (
@@ -453,7 +453,7 @@ export default function CreateGroupModal({
                                 color: colors.textSecondary,
                             }}
                         >
-                            Đã chọn {selectedFriends.length} thành viên
+                            Selected {selectedFriends.length} members
                         </Text>
                     </View>
 
@@ -504,7 +504,7 @@ export default function CreateGroupModal({
                                 fontWeight: '600',
                             }}
                         >
-                            Hủy
+                            Cancel
                         </Text>
                     </TouchableOpacity>
 
@@ -541,7 +541,7 @@ export default function CreateGroupModal({
                                     fontWeight: '600',
                                 }}
                             >
-                                Tạo nhóm
+                                Create Group
                             </Text>
                         )}
                     </TouchableOpacity>

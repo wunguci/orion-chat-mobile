@@ -16,19 +16,19 @@ export default function BottomTabNavigator() {
         >
             {/* Main tabs */}
             <Tabs.Screen name="index" options={{ title: 'Chats' }} />
-            <Tabs.Screen name="friends" options={{ title: 'Bạn bè' }} />
+            <Tabs.Screen name="friends" options={{ title: 'Friends' }} />
             <Tabs.Screen name="ai" options={{ title: 'AI Bot' }} />
-            <Tabs.Screen name="notification" options={{ title: 'Thông báo' }} />
-            <Tabs.Screen name="setting" options={{ title: 'Hồ sơ' }} />
+            <Tabs.Screen name="notification" options={{ title: 'Notifications' }} />
+            <Tabs.Screen name="setting" options={{ title: 'Profile' }} />
 
             {/* Hidden screens (still routable, not shown in tab bar) */}
             <Tabs.Screen
                 name="calendar"
-                options={{ href: null, title: 'Lịch' }}
+                options={{ href: null, title: 'Calendar' }}
             />
             <Tabs.Screen
                 name="notes"
-                options={{ href: null, title: 'Ghi chú' }}
+                options={{ href: null, title: 'Notes' }}
             />
             <Tabs.Screen
                 name="video-call"

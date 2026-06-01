@@ -333,7 +333,7 @@ export default function AddFriendsModal({
                                         marginBottom: 8,
                                     }}
                                 >
-                                    Kết quả gần đây
+                                    Recent results
                                 </Text>
                                 <View style={{ marginBottom: 12 }}>
                                     {recentItems.map((item) => (
@@ -362,7 +362,7 @@ export default function AddFriendsModal({
                                         marginBottom: 8,
                                     }}
                                 >
-                                    Có thể bạn quen
+                                    People you may know
                                 </Text>
                                 <View>
                                     {suggestedItems.map((item) => (

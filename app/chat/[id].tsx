@@ -628,13 +628,13 @@ export default function ChatScreen() {
 
   const privateMessagingBlocked = !isGroup && privateBlockStatus.isBlocked;
   const privateBlockMessage = privateBlockStatus.iAmTheBlocker
-    ? `Bạn đã chặn ${name || "người này"}. Bỏ chặn để tiếp tục nhắn tin.`
-    : `${name || "Người này"} đã chặn bạn. Bạn không thể gửi tin nhắn trong đoạn chat này.`;
+    ? `You have blocked ${name || "this user"}. Unblock to send messages.`
+    : `${name || "This user"} has blocked you. You cannot send messages in this chat.`;
   const showGroupBlockWarning =
     isGroup && groupHasBlockedParticipant && !groupBlockWarningDismissed;
 
   const handleBlockedSendAttempt = useCallback(() => {
-    Alert.alert("Không thể gửi tin nhắn", privateBlockMessage);
+    Alert.alert("Cannot send message", privateBlockMessage);
   }, [privateBlockMessage]);
 
   const handleSend = useCallback(() => {
@@ -688,10 +688,10 @@ export default function ChatScreen() {
   const handleLeaveGroupFromWarning = useCallback(() => {
     if (!id) return;
 
-    Alert.alert("Rời nhóm", `Bạn có muốn rời nhóm ${name || "này"} không?`, [
-      { text: "Ở lại", style: "cancel" },
+    Alert.alert("Leave Group", `Do you want to leave the group ${name || "this group"}?`, [
+      { text: "Stay", style: "cancel" },
       {
-        text: "Rời nhóm",
+        text: "Leave Group",
         style: "destructive",
         onPress: async () => {
           try {
@@ -699,8 +699,8 @@ export default function ChatScreen() {
             router.back();
           } catch (error) {
             Alert.alert(
-              "Không thể rời nhóm",
-              error instanceof Error ? error.message : "Vui lòng thử lại sau",
+              "Unable to leave group",
+              error instanceof Error ? error.message : "Please try again later",
             );
           }
         },
@@ -717,8 +717,8 @@ export default function ChatScreen() {
       setBlockRefreshKey((value) => value + 1);
     } catch (error) {
       Alert.alert(
-        "Không thể bỏ chặn",
-        error instanceof Error ? error.message : "Vui lòng thử lại sau",
+        "Unable to unblock",
+        error instanceof Error ? error.message : "Please try again later",
       );
     }
   }, [id]);
@@ -751,7 +751,7 @@ export default function ChatScreen() {
         }
 
         if (!otherUserId) {
-          Alert.alert("Khong the goi", "Thieu thong tin nguoi nhan");
+          Alert.alert("Cannot call", "Recipient information is missing");
           return;
         }
 
@@ -761,8 +761,8 @@ export default function ChatScreen() {
         });
       } catch (error) {
         Alert.alert(
-          "Khong the bat dau cuoc goi",
-          error instanceof Error ? error.message : "Vui long thu lai sau",
+          "Cannot start call",
+          error instanceof Error ? error.message : "Please try again later",
         );
       }
     },
@@ -847,7 +847,7 @@ export default function ChatScreen() {
       });
 
       if (targetIndex === -1) {
-        Alert.alert("Không tìm thấy tin nhắn", "Tin nhắn này chưa được tải.");
+        Alert.alert("Message not found", "This message has not been loaded yet.");
         return;
       }
 
@@ -1012,10 +1012,10 @@ export default function ChatScreen() {
                     fontWeight: "700",
                   }}
                 >
-                  Đã ghim{pinnedMessages.length > 1 ? ` (${pinnedMessages.length})` : ""}:{" "}
+                  Pinned{pinnedMessages.length > 1 ? ` (${pinnedMessages.length})` : ""}:{" "}
                   {pinnedMessages[0].content ||
                     pinnedMessages[0].attachment?.fileName ||
-                    "Nội dung đã được ghim"}
+                    "Pinned content"}
                 </Text>
               </TouchableOpacity>
               {pinnedMessages.length > 1 ? (
@@ -1071,7 +1071,7 @@ export default function ChatScreen() {
                     >
                       {pinned.content ||
                         pinned.attachment?.fileName ||
-                        "Nội dung đã được ghim"}
+                        "Pinned content"}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -1156,7 +1156,7 @@ export default function ChatScreen() {
                     fontWeight: "700",
                   }}
                 >
-                  Bỏ chặn
+                  Unblock
                 </Text>
               </TouchableOpacity>
             ) : null}
@@ -1191,8 +1191,8 @@ export default function ChatScreen() {
               }}
             >
               {groupBlockedParticipantNames.length > 0
-                ? `Trong nhóm có ${groupBlockedParticipantNames.join(", ")} đang bị chặn. Bạn có muốn rời nhóm không?`
-                : "Trong nhóm có người đang bị chặn. Bạn có muốn rời nhóm không?"}
+                ? `There are blocked members (${groupBlockedParticipantNames.join(", ")}) in this group. Do you want to leave the group?`
+                : "There are blocked members in this group. Do you want to leave the group?"}
             </Text>
             <TouchableOpacity onPress={handleLeaveGroupFromWarning}>
               <Text
@@ -1202,7 +1202,7 @@ export default function ChatScreen() {
                   fontWeight: "700",
                 }}
               >
-                Rời nhóm
+                Leave Group
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -1231,7 +1231,7 @@ export default function ChatScreen() {
           replyToMessage={replyToMessage}
           onCancelReply={clearReplyToMessage}
           disabled={privateMessagingBlocked}
-          disabledPlaceholder="Không thể nhắn tin"
+          disabledPlaceholder="Messaging disabled"
         />
       </KeyboardAvoidingView>
 
@@ -1311,16 +1311,16 @@ export default function ChatScreen() {
                 message.includes("cannot send")
               ) {
                 Alert.alert(
-                  "Không thể gửi tin nhắn",
-                  "Bạn không thể chuyển tiếp vì mối quan hệ đang bị chặn.",
+                  "Cannot send message",
+                  "You cannot forward because of a blocked relationship.",
                 );
                 return;
               }
               Alert.alert(
-                "Không thể chuyển tiếp",
+                "Unable to forward",
                 error instanceof Error
                   ? error.message
-                  : "Vui lòng thử lại sau",
+                  : "Please try again later",
               );
             }
           }}
