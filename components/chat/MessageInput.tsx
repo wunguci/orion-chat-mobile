@@ -151,9 +151,9 @@ export default function MessageInput({
               paddingHorizontal: 14,
               paddingVertical: 10,
               borderRadius: 6,
-              backgroundColor: "#f6f6f6",
+              backgroundColor: colors.primaryLight,
               borderLeftWidth: 3,
-              borderLeftColor: "#4F9BFF",
+              borderLeftColor: colors.primary,
               flexDirection: "row",
               alignItems: "center",
             }}
@@ -174,14 +174,14 @@ export default function MessageInput({
                     transform: [{ rotate: "180deg" }],
                   }}
                 >
-                  <Reply size={16} color="#505050" strokeWidth={2.4} />
+                  <Reply size={16} color={colors.primary} strokeWidth={2.4} />
                 </View>
 
                 <Text
                   numberOfLines={1}
                   style={{
                     flex: 1,
-                    color: "#505050",
+                    color: colors.primaryDark,
                     fontSize: 15,
                     fontWeight: "700",
                   }}
@@ -196,7 +196,7 @@ export default function MessageInput({
               <Text
                 numberOfLines={1}
                 style={{
-                  color: "#505050",
+                  color: colors.text,
                   fontSize: 15,
                 }}
               >
@@ -208,7 +208,7 @@ export default function MessageInput({
             </View>
 
             <TouchableOpacity onPress={onCancelReply} hitSlop={10}>
-              <Ionicons name="close" size={26} color="#AEB7C2" />
+              <Ionicons name="close" size={26} color={colors.primary} />
             </TouchableOpacity>
           </View>
         ) : null}

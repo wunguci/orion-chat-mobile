@@ -1154,6 +1154,8 @@ function convertApiMessageToUIMessage(
     isMine: isMine,
     status: "read",
     isRecalled: apiMsg.isRevoked || false,
+    isPinned: !!apiMsg.isPinned,
+    pinnedAt: apiMsg.pinnedAt || null,
     reactions: apiMsg.reactions || [],
     replyToMessageId: apiMsg.replyToMessageId || null,
     replyToMessagePreview: apiMsg.replyToMessagePreview,

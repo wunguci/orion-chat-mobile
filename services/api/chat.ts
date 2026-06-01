@@ -179,6 +179,26 @@ export interface GroupJoinRequest {
 /**
  * Thông tin Message
  */
+export interface PinnedMessageItem {
+  messageId: string;
+  conversationId?: string;
+  senderBy?: string;
+  senderName?: string;
+  content?: string;
+  messageType?: string;
+  createdAt?: string;
+  pinnedAt?: string | null;
+  pinnedBy?: string | null;
+  isPinned?: boolean;
+  replyToMessageId?: string | null;
+  attachment?: {
+    mediaUrl?: string;
+    fileName?: string;
+    fileSize?: number;
+    mimeType?: string;
+  } | null;
+}
+
 export interface MessageItem {
   _id: string;
   clientMessageId: string;
@@ -191,6 +211,9 @@ export interface MessageItem {
   senderName: string;
   senderAvatar: string;
   mediaUrl?: string;
+  isPinned?: boolean;
+  pinnedAt?: string | null;
+  pinnedBy?: string | null;
 
   // File attachments
   fileName?: string;
@@ -618,6 +641,40 @@ export const chatApi = {
   /**
    * Gửi tin nhắn (sử dụng REST API, thường dùng khi WebSocket chưa sẵn sàng)
    */
+  async getPinnedMessages(conversationId: string) {
+    const response = await authFetch(
+      buildUrl(`/conversations/${conversationId}/pinned-messages`),
+    );
+    const data = await toJson<{
+      conversationId?: string;
+      items?: PinnedMessageItem[];
+      data?: PinnedMessageItem[];
+    }>(response);
+    return {
+      items: data.items || data.data || [],
+    };
+  },
+
+  async pinMessage(conversationId: string, messageId: string) {
+    const response = await authFetch(
+      buildUrl(`/conversations/${conversationId}/messages/${messageId}/pin`),
+      {
+        method: "POST",
+      },
+    );
+    return toJson<any>(response);
+  },
+
+  async unpinMessage(conversationId: string, messageId: string) {
+    const response = await authFetch(
+      buildUrl(`/conversations/${conversationId}/messages/${messageId}/pin`),
+      {
+        method: "DELETE",
+      },
+    );
+    return toJson<any>(response);
+  },
+
   async sendMessage(payload: SendMessagePayload) {
     const response = await authFetch(
       buildUrl(`/conversations/${payload.conversationId}/messages`),

@@ -7,6 +7,7 @@ import {
     ConversationResponse,
     GroupJoinRequest,
     GroupMemberItem,
+    PinnedMessageItem,
 } from '@/services/api/chat';
 import { friendApi, FriendResponse } from '@/services/api/friend';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -52,11 +53,17 @@ interface ConversationInfoModalProps {
 type PasswordMode = 'hide' | 'reveal' | null;
 const LOGIN_PRIMARY = '#006275';
 
-const AUTO_DELETE_OPTIONS = [
+const PRIVATE_AUTO_DELETE_OPTIONS = [
     { label: 'Không bao giờ', value: 0 },
     { label: '1 ngày', value: 1 },
     { label: '7 ngày', value: 7 },
     { label: '30 ngày', value: 30 },
+];
+
+const GROUP_AUTO_DELETE_OPTIONS = [
+    { label: 'Không bao giờ', value: 0 },
+    { label: '1 giờ', value: 3600 },
+    { label: '1 ngày', value: 86400 },
 ];
 
 const toAbsoluteUrl = (url?: string | null) => {
@@ -75,9 +82,22 @@ const toAbsoluteUrl = (url?: string | null) => {
     return `${base}${path}`;
 };
 
-const getAutoDeleteLabel = (duration?: number) =>
-    AUTO_DELETE_OPTIONS.find((item) => item.value === Number(duration || 0))
+const getAutoDeleteLabel = (duration?: number, groupMode?: boolean) =>
+    (groupMode ? GROUP_AUTO_DELETE_OPTIONS : PRIVATE_AUTO_DELETE_OPTIONS).find(
+        (item) => item.value === Number(duration || 0),
+    )
         ?.label || `${duration} ngày`;
+
+const formatPinnedDate = (value?: string | null) => {
+    const date = value ? new Date(value) : null;
+    if (!date || Number.isNaN(date.getTime())) return '';
+
+    return date.toLocaleDateString('vi-VN', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    });
+};
 
 const getRoleLabel = (role?: string | null) => {
     if (role === 'admin' || role === 'leader') return 'Trưởng nhóm';
@@ -105,6 +125,9 @@ export default function ConversationInfoModal({
     const shouldRenderRef = useRef(visible);
     const [groupMembers, setGroupMembers] = useState<GroupMemberItem[]>([]);
     const [mediaItems, setMediaItems] = useState<ConversationMediaItem[]>([]);
+    const [pinnedMessages, setPinnedMessages] = useState<PinnedMessageItem[]>(
+        [],
+    );
     const [loading, setLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
     const [isPinned, setIsPinned] = useState(false);
@@ -113,6 +136,8 @@ export default function ConversationInfoModal({
     const [passwordMode, setPasswordMode] = useState<PasswordMode>(null);
     const [password, setPassword] = useState('');
     const [groupManagementVisible, setGroupManagementVisible] = useState(false);
+    const [membersVisible, setMembersVisible] = useState(false);
+    const [pinnedMessagesVisible, setPinnedMessagesVisible] = useState(false);
     const [groupNameDialogVisible, setGroupNameDialogVisible] = useState(false);
     const [groupNameInput, setGroupNameInput] = useState('');
     const [addMembersVisible, setAddMembersVisible] = useState(false);
@@ -132,9 +157,11 @@ export default function ConversationInfoModal({
     );
     const memberCount =
         groupMembers.length || conversation?.participants?.length || 0;
-    const myRole =
-        conversation?.myRole || groupMembers.find((m) => m.isMe)?.role;
-    const isOwner = myRole === 'admin' || myRole === 'leader';
+    const myMember = groupMembers.find((m) => m.isMe);
+    const myRole = myMember?.role || conversation?.myRole;
+    const isOwner = conversation?.groupInfo?.ownerId
+        ? myMember?.userId === conversation.groupInfo.ownerId
+        : myRole === 'admin' || myRole === 'leader';
     const canManageGroup =
         myRole === 'admin' ||
         myRole === 'leader' ||
@@ -237,12 +264,13 @@ export default function ConversationInfoModal({
 
             const shouldLoadGroup =
                 isGroup || nextConversation.type === 'GROUP';
-            const [mediaResult, membersResult, blockResult] =
+            const [mediaResult, membersResult, pinnedResult, blockResult] =
                 await Promise.allSettled([
                     chatApi.getConversationMedia(conversationId, undefined, 30),
                     shouldLoadGroup
                         ? chatApi.getGroupMembers(conversationId)
                         : Promise.resolve({ items: [] as GroupMemberItem[] }),
+                    chatApi.getPinnedMessages(conversationId),
                     shouldLoadGroup
                         ? Promise.resolve(null)
                         : chatApi.getBlockStatus(conversationId),
@@ -253,6 +281,9 @@ export default function ConversationInfoModal({
             }
             if (membersResult.status === 'fulfilled') {
                 setGroupMembers(membersResult.value.items || []);
+            }
+            if (pinnedResult.status === 'fulfilled') {
+                setPinnedMessages(pinnedResult.value.items || []);
             }
             if (blockResult.status === 'fulfilled' && blockResult.value) {
                 setIAmTheBlocker(
@@ -281,6 +312,8 @@ export default function ConversationInfoModal({
             setPasswordMode(null);
             setPassword('');
             setGroupManagementVisible(false);
+            setMembersVisible(false);
+            setPinnedMessagesVisible(false);
             setGroupNameDialogVisible(false);
             setGroupNameInput('');
             setAddMembersVisible(false);
@@ -345,7 +378,10 @@ export default function ConversationInfoModal({
             'Tin nhắn tự xóa',
             'Chọn thời gian tự xóa tin nhắn cho hội thoại này.',
             [
-                ...AUTO_DELETE_OPTIONS.map((option) => ({
+                ...(groupMode
+                    ? GROUP_AUTO_DELETE_OPTIONS
+                    : PRIVATE_AUTO_DELETE_OPTIONS
+                ).map((option) => ({
                     text: option.label,
                     onPress: () =>
                         void runAction(async () => {
@@ -513,6 +549,15 @@ export default function ConversationInfoModal({
         }, 'Đã sao chép ID nhóm');
     };
 
+    const handleUnpinMessage = (messageId: string) => {
+        void runAction(async () => {
+            await chatApi.unpinMessage(conversationId, messageId);
+            setPinnedMessages((prev) =>
+                prev.filter((item) => item.messageId !== messageId),
+            );
+        }, 'Đã bỏ ghim tin nhắn');
+    };
+
     const openGroupNameDialog = () => {
         setGroupNameInput(displayName);
         setGroupNameDialogVisible(true);
@@ -602,7 +647,7 @@ export default function ConversationInfoModal({
         if (!canModifyMember(member)) return;
 
         const actions = [
-            member.role === 'member'
+            member.role === 'member' && isOwner
                 ? {
                       text: 'Cấp phó nhóm',
                       onPress: () =>
@@ -831,6 +876,8 @@ export default function ConversationInfoModal({
                                                 ? `Vai trò của bạn: ${myRole}`
                                                 : undefined
                                         }
+                                        showChevron
+                                        onPress={() => setMembersVisible(true)}
                                     />
                                     <InfoRow
                                         icon="pencil-outline"
@@ -1098,10 +1145,25 @@ export default function ConversationInfoModal({
 
                         <Section title="Thiết lập bảo mật">
                             <InfoRow
+                                icon="pin-outline"
+                                title="Tin nhắn đã ghim"
+                                subtitle={
+                                    pinnedMessages.length
+                                        ? `${pinnedMessages.length} tin nhắn`
+                                        : 'Chưa có tin nhắn ghim'
+                                }
+                                showChevron
+                                onPress={() => setPinnedMessagesVisible(true)}
+                            />
+                        </Section>
+
+                        <Section title="Thiết lập bảo mật">
+                            <InfoRow
                                 icon="timer-outline"
                                 title="Tin nhắn tự xóa"
                                 subtitle={getAutoDeleteLabel(
                                     autoDeleteDuration,
+                                    groupMode,
                                 )}
                                 showChevron
                                 onPress={handleAutoDelete}
@@ -1232,6 +1294,20 @@ export default function ConversationInfoModal({
                     onMemberPress={handleMemberAction}
                     onCopyLink={handleCopyConversationId}
                     onDissolveGroup={handleDissolveGroup}
+                    onDataChanged={refreshData}
+                />
+                <GroupMembersModal
+                    visible={membersVisible}
+                    members={groupMembers}
+                    canManage={canManageGroup}
+                    onClose={() => setMembersVisible(false)}
+                    onMemberPress={handleMemberAction}
+                />
+                <PinnedMessagesModal
+                    visible={pinnedMessagesVisible}
+                    messages={pinnedMessages}
+                    onClose={() => setPinnedMessagesVisible(false)}
+                    onUnpin={handleUnpinMessage}
                 />
                 <AddMembersModal
                     visible={addMembersVisible}
@@ -1245,6 +1321,218 @@ export default function ConversationInfoModal({
                 />
             </Animated.View>
         </Modal>
+    );
+}
+
+function GroupMembersModal({
+    visible,
+    members,
+    canManage,
+    onClose,
+    onMemberPress,
+}: {
+    visible: boolean;
+    members: GroupMemberItem[];
+    canManage: boolean;
+    onClose: () => void;
+    onMemberPress: (member: GroupMemberItem) => void;
+}) {
+    const { colors } = useTheme();
+    const insets = useSafeAreaInsets();
+    const [searchText, setSearchText] = useState('');
+
+    const sortedMembers = useMemo(() => {
+        const normalized = searchText.trim().toLowerCase();
+        const roleOrder = { admin: 0, 'co-admin': 1, member: 2 };
+
+        return members
+            .filter((member) => {
+                if (!normalized) return true;
+                return (member.fullName || member.userId)
+                    .toLowerCase()
+                    .includes(normalized);
+            })
+            .sort((left, right) => {
+                const roleDiff =
+                    (roleOrder[left.role] ?? 3) - (roleOrder[right.role] ?? 3);
+                if (roleDiff !== 0) return roleDiff;
+                return (left.fullName || left.userId).localeCompare(
+                    right.fullName || right.userId,
+                    'vi',
+                    { sensitivity: 'base' },
+                );
+            });
+    }, [members, searchText]);
+
+    useEffect(() => {
+        if (!visible) setSearchText('');
+    }, [visible]);
+
+    return (
+        <Modal
+            visible={visible}
+            animationType="slide"
+            presentationStyle="fullScreen"
+            onRequestClose={onClose}
+        >
+            <View
+                style={{
+                    flex: 1,
+                    backgroundColor: colors.background,
+                    paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 44 : 0),
+                    paddingBottom: insets.bottom,
+                }}
+            >
+                <HeaderBar title={`Thành viên (${members.length})`} onBack={onClose} />
+                <View style={{ padding: 16, borderBottomWidth: 0.5, borderBottomColor: colors.divider }}>
+                    <View
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 8,
+                            backgroundColor: colors.backgroundSecondary,
+                            borderRadius: 10,
+                            paddingHorizontal: 12,
+                            minHeight: 42,
+                        }}
+                    >
+                        <Ionicons name="search-outline" size={19} color={colors.textSecondary} />
+                        <TextInput
+                            value={searchText}
+                            onChangeText={setSearchText}
+                            placeholder="Tìm kiếm thành viên"
+                            placeholderTextColor={colors.textSecondary}
+                            style={{ flex: 1, color: colors.text, fontSize: 15 }}
+                        />
+                    </View>
+                </View>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                    {sortedMembers.length ? (
+                        sortedMembers.map((member) => (
+                            <MemberManagementRow
+                                key={member.userId}
+                                member={member}
+                                canManage={canManage}
+                                onPress={() => onMemberPress(member)}
+                            />
+                        ))
+                    ) : (
+                        <Text
+                            style={{
+                                color: colors.textSecondary,
+                                textAlign: 'center',
+                                paddingVertical: 28,
+                            }}
+                        >
+                            Không tìm thấy thành viên
+                        </Text>
+                    )}
+                </ScrollView>
+            </View>
+        </Modal>
+    );
+}
+
+function PinnedMessagesModal({
+    visible,
+    messages,
+    onClose,
+    onUnpin,
+}: {
+    visible: boolean;
+    messages: PinnedMessageItem[];
+    onClose: () => void;
+    onUnpin: (messageId: string) => void;
+}) {
+    const { colors } = useTheme();
+    const insets = useSafeAreaInsets();
+
+    return (
+        <Modal
+            visible={visible}
+            animationType="slide"
+            presentationStyle="fullScreen"
+            onRequestClose={onClose}
+        >
+            <View
+                style={{
+                    flex: 1,
+                    backgroundColor: colors.background,
+                    paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 44 : 0),
+                    paddingBottom: insets.bottom,
+                }}
+            >
+                <HeaderBar title="Tin nhắn đã ghim" onBack={onClose} />
+                <ScrollView showsVerticalScrollIndicator={false}>
+                    {messages.length ? (
+                        messages.map((message) => (
+                            <PinnedMessageRow
+                                key={message.messageId}
+                                message={message}
+                                onUnpin={() => onUnpin(message.messageId)}
+                            />
+                        ))
+                    ) : (
+                        <Text
+                            style={{
+                                color: colors.textSecondary,
+                                textAlign: 'center',
+                                paddingVertical: 32,
+                            }}
+                        >
+                            Chưa có tin nhắn ghim
+                        </Text>
+                    )}
+                </ScrollView>
+            </View>
+        </Modal>
+    );
+}
+
+function PinnedMessageRow({
+    message,
+    onUnpin,
+}: {
+    message: PinnedMessageItem;
+    onUnpin: () => void;
+}) {
+    const { colors } = useTheme();
+    const content =
+        message.content ||
+        message.attachment?.fileName ||
+        (message.messageType ? `Tin nhắn ${message.messageType.toLowerCase()}` : 'Tin nhắn');
+
+    return (
+        <View
+            style={{
+                minHeight: 76,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                borderBottomWidth: 0.5,
+                borderBottomColor: colors.divider,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+            }}
+        >
+            <MaterialCommunityIcons name="pin" size={22} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+                <Text
+                    style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}
+                    numberOfLines={2}
+                >
+                    {content}
+                </Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 4 }}>
+                    {formatPinnedDate(
+                        String(message.pinnedAt || message.createdAt || ''),
+                    )}
+                </Text>
+            </View>
+            <TouchableOpacity onPress={onUnpin} hitSlop={8}>
+                <MaterialCommunityIcons name="pin-off-outline" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+        </View>
     );
 }
 
@@ -2048,6 +2336,7 @@ function GroupManagementModalV2({
     onMemberPress,
     onCopyLink,
     onDissolveGroup,
+    onDataChanged,
 }: {
     visible: boolean;
     conversationId: string;
@@ -2058,6 +2347,7 @@ function GroupManagementModalV2({
     onMemberPress: (member: GroupMemberItem) => void;
     onCopyLink: () => void;
     onDissolveGroup: () => void;
+    onDataChanged: () => void;
 }) {
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
@@ -2154,6 +2444,9 @@ function GroupManagementModalV2({
                 setJoinRequests((prev) =>
                     prev.filter((item) => item.requestId !== request.requestId),
                 );
+                if (approved) {
+                    onDataChanged();
+                }
                 Alert.alert(
                     'Thành công',
                     approved

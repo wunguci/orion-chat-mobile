@@ -100,6 +100,8 @@ export interface Message {
   isRecalled?: boolean;
   timestamp: string; // display string e.g. "2:14 PM"
   status?: MessageStatus;
+  isPinned?: boolean;
+  pinnedAt?: string | null;
   isMine: boolean;
   callData?: {
     callType: "audio" | "video";

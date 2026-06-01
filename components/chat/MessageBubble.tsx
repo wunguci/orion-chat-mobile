@@ -2,7 +2,7 @@ import { formatTime } from "@/hooks/useChat";
 import { useTheme } from "@/hooks/useTheme";
 import { Message } from "@/types/chat";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useRef } from "react";
 import { GroupCallContext } from "@/context/GroupCallContext";
 import { CallContext } from "@/context/CallContext";
 import {
@@ -16,6 +16,7 @@ import {
   Alert,
   Platform,
 } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import { WebView } from "react-native-webview";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MessageReactions from "./MessageReactions";
@@ -29,6 +30,37 @@ const AVATAR_SIZE = 32;
 const HIGHLIGHT_BORDER_COLOR = "rgba(0, 177, 79, 0.28)";
 
 // ── Status checkmarks ────────────────────────────────────────
+function PinnedBadge({ isMine }: { isMine?: boolean }) {
+  const { colors } = useTheme();
+  const badgeColor = isMine ? "rgba(255,255,255,0.92)" : colors.primary;
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        marginBottom: 5,
+      }}
+    >
+      <MaterialCommunityIcons
+        name="pin-outline"
+        size={12}
+        color={badgeColor}
+      />
+      <Text
+        style={{
+          color: badgeColor,
+          fontSize: 12,
+          fontWeight: "700",
+        }}
+      >
+        Đã ghim
+      </Text>
+    </View>
+  );
+}
+
 function MessageStatus({ status }: { status?: Message["status"] }) {
   const { colors } = useTheme();
 
@@ -90,11 +122,11 @@ function ReplyPreviewInBubble({
         paddingHorizontal: 10,
         paddingVertical: 8,
         borderLeftWidth: 3,
-        borderLeftColor: message.isMine ? "#FFFFFF" : "#4F9BFF",
+        borderLeftColor: message.isMine ? "#FFFFFF" : colors.primary,
         borderRadius: 8,
         backgroundColor: message.isMine
           ? "rgba(255,255,255,0.18)"
-          : colors.card,
+          : colors.primaryLight,
       }}
     >
       <View
@@ -128,7 +160,7 @@ function ReplyPreviewInBubble({
           numberOfLines={1}
           style={{
             flex: 1,
-            color: message.isMine ? "#FFFFFF" : colors.text,
+            color: message.isMine ? "#FFFFFF" : colors.primaryDark,
             fontSize: 12,
             fontWeight: "700",
           }}
@@ -142,7 +174,7 @@ function ReplyPreviewInBubble({
         style={{
           color: message.isMine
             ? "rgba(255,255,255,0.85)"
-            : colors.textSecondary,
+            : colors.primaryDark,
           fontSize: 12,
         }}
       >
@@ -209,11 +241,18 @@ function TextBubble({
       >
         <ReplyPreviewInBubble message={message} onPress={onReplyPreviewPress} />
 
+        {message.isPinned ? <PinnedBadge isMine={message.isMine} /> : null}
+
         <Text style={{ color: textColor, fontSize: 15, lineHeight: 21 }}>
           {message.text}
         </Text>
 
-        <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+        <Text
+          style={{
+            fontSize: 12,
+            color: message.isMine ? "rgba(255,255,255,0.78)" : colors.textSecondary,
+          }}
+        >
           {formatTime(message.timestamp)}
         </Text>
       </View>
@@ -1474,6 +1513,7 @@ interface MessageBubbleProps {
   senderName?: string;
   onLongPress?: (message: Message) => void;
   onCallBack?: (callType: "audio" | "video") => void;
+  onReply?: (message: Message) => void;
   onReplyPreviewPress?: (messageId: string) => void;
   onImagePress?: (message: Message) => void;
 }
@@ -1489,11 +1529,13 @@ export default function MessageBubble({
   senderName,
   onLongPress,
   onCallBack,
+  onReply,
   onReplyPreviewPress,
   onImagePress,
 }: MessageBubbleProps) {
   const { colors } = useTheme();
   const [fullscreenImageUri, setFullscreenImageUri] = useState<string | null>(null);
+  const swipeableRef = useRef<Swipeable | null>(null);
 
   const receivedBg = colors.backgroundSecondary;
   const receivedText = colors.text;
@@ -1626,7 +1668,7 @@ export default function MessageBubble({
     }
   };
 
-  return (
+  const messageNode = (
     <Pressable
       onLongPress={() => onLongPress?.(message)}
       delayLongPress={500}
@@ -1727,5 +1769,59 @@ export default function MessageBubble({
         </SafeAreaView>
       </Modal>
     </Pressable>
+  );
+
+  if (!onReply || message.isRecalled) {
+    return messageNode;
+  }
+
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={() => (
+        <View
+          style={{
+            width: 76,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingRight: 8,
+            backgroundColor: colors.primaryLight,
+          }}
+        >
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: colors.primary,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <MaterialCommunityIcons name="reply" size={22} color="#FFFFFF" />
+          </View>
+          <Text
+            style={{
+              marginTop: 4,
+              color: colors.primaryDark,
+              fontSize: 11,
+              fontWeight: "600",
+            }}
+          >
+            Trả lời
+          </Text>
+        </View>
+      )}
+      friction={1}
+      rightThreshold={24}
+      dragOffsetFromRightEdge={8}
+      overshootRight={false}
+      onSwipeableOpen={() => {
+        swipeableRef.current?.close();
+        onReply(message);
+      }}
+    >
+      {messageNode}
+    </Swipeable>
   );
 }

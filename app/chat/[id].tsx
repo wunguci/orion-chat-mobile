@@ -30,13 +30,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import ForwardConversationModal from "@/components/chat/ForwardConversationModal";
 import { generateUniqueId } from "@/utils/generateUniqueId";
-import { chatApi } from "@/services/api/chat";
+import { chatApi, PinnedMessageItem } from "@/services/api/chat";
 import { friendApi } from "@/services/api/friend";
 import { useNotificationContext } from "@/context/NotificationContext";
 import { useFocusEffect } from "expo-router";
 import { CallContext } from "@/context/CallContext";
 import { GroupCallContext } from "@/context/GroupCallContext";
 import { useAuth } from "@/hooks/useAuth";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const IMAGE_GROUP_WINDOW_MS = 1 * 60 * 1000; // gom ảnh trong 1 phút
 
@@ -549,6 +550,54 @@ export default function ChatScreen() {
   const [initialViewerImageId, setInitialViewerImageId] = useState<
     string | null
   >(null);
+  const [pinnedMessages, setPinnedMessages] = useState<PinnedMessageItem[]>([]);
+  const [pinnedExpanded, setPinnedExpanded] = useState(false);
+  const [pinOverrides, setPinOverrides] = useState<
+    Record<string, { isPinned: boolean; pinnedAt?: string | null }>
+  >({});
+
+  const applyPinState = useCallback(
+    (messageId: string, isPinned: boolean, pinnedAt?: string | null) => {
+      setPinOverrides((prev) => ({
+        ...prev,
+        [messageId]: { isPinned, pinnedAt },
+      }));
+    },
+    [],
+  );
+
+  const loadPinnedMessages = useCallback(async () => {
+    if (!id) return;
+
+    try {
+      const response = await chatApi.getPinnedMessages(id);
+      const sorted = (response.items || [])
+        .slice(0, 3)
+        .sort((left, right) => {
+          const leftTime = new Date(
+            String(left.pinnedAt || left.createdAt || 0),
+          ).getTime();
+          const rightTime = new Date(
+            String(right.pinnedAt || right.createdAt || 0),
+          ).getTime();
+          return rightTime - leftTime;
+        });
+      setPinnedMessages(sorted);
+      setPinOverrides((prev) => {
+        const next = { ...prev };
+        sorted.forEach((item) => {
+          next[item.messageId] = {
+            isPinned: true,
+            pinnedAt: item.pinnedAt || null,
+          };
+        });
+        return next;
+      });
+    } catch (error) {
+      console.warn("[ChatScreen] Failed to load pinned messages:", error);
+      setPinnedMessages([]);
+    }
+  }, [id]);
 
   useEffect(() => {
     if (!id) {
@@ -558,12 +607,17 @@ export default function ChatScreen() {
     }
   }, [id, router]);
 
+  useEffect(() => {
+    void loadPinnedMessages();
+  }, [loadPinnedMessages]);
+
   useFocusEffect(
     useCallback(() => {
       if (!id) return;
 
       setActiveConversationId(id);
       void markConversationNotificationsAsRead(id);
+      void loadPinnedMessages();
       setBlockRefreshKey((value) => value + 1);
 
       return () => {
@@ -571,6 +625,7 @@ export default function ChatScreen() {
       };
     }, [
       id,
+      loadPinnedMessages,
       markConversationNotificationsAsRead,
       setActiveConversationId,
       setBlockRefreshKey,
@@ -751,20 +806,35 @@ export default function ChatScreen() {
 
   // console.log("LAST MSG TIME AGO ", lastMessageTimeAgo);
 
+  const displayMessages = useMemo(
+    () =>
+      messages.map((message) => {
+        const pinOverride = pinOverrides[message.id];
+        if (!pinOverride) return message;
+
+        return {
+          ...message,
+          isPinned: pinOverride.isPinned,
+          pinnedAt: pinOverride.pinnedAt,
+        };
+      }),
+    [messages, pinOverrides],
+  );
+
   const messageItems = useMemo(
-    () => buildMessageListItems(messages),
-    [messages],
+    () => buildMessageListItems(displayMessages),
+    [displayMessages],
   );
 
   const imageMessages = useMemo(
     () =>
-      messages.filter(
+      displayMessages.filter(
         (message) =>
           String(message.type || "").toUpperCase() === "IMAGE" &&
           Boolean(message.imageUri) &&
           !message.isRecalled,
       ),
-    [messages],
+    [displayMessages],
   );
 
   const handleOpenImageViewer = useCallback((message: Message) => {
@@ -772,7 +842,7 @@ export default function ChatScreen() {
     setImageViewerVisible(true);
   }, []);
 
-  const handleReplyPreviewPress = useCallback(
+  const scrollToMessageId = useCallback(
     (messageId: string) => {
       const targetIndex = messageItems.findIndex((item) => {
         if (item.kind === "imageGroup") {
@@ -783,7 +853,7 @@ export default function ChatScreen() {
       });
 
       if (targetIndex === -1) {
-        Alert.alert("Khong tim thay tin nhan", "Tin nhan nay chua duoc tai.");
+        Alert.alert("Không tìm thấy tin nhắn", "Tin nhắn này chưa được tải.");
         return;
       }
 
@@ -802,6 +872,21 @@ export default function ChatScreen() {
       }, 2000);
     },
     [messageItems],
+  );
+
+  const handlePinnedMessagePress = useCallback(
+    (messageId: string) => {
+      setPinnedExpanded(false);
+      scrollToMessageId(messageId);
+    },
+    [scrollToMessageId],
+  );
+
+  const handleReplyPreviewPress = useCallback(
+    (messageId: string) => {
+      scrollToMessageId(messageId);
+    },
+    [scrollToMessageId],
   );
 
   const renderItem = useCallback(
@@ -838,6 +923,7 @@ export default function ChatScreen() {
             }
             onLongPress={handleMessageLongPress}
             onCallBack={(callType) => void handleStartCall(callType)}
+            onReply={setReplyToMessage}
             onReplyPreviewPress={handleReplyPreviewPress}
             onImagePress={handleOpenImageViewer}
           />
@@ -853,6 +939,7 @@ export default function ChatScreen() {
       handleStartCall,
       handleReplyPreviewPress,
       handleOpenImageViewer,
+      setReplyToMessage,
     ],
   );
 
@@ -882,6 +969,123 @@ export default function ChatScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={0}
       >
+        {pinnedMessages.length > 0 ? (
+          <View
+            style={{
+              borderBottomWidth: 1,
+              borderBottomColor: colors.primary,
+              backgroundColor: colors.primaryLight,
+            }}
+          >
+            <View
+              style={{
+                minHeight: 42,
+                paddingHorizontal: 12,
+                paddingVertical: 7,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <View
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 13,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: colors.background,
+                }}
+              >
+                <MaterialCommunityIcons
+                  name="pin"
+                  size={15}
+                  color={colors.primary}
+                />
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.78}
+                onPress={() =>
+                  handlePinnedMessagePress(pinnedMessages[0].messageId)
+                }
+                style={{ flex: 1 }}
+              >
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    color: colors.primaryDark || colors.primary,
+                    fontSize: 13,
+                    fontWeight: "700",
+                  }}
+                >
+                  Đã ghim{pinnedMessages.length > 1 ? ` (${pinnedMessages.length})` : ""}:{" "}
+                  {pinnedMessages[0].content ||
+                    pinnedMessages[0].attachment?.fileName ||
+                    "Nội dung đã được ghim"}
+                </Text>
+              </TouchableOpacity>
+              {pinnedMessages.length > 1 ? (
+                <TouchableOpacity
+                  hitSlop={8}
+                  onPress={() => setPinnedExpanded((value) => !value)}
+                >
+                  <MaterialCommunityIcons
+                    name={pinnedExpanded ? "chevron-up" : "chevron-down"}
+                    size={22}
+                    color={colors.primary}
+                  />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            {pinnedExpanded ? (
+              <View style={{ paddingHorizontal: 12, paddingBottom: 8, gap: 6 }}>
+                {pinnedMessages.map((pinned, index) => (
+                  <TouchableOpacity
+                    key={pinned.messageId}
+                    activeOpacity={0.78}
+                    onPress={() => handlePinnedMessagePress(pinned.messageId)}
+                    style={{
+                      minHeight: 34,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: colors.primary,
+                      backgroundColor: colors.background,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      paddingHorizontal: 10,
+                      gap: 8,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        width: 16,
+                        color: colors.primary,
+                        fontSize: 11,
+                        fontWeight: "800",
+                      }}
+                    >
+                      {index + 1}
+                    </Text>
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        flex: 1,
+                        color: colors.text,
+                        fontSize: 12,
+                        fontWeight: "600",
+                      }}
+                    >
+                      {pinned.content ||
+                        pinned.attachment?.fileName ||
+                        "Nội dung đã được ghim"}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
         <FlatList
           ref={listRef}
           data={messageItems}
@@ -1050,6 +1254,16 @@ export default function ChatScreen() {
           conversationId={id || ""}
           onMessageDeleted={handleMessageDeleted}
           onMessageRecalled={handleMessageRecalled}
+          onMessagePinned={() => {
+            if (selectedMessage) {
+              applyPinState(
+                selectedMessage.id,
+                !selectedMessage.isPinned,
+                !selectedMessage.isPinned ? new Date().toISOString() : null,
+              );
+            }
+            void loadPinnedMessages();
+          }}
           onReply={(message) => {
             setReplyToMessage(message);
             setShowActionMenu(false);

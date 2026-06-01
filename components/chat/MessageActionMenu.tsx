@@ -17,6 +17,7 @@ import { formatGridResponse, orionAiApi } from "@/services/api/orionAi";
 
 // Emoji list cho reaction
 const EMOJI_LIST = ["😂", "❤️", "😍", "😮", "😢", "🔥", "👍", "👎"];
+const QUICK_EMOJI_LIST = EMOJI_LIST.slice(0, 6);
 
 interface MessageActionMenuProps {
   visible: boolean;
@@ -27,6 +28,7 @@ interface MessageActionMenuProps {
   onMessageDeleted?: () => void;
   onMessageRecalled?: () => void;
   onMessageForwarded?: () => void;
+  onMessagePinned?: () => void;
   onReply?: (message: Message) => void;
 }
 
@@ -39,6 +41,7 @@ export default function MessageActionMenu({
   onMessageDeleted,
   onMessageRecalled,
   onMessageForwarded,
+  onMessagePinned,
   onReply,
 }: MessageActionMenuProps) {
   const { colors } = useTheme();
@@ -161,6 +164,26 @@ export default function MessageActionMenu({
     onClose();
   };
 
+  const handleTogglePin = async () => {
+    setIsLoading(true);
+    try {
+      if (message.isPinned) {
+        await chatApi.unpinMessage(conversationId, message.id);
+      } else {
+        await chatApi.pinMessage(conversationId, message.id);
+      }
+      onMessagePinned?.();
+      onClose();
+    } catch (error) {
+      Alert.alert(
+        "Không thể thực hiện",
+        error instanceof Error ? error.message : "Vui lòng thử lại sau",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleReply = () => {
     onReply?.(message);
     onClose();
@@ -256,33 +279,71 @@ export default function MessageActionMenu({
 
             {!showEmojiPicker ? (
               <ScrollView scrollEnabled={false}>
-                {/* Emoji Picker Button */}
-                <TouchableOpacity
-                  onPress={() => setShowEmojiPicker(true)}
+                <View
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
                     paddingHorizontal: 16,
-                    paddingVertical: 12,
+                    paddingTop: 14,
+                    paddingBottom: 12,
                     borderBottomWidth: 1,
                     borderBottomColor: colors.backgroundSecondary,
                   }}
                 >
-                  <MaterialCommunityIcons
-                    name="emoticon-happy-outline"
-                    size={24}
-                    color={colors.primary}
-                    style={{ marginRight: 12 }}
-                  />
                   <Text
                     style={{
-                      fontSize: 16,
+                      fontSize: 13,
                       color: colors.text,
+                      fontWeight: "600",
+                      marginBottom: 10,
                     }}
                   >
-                    Gửi emoji
+                    Thả cảm xúc
                   </Text>
-                </TouchableOpacity>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    {QUICK_EMOJI_LIST.map((emoji) => (
+                      <TouchableOpacity
+                        key={emoji}
+                        onPress={() => handleAddEmoji(emoji)}
+                        disabled={isLoading}
+                        activeOpacity={0.75}
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 20,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: colors.backgroundSecondary,
+                        }}
+                      >
+                        <Text style={{ fontSize: 24 }}>{emoji}</Text>
+                      </TouchableOpacity>
+                    ))}
+                    <TouchableOpacity
+                      onPress={() => setShowEmojiPicker(true)}
+                      disabled={isLoading}
+                      activeOpacity={0.75}
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: colors.primaryLight,
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="plus"
+                        size={24}
+                        color={colors.primary}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
 
                 <TouchableOpacity
                   onPress={handleReply}
@@ -363,6 +424,33 @@ export default function MessageActionMenu({
                 </TouchableOpacity>
 
                 {/* Recall Button - chỉ nếu là tin nhắn của mình */}
+                <TouchableOpacity
+                  onPress={handleTogglePin}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.backgroundSecondary,
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name={message.isPinned ? "pin-off-outline" : "pin-outline"}
+                    size={24}
+                    color={colors.primary}
+                    style={{ marginRight: 12 }}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: colors.text,
+                    }}
+                  >
+                    {message.isPinned ? "Bỏ ghim tin nhắn" : "Ghim tin nhắn"}
+                  </Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity
                   onPress={handleAISummarize}
                   style={{
