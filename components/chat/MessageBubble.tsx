@@ -590,10 +590,12 @@ function ImageBubble({
   message,
   isHighlighted = false,
   onImagePress,
+  onLongPress,
 }: {
   message: Message;
   isHighlighted?: boolean;
   onImagePress?: (message: Message) => void;
+  onLongPress?: (message: Message) => void;
 }) {
   const { colors } = useTheme();
 
@@ -628,6 +630,7 @@ function ImageBubble({
       <TouchableOpacity
         activeOpacity={0.9}
         onPress={() => onImagePress?.(message)}
+        onLongPress={() => onLongPress?.(message)}
         style={{
           borderRadius: 16,
           overflow: "hidden",
@@ -1613,6 +1616,7 @@ export default function MessageBubble({
             message={message}
             isHighlighted={isHighlighted}
             onImagePress={handleImagePress}
+            onLongPress={onLongPress}
           />
         );
       case "FILE":

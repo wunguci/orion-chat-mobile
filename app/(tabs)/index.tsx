@@ -262,9 +262,20 @@ const buildSortedChatItems = (
   currentUserId: string | undefined,
   unreadByConversation: Record<string, number>,
 ): ChatItem[] => {
+  const visibleData = data.filter((conversation) => {
+    if (conversation.type !== "PRIVATE") return true;
+    const blockStatus = conversation.blockStatus || {};
+    return !(
+      conversation.myIsBlocked ||
+      blockStatus?.isBlocked ||
+      blockStatus?.iAmBlocked ||
+      blockStatus?.iAmTheBlocker
+    );
+  });
+
   const uniqueConversations = new Map<string, ConversationResponse>();
 
-  data.forEach((conv) => {
+  visibleData.forEach((conv) => {
     if (!uniqueConversations.has(conv.conversationId)) {
       uniqueConversations.set(conv.conversationId, conv);
     }

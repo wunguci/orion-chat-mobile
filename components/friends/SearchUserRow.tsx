@@ -9,6 +9,7 @@ interface Props {
   onAdd: (userId: string) => void;
   onMessage?: (userId: string) => void;
   isPending?: boolean;
+  onPress?: (userId: string) => void;
 }
 
 export const SearchUserRow: React.FC<Props> = ({
@@ -16,12 +17,17 @@ export const SearchUserRow: React.FC<Props> = ({
   onAdd,
   onMessage,
   isPending = false,
+  onPress,
 }) => {
   const colors = useThemeColors();
 
   return (
     <View className="flex-row items-center justify-between py-2 border-b border-gray-100">
-      <View className="flex-row items-center flex-1">
+      <TouchableOpacity
+        activeOpacity={0.75}
+        onPress={() => onPress?.(user.id)}
+        className="flex-row items-center flex-1"
+      >
         <Avatar uri={user.avatarUrl} name={user.fullName} size="md" />
         <View className="ml-3 flex-1">
           <Text className="text-base font-semibold text-gray-primary">
@@ -31,7 +37,7 @@ export const SearchUserRow: React.FC<Props> = ({
             {user.phoneNumber || (user.isOnline ? "Online" : "Offline")}
           </Text>
         </View>
-      </View>
+      </TouchableOpacity>
       <View className="flex-row items-center">
         <TouchableOpacity
           onPress={() => onMessage?.(user.id)}
@@ -46,7 +52,7 @@ export const SearchUserRow: React.FC<Props> = ({
           style={{ backgroundColor: colors.primaryLight }}
         >
           <Text className="font-semibold" style={{ color: colors.primary }}>
-            {isPending ? "Request sent" : "Add"}
+            {isPending ? "Đã gửi" : "Kết bạn"}
           </Text>
         </TouchableOpacity>
       </View>

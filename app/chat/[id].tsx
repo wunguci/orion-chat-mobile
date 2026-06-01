@@ -81,13 +81,7 @@ function getItemLastMessage(item: ChatMessageListItem): Message {
 }
 
 function canGroupImageMessage(message: Message): boolean {
-  return (
-    String(message.type || "").toUpperCase() === "IMAGE" &&
-    Boolean(message.imageUri) &&
-    !message.imageCaption &&
-    !message.isRecalled &&
-    !message.reactions?.length
-  );
+  return false;
 }
 
 function isSameImageGroup(first: Message, candidate: Message): boolean {
@@ -1309,6 +1303,25 @@ export default function ChatScreen() {
               );
             } catch (error) {
               console.error("Forward error:", error);
+              const message =
+                error instanceof Error ? error.message.toLowerCase() : "";
+              if (
+                message.includes("block") ||
+                message.includes("blocked") ||
+                message.includes("cannot send")
+              ) {
+                Alert.alert(
+                  "Không thể gửi tin nhắn",
+                  "Bạn không thể chuyển tiếp vì mối quan hệ đang bị chặn.",
+                );
+                return;
+              }
+              Alert.alert(
+                "Không thể chuyển tiếp",
+                error instanceof Error
+                  ? error.message
+                  : "Vui lòng thử lại sau",
+              );
             }
           }}
         />

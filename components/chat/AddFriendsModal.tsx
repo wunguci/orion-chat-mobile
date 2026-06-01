@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Modal,
+    ScrollView,
     Text,
     TextInput,
     TouchableOpacity,
@@ -14,6 +15,11 @@ import { useTheme } from '@/hooks/useTheme';
 import { friendApi } from '@/services/api/friend';
 import type { SearchUserItem } from '@/types/friend';
 import { SearchUserRow } from '@/components/friends/SearchUserRow';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+
+const RECENT_KEY = 'chat_mobile_recent_friend_searches';
+const MAX_RECENT = 6;
 
 interface AddFriendsModalProps {
     visible: boolean;
@@ -26,6 +32,7 @@ export default function AddFriendsModal({
     currentUserId,
     onClose,
 }: AddFriendsModalProps) {
+    const router = useRouter();
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
     const [searchText, setSearchText] = useState('');
@@ -34,6 +41,35 @@ export default function AddFriendsModal({
     const [results, setResults] = useState<SearchUserItem[]>([]);
     const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
     const [sendingIds, setSendingIds] = useState<Set<string>>(new Set());
+    const [recentItems, setRecentItems] = useState<SearchUserItem[]>([]);
+    const [suggestedItems, setSuggestedItems] = useState<SearchUserItem[]>([]);
+
+    const saveRecentItems = async (items: SearchUserItem[]) => {
+        setRecentItems(items);
+        await AsyncStorage.setItem(RECENT_KEY, JSON.stringify(items));
+    };
+
+    const upsertRecentItem = async (item: SearchUserItem) => {
+        const next = [item, ...recentItems.filter((x) => x.id !== item.id)].slice(
+            0,
+            MAX_RECENT,
+        );
+        await saveRecentItems(next);
+    };
+
+    const openProfile = (user: SearchUserItem) => {
+        router.push({
+            pathname: '/friend-view',
+            params: {
+                userId: user.id,
+                mode: 'suggested',
+                name: user.fullName,
+                avatar: user.avatarUrl || '',
+                isOnline: user.isOnline ? '1' : '0',
+                pending: pendingIds.has(user.id) ? '1' : '0',
+            },
+        });
+    };
 
     useEffect(() => {
         if (!visible) return;
@@ -55,8 +91,39 @@ export default function AddFriendsModal({
                 setPendingIds(new Set());
             }
         };
+        const loadRecent = async () => {
+            try {
+                const raw = await AsyncStorage.getItem(RECENT_KEY);
+                if (!raw) {
+                    setRecentItems([]);
+                    return;
+                }
+                const parsed = JSON.parse(raw) as SearchUserItem[];
+                setRecentItems(Array.isArray(parsed) ? parsed : []);
+            } catch {
+                setRecentItems([]);
+            }
+        };
+        const loadSuggestions = async () => {
+            if (!currentUserId) return;
+            try {
+                const rows = await friendApi.getSuggestions(currentUserId);
+                const mapped: SearchUserItem[] = rows.map((item) => ({
+                    id: item.id,
+                    fullName: item.fullName,
+                    avatarUrl: item.avatarUrl,
+                    phoneNumber: '',
+                    isOnline: item.isOnline,
+                }));
+                setSuggestedItems(mapped);
+            } catch {
+                setSuggestedItems([]);
+            }
+        };
 
         void loadPending();
+        void loadRecent();
+        void loadSuggestions();
     }, [currentUserId, visible]);
 
     useEffect(() => {
@@ -74,7 +141,11 @@ export default function AddFriendsModal({
                 setLoading(true);
                 setError(null);
                 const rows = await friendApi.searchUsers(currentUserId, query);
-                setResults(rows.filter((item) => item.id !== currentUserId));
+                const cleaned = rows.filter((item) => item.id !== currentUserId);
+                setResults(cleaned);
+                if (cleaned[0]) {
+                    void upsertRecentItem(cleaned[0]);
+                }
             } catch (err) {
                 setError(
                     err instanceof Error
@@ -97,6 +168,13 @@ export default function AddFriendsModal({
         try {
             await friendApi.sendFriendRequest(currentUserId, userId);
             setPendingIds((prev) => new Set(prev).add(userId));
+            const selected =
+                results.find((item) => item.id === userId) ||
+                recentItems.find((item) => item.id === userId) ||
+                suggestedItems.find((item) => item.id === userId);
+            if (selected) {
+                void upsertRecentItem(selected);
+            }
         } catch (err) {
             setError(
                 err instanceof Error
@@ -221,7 +299,7 @@ export default function AddFriendsModal({
                             No users found.
                         </Text>
                     </View>
-                ) : (
+                ) : searchText.trim() ? (
                     <FlatList
                         data={results}
                         keyExtractor={(item) => item.id}
@@ -234,9 +312,75 @@ export default function AddFriendsModal({
                                     pendingIds.has(item.id) ||
                                     sendingIds.has(item.id)
                                 }
+                                onPress={() => openProfile(item)}
                             />
                         )}
                     />
+                ) : (
+                    <ScrollView
+                        contentContainerStyle={{
+                            paddingHorizontal: 16,
+                            paddingBottom: 20,
+                        }}
+                    >
+                        {recentItems.length > 0 && (
+                            <>
+                                <Text
+                                    style={{
+                                        fontSize: 16,
+                                        fontWeight: '700',
+                                        color: colors.text,
+                                        marginBottom: 8,
+                                    }}
+                                >
+                                    Kết quả gần đây
+                                </Text>
+                                <View style={{ marginBottom: 12 }}>
+                                    {recentItems.map((item) => (
+                                        <SearchUserRow
+                                            key={`recent-row-${item.id}`}
+                                            user={item}
+                                            onAdd={handleAdd}
+                                            isPending={
+                                                pendingIds.has(item.id) ||
+                                                sendingIds.has(item.id)
+                                            }
+                                            onPress={() => openProfile(item)}
+                                        />
+                                    ))}
+                                </View>
+                            </>
+                        )}
+
+                        {suggestedItems.length > 0 && (
+                            <>
+                                <Text
+                                    style={{
+                                        fontSize: 16,
+                                        fontWeight: '700',
+                                        color: colors.text,
+                                        marginBottom: 8,
+                                    }}
+                                >
+                                    Có thể bạn quen
+                                </Text>
+                                <View>
+                                    {suggestedItems.map((item) => (
+                                        <SearchUserRow
+                                            key={`suggest-row-${item.id}`}
+                                            user={item}
+                                            onAdd={handleAdd}
+                                            isPending={
+                                                pendingIds.has(item.id) ||
+                                                sendingIds.has(item.id)
+                                            }
+                                            onPress={() => openProfile(item)}
+                                        />
+                                    ))}
+                                </View>
+                            </>
+                        )}
+                    </ScrollView>
                 )}
             </View>
         </Modal>
