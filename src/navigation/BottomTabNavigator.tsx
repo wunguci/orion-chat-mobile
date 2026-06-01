@@ -14,10 +14,11 @@ export default function BottomTabNavigator() {
                 sceneStyle: { backgroundColor: colors.background },
             }}
         >
-            {/* Main 4 tabs */}
+            {/* Main tabs */}
             <Tabs.Screen name="index" options={{ title: 'Chats' }} />
             <Tabs.Screen name="friends" options={{ title: 'Bạn bè' }} />
             <Tabs.Screen name="ai" options={{ title: 'AI Bot' }} />
+            <Tabs.Screen name="notification" options={{ title: 'Thông báo' }} />
             <Tabs.Screen name="setting" options={{ title: 'Hồ sơ' }} />
 
             {/* Hidden screens (still routable, not shown in tab bar) */}

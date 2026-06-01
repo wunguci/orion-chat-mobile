@@ -6,11 +6,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Menu } from "lucide-react-native";
 import { AIAvatar } from "./AIAvatar";
 import { useSlideMenu } from "@/context/SlideMenuContext";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 export function AIHeader() {
   const router = useRouter();
   const { openMenu } = useSlideMenu();
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
 
   return (
     <View
@@ -49,12 +51,12 @@ export function AIHeader() {
             width: 38,
             height: 38,
             borderRadius: 10,
-            backgroundColor: "#ccfbf1",
+            backgroundColor: colors.primaryLight,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Menu size={20} color="#0d9488" strokeWidth={2.5} />
+          <Menu size={20} color={colors.primary} strokeWidth={2.5} />
         </TouchableOpacity>
         <AIAvatar size={36} />
         <View>
@@ -84,7 +86,7 @@ export function AIHeader() {
               width: 32,
               height: 32,
               borderRadius: 16,
-              backgroundColor: "#0d9488",
+              backgroundColor: colors.primary,
               alignItems: "center",
               justifyContent: "center",
             }}

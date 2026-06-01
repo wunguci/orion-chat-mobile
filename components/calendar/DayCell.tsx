@@ -1,4 +1,5 @@
 import { View, Text, TouchableOpacity } from "react-native";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 interface DayCellProps {
     day: number;
@@ -18,6 +19,7 @@ export default function DayCell({
     onPress,
 }: DayCellProps) {
     const absDay = Math.abs(day);
+    const colors = useThemeColors();
 
     return (
         <TouchableOpacity 
@@ -27,13 +29,14 @@ export default function DayCell({
             activeOpacity={0.7}
         >
             <View
-                className={`w-10 h-10 items-center justify-center rounded-full ${
+                className="w-10 h-10 items-center justify-center rounded-full"
+                style={
                     isSelected
-                    ? 'bg-green-primary'
+                    ? { backgroundColor: colors.primary }
                     : isToday
-                    ? 'border-2 border-green-primary'
-                    : ''
-                }`}
+                    ? { borderWidth: 2, borderColor: colors.primary }
+                    : {}
+                }
             >
                 <Text
                     className={`text-base font-medium ${
@@ -41,10 +44,13 @@ export default function DayCell({
                         ? 'text-white'
                         : !isCurrentMonth
                         ? 'text-gray-300'
-                        : isToday
-                        ? 'text-green-primary'
                         : 'text-gray-900'
                     }`}
+                    style={
+                        !isSelected && isToday
+                        ? { color: colors.primary }
+                        : {}
+                    }
                 >
                     {absDay}
                 </Text>
@@ -52,8 +58,8 @@ export default function DayCell({
 
             {hasEvents && isCurrentMonth && (
                 <View className="flex-row gap-1 mt-1">
-                    <View className="w-1 h-1 rounded-full bg-green-primary"/>
-                    <View className="w-1 h-1 rounded-full bg-green-primary"/>
+                    <View style={{ backgroundColor: colors.primary }} className="w-1 h-1 rounded-full"/>
+                    <View style={{ backgroundColor: colors.primary }} className="w-1 h-1 rounded-full"/>
                 </View>
             )}
         </TouchableOpacity>

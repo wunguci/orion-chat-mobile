@@ -1,6 +1,7 @@
 import type { NoteCategory } from "@/types/note";
 import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 interface CategoryFilterProps {
   categories: NoteCategory[];
@@ -13,6 +14,7 @@ export default function CategoryFilter({
   selectedCategoryId,
   onSelectCategoryId,
 }: CategoryFilterProps) {
+  const colors = useThemeColors();
   const items = [
     { key: "all", label: "All" },
     ...categories.map((category) => ({
@@ -36,8 +38,9 @@ export default function CategoryFilter({
             <TouchableOpacity
               key={category.key}
               onPress={() => onSelectCategoryId(category.key)}
+              style={isSelected ? { backgroundColor: colors.primary } : null}
               className={`px-4 py-1.5 rounded-full ${
-                isSelected ? "bg-green-primary" : "bg-gray-light"
+                isSelected ? "" : "bg-gray-light"
               }`}
               activeOpacity={0.8}
             >

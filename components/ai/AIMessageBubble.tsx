@@ -4,6 +4,7 @@ import React from "react";
 import { Text, View } from "react-native";
 import Markdown from "react-native-markdown-display";
 import { AIAvatar } from "./AIAvatar";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 interface AIMessageBubbleProps {
   message: AIMessage;
@@ -11,6 +12,7 @@ interface AIMessageBubbleProps {
 
 export function AIMessageBubble({ message }: AIMessageBubbleProps) {
   const isUser = message.role === "user";
+  const colors = useThemeColors();
 
   return (
     <View className={`mb-4 ${isUser ? "items-end" : "items-start"}`}>
@@ -22,8 +24,9 @@ export function AIMessageBubble({ message }: AIMessageBubbleProps) {
         <View>
           <View
             className={`rounded-2xl px-4 py-3 ${
-              isUser ? "bg-teal-500" : "bg-gray-100"
+              isUser ? "" : "bg-gray-100"
             }`}
+            style={isUser ? { backgroundColor: colors.primary } : null}
           >
             {isUser ? (
               <Text className="text-white text-base">{message.content}</Text>

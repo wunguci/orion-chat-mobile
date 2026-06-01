@@ -5,6 +5,7 @@ import type {
 } from "@/types/calendar";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useEffect, useMemo, useState } from "react";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import {
   ActivityIndicator,
   Alert,
@@ -69,12 +70,13 @@ export default function EventEditorModal({
   onSave,
   onDelete,
 }: EventEditorModalProps) {
+  const colors = useThemeColors();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [startDate, setStartDate] = useState(new Date(initialDate));
   const [endDate, setEndDate] = useState(new Date(initialDate));
-  const [color, setColor] = useState("#008080");
+  const [color, setColor] = useState(colors.primary);
   const [notificationMinutes, setNotificationMinutes] = useState("30");
   const [selectedParticipantKeys, setSelectedParticipantKeys] = useState<
     string[]
@@ -94,7 +96,7 @@ export default function EventEditorModal({
       setLocation(existingEvent.location || "");
       setStartDate(new Date(existingEvent.start));
       setEndDate(new Date(existingEvent.end));
-      setColor(existingEvent.color || "#008080");
+      setColor(existingEvent.color || colors.primary);
       setNotificationMinutes(String(existingEvent.notificationMinutes ?? 30));
       setSelectedParticipantKeys(
         (existingEvent.participants || []).map((participant) =>
@@ -120,11 +122,11 @@ export default function EventEditorModal({
     setLocation("");
     setStartDate(defaultStart);
     setEndDate(defaultEnd);
-    setColor("#008080");
+    setColor(colors.primary);
     setNotificationMinutes("30");
     setSelectedParticipantKeys([]);
     setPickerState(null);
-  }, [visible, existingEvent, initialDate]);
+  }, [visible, existingEvent, initialDate, colors.primary]);
 
   const optionMap = useMemo(() => {
     const map = new Map<string, ParticipantOption>();
@@ -364,7 +366,7 @@ export default function EventEditorModal({
             </Text>
             {loadingParticipants ? (
               <View className="mb-6 items-center py-4">
-                <ActivityIndicator color="#00B14F" />
+                <ActivityIndicator color={colors.primary} />
               </View>
             ) : (
               <View className="mb-6 flex-row flex-wrap gap-2">
@@ -380,14 +382,22 @@ export default function EventEditorModal({
                       <TouchableOpacity
                         key={key}
                         onPress={() => toggleParticipant(option)}
-                        className={`rounded-full border px-3 py-2 ${
+                        className="rounded-full border px-3 py-2"
+                        style={
                           active
-                            ? "border-teal-600 bg-teal-50"
-                            : "border-gray-300 bg-white"
-                        }`}
+                            ? {
+                                borderColor: colors.primary,
+                                backgroundColor: colors.primaryLight,
+                              }
+                            : {
+                                borderColor: "#d1d5db",
+                                backgroundColor: "#ffffff",
+                              }
+                        }
                       >
                         <Text
-                          className={`${active ? "text-teal-700" : "text-gray-700"}`}
+                          className={active ? "" : "text-gray-700"}
+                          style={active ? { color: colors.primary } : {}}
                         >
                           {option.name}
                         </Text>
@@ -403,7 +413,8 @@ export default function EventEditorModal({
                 void handleSave();
               }}
               disabled={submitting}
-              className="mb-3 rounded-xl bg-teal-600 px-4 py-3"
+              style={{ backgroundColor: colors.primary }}
+              className="mb-3 rounded-xl px-4 py-3"
             >
               <Text className="text-center text-base font-semibold text-white">
                 {submitting ? "Saving..." : "Save event"}

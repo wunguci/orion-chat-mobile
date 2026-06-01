@@ -1,6 +1,7 @@
 import { CalendarEvent } from "@/types/calendar";
 import { getEventsForDate, getMonthData } from "@/utils/calendar";
 import { Text, TouchableOpacity, View } from "react-native";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 interface MonthGridProps {
   month: number;
@@ -18,6 +19,7 @@ export default function MonthGrid({
   onPress,
 }: MonthGridProps) {
   const weeks = getMonthData(year, month);
+  const colors = useThemeColors();
   const monthNames = [
     "JAN",
     "FEB",
@@ -38,7 +40,10 @@ export default function MonthGrid({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.7}
-      className={`p-3 rounded-lg ${isCurrentMonth ? "bg-teal-50" : "bg-gray-50"}`}
+      className="p-3 rounded-lg"
+      style={{
+        backgroundColor: isCurrentMonth ? colors.primaryLight : "#f9fafb",
+      }}
     >
       {/* month name */}
       <Text className="text-xs font-semibold text-gray-600 mb-2 text-center">
@@ -87,7 +92,7 @@ export default function MonthGrid({
                       {displayDay}
                     </Text>
                     {hasEvents && (
-                      <View className="w-1 h-1 rounded-full bg-teal-500 mt-0.5" />
+                      <View style={{ backgroundColor: colors.primary }} className="w-1 h-1 rounded-full mt-0.5" />
                     )}
                   </>
                 ) : (

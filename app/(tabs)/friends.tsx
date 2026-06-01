@@ -701,12 +701,12 @@ export default function Friends() {
             width: 38,
             height: 38,
             borderRadius: 10,
-            backgroundColor: '#ccfbf1',
+            backgroundColor: colors.primaryLight,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Menu size={20} color="#0d9488" strokeWidth={2.5} />
+          <Menu size={20} color={colors.primary} strokeWidth={2.5} />
         </TouchableOpacity>
         <Text className="text-lg font-bold text-gray-primary">Friends</Text>
         <TouchableOpacity>

@@ -19,6 +19,7 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 type InfoMode = "friend" | "suggested";
 
@@ -52,6 +53,7 @@ export default function FriendViewScreen() {
   const router = useRouter();
   const callContext = useContext(CallContext);
   const params = useLocalSearchParams();
+  const colors = useThemeColors();
 
   const targetUserId = getStringParam(params.userId) || "";
   const mode = (getStringParam(params.mode) as InfoMode) || "friend";
@@ -304,7 +306,7 @@ export default function FriendViewScreen() {
 
       {loading || !profile ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#00B14F" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <ScrollView
@@ -318,7 +320,7 @@ export default function FriendViewScreen() {
               resizeMode="cover"
             />
           ) : (
-            <View className="h-32 bg-green-primary" />
+            <View className="h-32" style={{ backgroundColor: colors.primary }} />
           )}
 
           <View className="-mt-12 px-4">
@@ -354,7 +356,8 @@ export default function FriendViewScreen() {
                 <TouchableOpacity
                   disabled={isSendingAddFriend || hasPendingRequest}
                   onPress={() => void handleAddFriend()}
-                  className="flex-1 flex-row items-center justify-center rounded-xl bg-green-primary py-3 disabled:opacity-70"
+                  className="flex-1 flex-row items-center justify-center rounded-xl py-3 disabled:opacity-70"
+                  style={{ backgroundColor: colors.primary }}
                 >
                   <Ionicons name="person-add" size={16} color="#fff" />
                   <Text className="ml-2 font-semibold text-white">
@@ -384,7 +387,8 @@ export default function FriendViewScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleChat}
-                  className="flex-1 flex-row items-center justify-center rounded-xl bg-green-primary py-3"
+                  className="flex-1 flex-row items-center justify-center rounded-xl py-3"
+                  style={{ backgroundColor: colors.primary }}
                 >
                   <Ionicons name="chatbubble-ellipses" size={16} color="#fff" />
                   <Text className="ml-2 font-semibold text-white">Chat</Text>

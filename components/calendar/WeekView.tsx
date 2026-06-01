@@ -3,6 +3,7 @@ import { getWeekDates } from "@/utils/calendar";
 import { isSameDay } from "date-fns";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import EventCard from "./EventCard";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 interface WeekViewProps {
   date: Date;
@@ -19,6 +20,7 @@ export default function WeekView({
 }: WeekViewProps) {
   const weekDates = getWeekDates(date);
   const dayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  const colors = useThemeColors();
 
   const HOUR_HEIGHT = 80;
   const START_HOUR = 0;
@@ -62,9 +64,8 @@ export default function WeekView({
                 {dayNames[index]}
               </Text>
               <View
-                className={`w-9 h-9 items-center justify-center rounded-lg ${
-                  isToday ? "bg-green-primary" : ""
-                }`}
+                className="w-9 h-9 items-center justify-center rounded-lg"
+                style={isToday ? { backgroundColor: colors.primary } : {}}
               >
                 <Text
                   className={`text-sm font-semibold ${

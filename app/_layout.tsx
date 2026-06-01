@@ -141,14 +141,14 @@ export default function RootLayout() {
                         <SocketProvider>
                             <CallProvider>
                                 <GroupCallProvider>
-                                    <NotificationProvider>
-                                        <AppearanceProvider>
+                                    <AppearanceProvider>
+                                        <NotificationProvider>
                                             <SlideMenuProvider>
                                                 <RootLayoutContent />
                                                 <IncomingGroupCallModal />
                                             </SlideMenuProvider>
-                                        </AppearanceProvider>
-                                    </NotificationProvider>
+                                        </NotificationProvider>
+                                    </AppearanceProvider>
                                 </GroupCallProvider>
                             </CallProvider>
                         </SocketProvider>

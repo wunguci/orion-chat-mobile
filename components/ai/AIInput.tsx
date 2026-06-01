@@ -13,6 +13,7 @@ import {
   orionAiApi,
   RewriteTone,
 } from "@/services/api/orionAi";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 interface AIInputProps {
   onSend: (message: string) => void;
@@ -28,6 +29,7 @@ export function AIInput({
   const [message, setMessage] = useState("");
   const [previousMessage, setPreviousMessage] = useState<string | null>(null);
   const [isRewriting, setIsRewriting] = useState(false);
+  const colors = useThemeColors();
 
   const handleSend = () => {
     if (message.trim()) {
@@ -124,18 +126,18 @@ export function AIInput({
             height: 36,
             borderRadius: 18,
             backgroundColor:
-              disabled || isRewriting || !message.trim() ? "#E5E7EB" : "#ECFDF5",
+              disabled || isRewriting || !message.trim() ? "#E5E7EB" : colors.primaryLight,
             justifyContent: "center",
             alignItems: "center",
           }}
         >
           {isRewriting ? (
-            <ActivityIndicator size="small" color="#00B48D" />
+            <ActivityIndicator size="small" color={colors.primary} />
           ) : (
             <Ionicons
               name="color-wand-outline"
               size={18}
-              color={message.trim() ? "#00B48D" : "#9CA3AF"}
+              color={message.trim() ? colors.primary : "#9CA3AF"}
             />
           )}
         </TouchableOpacity>
@@ -149,7 +151,7 @@ export function AIInput({
             height: 40,
             borderRadius: 20,
             backgroundColor:
-              disabled || isRewriting || !message.trim() ? "#9CA3AF" : "#00B48D",
+              disabled || isRewriting || !message.trim() ? "#9CA3AF" : colors.primary,
             justifyContent: "center",
             alignItems: "center",
           }}

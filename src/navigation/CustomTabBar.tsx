@@ -1,4 +1,4 @@
-import { MessageCircle, Users, Sparkles, User } from 'lucide-react-native';
+import { MessageCircle, Users, Sparkles, User, Bell } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ const TAB_LABELS: Record<string, string> = {
     index: 'Chats',
     friends: 'Friends',
     ai: 'Orion AI',
+    notification: 'Notification',
     setting: 'Profile',
 };
 
@@ -20,7 +21,7 @@ export default function CustomTabBar({ state, navigation }: any) {
     const unreadMessageCount = notificationContext?.unreadMessageCount ?? 0;
     const unreadCount = notificationContext?.unreadCount ?? 0;
 
-    const VISIBLE = new Set(['index', 'friends', 'ai', 'setting']);
+    const VISIBLE = new Set(['index', 'friends', 'ai', 'notification', 'setting']);
     const focusedKey = state.routes[state.index]?.key;
     const renderIcon = (routeName: string, isFocused: boolean) => {
         const iconColor = isFocused ? colors.primary : colors.textSecondary;
@@ -29,6 +30,7 @@ export default function CustomTabBar({ state, navigation }: any) {
 
         if (routeName === 'friends') return <Users {...commonProps} />;
         if (routeName === 'ai') return <Sparkles {...commonProps} />;
+        if (routeName === 'notification') return <Bell {...commonProps} />;
         if (routeName === 'setting') return <User {...commonProps} />;
         return <MessageCircle {...commonProps} />;
     };
@@ -86,7 +88,7 @@ export default function CustomTabBar({ state, navigation }: any) {
                                 )}
 
                                 {/* Unread badge for notifications */}
-                                {route.name === 'setting' && unreadCount > 0 && (
+                                {route.name === 'notification' && unreadCount > 0 && (
                                     <View style={styles.badgeAlt}>
                                         <Text style={styles.badgeText}>
                                             {unreadCount > 99 ? '99+' : unreadCount}

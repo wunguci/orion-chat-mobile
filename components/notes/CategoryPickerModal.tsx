@@ -2,6 +2,7 @@ import { Modal, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { NoteCategory } from "@/types/note";
 import { useState } from "react";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 interface CategoryPickerModalProps {
   visible: boolean;
@@ -21,6 +22,7 @@ export default function CategoryPickerModal({
   onClose,
 }: CategoryPickerModalProps) {
   const [newCategoryName, setNewCategoryName] = useState("");
+  const colors = useThemeColors();
 
   const handleSelect = (categoryId: string) => {
     onSelect(categoryId);
@@ -64,17 +66,18 @@ export default function CategoryPickerModal({
               }`}
             >
               <Text
-                className={`text-base ${
+                className="text-base"
+                style={
                   selectedCategoryId === cat.categoryId
-                    ? "text-green-primary font-semibold"
-                    : "text-gray-primary"
-                }`}
+                    ? { color: colors.primary, fontWeight: "600" }
+                    : { color: "#1e293b" }
+                }
               >
                 {cat.name}
               </Text>
 
               {selectedCategoryId === cat.categoryId && (
-                <Ionicons name="checkmark" size={22} color="#14b8a6" />
+                <Ionicons name="checkmark" size={22} color={colors.primary} />
               )}
             </TouchableOpacity>
           ))}
@@ -91,7 +94,8 @@ export default function CategoryPickerModal({
               />
               <TouchableOpacity
                 onPress={handleAddCategory}
-                className="h-7 w-7 items-center justify-center rounded-lg bg-green-primary"
+                style={{ backgroundColor: colors.primary }}
+                className="h-7 w-7 items-center justify-center rounded-lg"
               >
                 <Ionicons name="add" size={18} color="#fff" />
               </TouchableOpacity>

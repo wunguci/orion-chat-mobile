@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useEffect, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import CalendarGrid from "./CalendarGrid";
 import EventListItem from "./EventListItem";
 
@@ -24,6 +25,7 @@ export default function MonthView({
   showMonthNavigation = true,
   onCreateAtDate,
 }: MonthViewProps) {
+  const colors = useThemeColors();
   const [currentMonth, setCurrentMonth] = useState(initialDate.getMonth());
   const [currentYear, setCurrentYear] = useState(initialDate.getFullYear());
   const [selectedDate, setSelectedDate] = useState(initialDate);
@@ -100,7 +102,7 @@ export default function MonthView({
 
         {/* event list */}
         <View className="px-4 py-4">
-          <Text className="text-xs font-semibold text-teal-primary mb-3 uppercase tracking-wider">
+          <Text style={{ color: colors.primary }} className="text-xs font-semibold mb-3 uppercase tracking-wider">
             Events for {formatDate(selectedDate, "full")}
           </Text>
 

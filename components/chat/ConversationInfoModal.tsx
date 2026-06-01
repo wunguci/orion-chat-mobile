@@ -115,6 +115,7 @@ export default function ConversationInfoModal({
     onConversationDeleted,
 }: ConversationInfoModalProps) {
     const { colors } = useTheme();
+    const LOGIN_PRIMARY = colors.primary;
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { width: windowWidth } = useWindowDimensions();
@@ -721,7 +722,7 @@ export default function ConversationInfoModal({
                     transform: [{ translateX }],
                     paddingTop: Math.max(
                         insets.top,
-                        Platform.OS === 'ios' ? 44 : 0,
+                        Platform.OS === 'ios' ? 44 : 24,
                     ),
                     paddingBottom: insets.bottom,
                 }}
@@ -735,24 +736,39 @@ export default function ConversationInfoModal({
                         justifyContent: 'space-between',
                         borderBottomWidth: 0.5,
                         borderBottomColor: colors.divider,
+                        position: 'relative',
                     }}
                 >
-                    <TouchableOpacity onPress={handleClose} hitSlop={8}>
+                    <TouchableOpacity onPress={handleClose} hitSlop={8} style={{ zIndex: 10 }}>
                         <Ionicons
                             name="chevron-back"
                             size={26}
                             color={colors.text}
                         />
                     </TouchableOpacity>
-                    <Text
+                    <View
                         style={{
-                            color: colors.text,
-                            fontSize: 17,
-                            fontWeight: '700',
+                            position: 'absolute',
+                            left: 40,
+                            right: 40,
+                            top: 0,
+                            bottom: 0,
+                            justifyContent: 'center',
+                            alignItems: 'center',
                         }}
                     >
-                        Thông tin hội thoại
-                    </Text>
+                        <Text
+                            style={{
+                                color: colors.text,
+                                fontSize: 17,
+                                fontWeight: '700',
+                                textAlign: 'center',
+                            }}
+                            numberOfLines={1}
+                        >
+                            Thông tin hội thoại
+                        </Text>
+                    </View>
                     <View style={{ width: 26 }} />
                 </View>
 
@@ -1379,7 +1395,7 @@ function GroupMembersModal({
                 style={{
                     flex: 1,
                     backgroundColor: colors.background,
-                    paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 44 : 0),
+                    paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 44 : 24),
                     paddingBottom: insets.bottom,
                 }}
             >
@@ -1458,7 +1474,7 @@ function PinnedMessagesModal({
                 style={{
                     flex: 1,
                     backgroundColor: colors.background,
-                    paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 44 : 0),
+                    paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 44 : 24),
                     paddingBottom: insets.bottom,
                 }}
             >
@@ -2494,7 +2510,7 @@ function GroupManagementModalV2({
                     backgroundColor: colors.background,
                     paddingTop: Math.max(
                         insets.top,
-                        Platform.OS === 'ios' ? 44 : 0,
+                        Platform.OS === 'ios' ? 44 : 24,
                     ),
                     paddingBottom: insets.bottom,
                 }}
@@ -2757,20 +2773,35 @@ function HeaderBar({ title, onBack }: { title: string; onBack: () => void }) {
                 justifyContent: 'space-between',
                 borderBottomWidth: 0.5,
                 borderBottomColor: colors.divider,
+                position: 'relative',
             }}
         >
-            <TouchableOpacity onPress={onBack} hitSlop={8}>
+            <TouchableOpacity onPress={onBack} hitSlop={8} style={{ zIndex: 10 }}>
                 <Ionicons name="chevron-back" size={26} color={colors.text} />
             </TouchableOpacity>
-            <Text
+            <View
                 style={{
-                    color: colors.text,
-                    fontSize: 17,
-                    fontWeight: '700',
+                    position: 'absolute',
+                    left: 40,
+                    right: 40,
+                    top: 0,
+                    bottom: 0,
+                    justifyContent: 'center',
+                    alignItems: 'center',
                 }}
             >
-                {title}
-            </Text>
+                <Text
+                    style={{
+                        color: colors.text,
+                        fontSize: 17,
+                        fontWeight: '700',
+                        textAlign: 'center',
+                    }}
+                    numberOfLines={1}
+                >
+                    {title}
+                </Text>
+            </View>
             <View style={{ width: 26 }} />
         </View>
     );
@@ -2786,6 +2817,7 @@ function PermissionRow({
     onPress: () => void;
 }) {
     const { colors } = useTheme();
+    const LOGIN_PRIMARY = colors.primary;
     return (
         <TouchableOpacity
             onPress={onPress}
@@ -2822,6 +2854,7 @@ function SettingSwitchRow({
     onValueChange: () => void;
 }) {
     const { colors } = useTheme();
+    const LOGIN_PRIMARY = colors.primary;
     return (
         <View
             style={{
@@ -2894,6 +2927,7 @@ function MemberManagementRow({
     onPress: () => void;
 }) {
     const { colors } = useTheme();
+    const LOGIN_PRIMARY = colors.primary;
     return (
         <TouchableOpacity
             onPress={onPress}
@@ -2977,6 +3011,7 @@ function JoinRequestRow({
     onReject: () => void;
 }) {
     const { colors } = useTheme();
+    const LOGIN_PRIMARY = colors.primary;
     return (
         <View
             style={{
@@ -3081,7 +3116,7 @@ function GroupManagementModal({
                     backgroundColor: colors.background,
                     paddingTop: Math.max(
                         insets.top,
-                        Platform.OS === 'ios' ? 44 : 0,
+                        Platform.OS === 'ios' ? 44 : 24,
                     ),
                     paddingBottom: insets.bottom,
                 }}
@@ -3229,6 +3264,7 @@ function QuickAction({
     onPress?: () => void;
 }) {
     const { colors } = useTheme();
+    const LOGIN_PRIMARY = colors.primary;
     return (
         <TouchableOpacity
             onPress={onPress}

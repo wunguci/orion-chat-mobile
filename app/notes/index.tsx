@@ -20,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Menu } from "lucide-react-native";
 import { useSlideMenu } from "@/context/SlideMenuContext";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 const formatTimestamp = (value: string) => {
   const date = new Date(value);
@@ -48,6 +49,7 @@ export default function NotesScreen() {
   const router = useRouter();
   const { openMenu } = useSlideMenu();
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
 
   const [notes, setNotes] = useState<Note[]>([]);
   const [categories, setCategories] = useState<NoteCategory[]>([]);
@@ -161,12 +163,12 @@ export default function NotesScreen() {
             width: 38,
             height: 38,
             borderRadius: 10,
-            backgroundColor: "#ccfbf1",
+            backgroundColor: colors.primaryLight,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Menu size={20} color="#0d9488" strokeWidth={2.5} />
+          <Menu size={20} color={colors.primary} strokeWidth={2.5} />
         </TouchableOpacity>
         <Text style={{ fontSize: 17, fontWeight: "700", color: "#1e293b" }}>Notes</Text>
         <TouchableOpacity>
@@ -184,7 +186,7 @@ export default function NotesScreen() {
 
       {loading && (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#00B14F" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       )}
 
@@ -211,7 +213,7 @@ export default function NotesScreen() {
               onRefresh={() => {
                 void loadData(true);
               }}
-              colors={["#00B14F"]}
+              colors={[colors.primary]}
             />
           }
           ListEmptyComponent={

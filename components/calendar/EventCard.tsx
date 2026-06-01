@@ -2,6 +2,7 @@ import { CalendarEvent } from "@/types/calendar";
 import { formatTime } from "@/utils/calendar";
 import { Ionicons } from "@expo/vector-icons";
 import { Image, Text, TouchableOpacity, View } from "react-native";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 interface EventCardProps {
   event: CalendarEvent;
@@ -46,6 +47,7 @@ export default function EventCard({
   onPress,
   compact = false,
 }: EventCardProps) {
+  const colors = useThemeColors();
   const eventColor = resolveEventColor(event.color);
 
   return (
@@ -79,8 +81,8 @@ export default function EventCard({
       {/* location */}
       {!compact && event.location && (
         <View className="flex-row items-center mb-2">
-          <Ionicons name="location-outline" size={12} color="#0D9488" />
-          <Text className="text-xs text-green-primary ml-1">
+          <Ionicons name="location-outline" size={12} color={colors.primary} />
+          <Text style={{ color: colors.primary }} className="text-xs ml-1 font-medium">
             {event.location}
           </Text>
         </View>

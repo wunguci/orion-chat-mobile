@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { NoteListItem } from "@/types/note";
 import CategoryBadge from "./CategoryBadge";
 import { Ionicons } from "@expo/vector-icons";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 interface NoteCardProps {
   note: NoteListItem;
@@ -9,6 +10,8 @@ interface NoteCardProps {
 }
 
 export default function NoteCard({ note, onPress }: NoteCardProps) {
+  const colors = useThemeColors();
+
   return (
     <TouchableOpacity
       onPress={() => onPress(note.noteId)}
@@ -22,7 +25,7 @@ export default function NoteCard({ note, onPress }: NoteCardProps) {
         </Text>
         <View className="flex-row items-center">
           {note.isPinned && (
-            <Ionicons name="bookmark" size={14} color="#00B14F" />
+            <Ionicons name="bookmark" size={14} color={colors.primary} />
           )}
           <Text className="text-xs text-gray-secondary ml-2">
             {note.timestamp}

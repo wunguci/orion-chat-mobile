@@ -18,10 +18,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 export default function AIScreen() {
   const dispatch = useAppDispatch();
   const flatListRef = useRef<FlatList>(null);
+  const colors = useThemeColors();
 
   const { currentConversation, isLoading } = useAppSelector(
     (state) => state.ai,
@@ -115,7 +117,7 @@ export default function AIScreen() {
           {/* Loading Indicator */}
           {isLoading && (
             <View className="px-4 py-2 bg-white">
-              <ActivityIndicator size="small" color="#00B48D" />
+              <ActivityIndicator size="small" color={colors.primary} />
             </View>
           )}
         </View>

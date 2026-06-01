@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 const getStringParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -23,6 +24,7 @@ const getStringParam = (value: string | string[] | undefined) =>
 export default function EditNoteScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const colors = useThemeColors();
 
   const noteId = getStringParam(params.id);
   const isEditMode = Boolean(noteId);
@@ -267,7 +269,7 @@ export default function EditNoteScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#14b8a6" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text className="mt-4 text-gray-secondary">Loading note...</Text>
       </SafeAreaView>
     );
@@ -298,7 +300,7 @@ export default function EditNoteScreen() {
               <Ionicons
                 name={isPinned ? "bookmark" : "bookmark-outline"}
                 size={24}
-                color={isPinned ? "#14b8a6" : "#505050"}
+                color={isPinned ? colors.primary : "#505050"}
               />
             </TouchableOpacity>
 
@@ -312,7 +314,7 @@ export default function EditNoteScreen() {
               onPress={() => void handleSave()}
               disabled={isSaving}
             >
-              <Text className="text-base font-semibold text-green-primary">
+              <Text className="text-base font-semibold" style={{ color: colors.primary }}>
                 {isSaving ? "Saving..." : "Save"}
               </Text>
             </TouchableOpacity>

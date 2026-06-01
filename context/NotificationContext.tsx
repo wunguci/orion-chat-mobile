@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/useAuth';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 type NotificationToastItem = {
     id: string;
@@ -172,6 +173,7 @@ function NotificationToastBanner({
     const insets = useSafeAreaInsets();
     const translate = useRef(new Animated.ValueXY({ x: 0, y: -18 })).current;
     const opacity = useRef(new Animated.Value(0)).current;
+    const colors = useThemeColors();
 
     const dismissCurrent = useCallback(() => {
         if (item) onDismiss(item.id);
@@ -286,12 +288,10 @@ function NotificationToastBanner({
                     onPress={() => onOpen(notification)}
                     style={{
                         borderRadius: 10,
-                        backgroundColor: '#f0fdfa',
-                        // borderLeftWidth: 3,
-                        // borderLeftColor: '#0D9488',
+                        backgroundColor: colors.primaryLight,
                         paddingHorizontal: 14,
                         paddingVertical: 12,
-                        shadowColor: '#0F766E',
+                        shadowColor: colors.primary,
                         shadowOffset: { width: 0, height: 4 },
                         shadowOpacity: 0.16,
                         shadowRadius: 30,
@@ -307,7 +307,7 @@ function NotificationToastBanner({
                                 height: 36,
                                 borderRadius: 18,
                                 marginRight: 12,
-                                backgroundColor: '#D8F3EE',
+                                backgroundColor: colors.background,
                                 alignItems: 'center',
                                 justifyContent: 'center',
                             }}
@@ -315,7 +315,7 @@ function NotificationToastBanner({
                             <MaterialCommunityIcons
                                 name={display.icon}
                                 size={19}
-                                color="#0F766E"
+                                color={colors.primary}
                             />
                         </View>
 
@@ -323,7 +323,7 @@ function NotificationToastBanner({
                             <Text
                                 numberOfLines={1}
                                 style={{
-                                    color: '#0f172a',
+                                    color: colors.text,
                                     fontSize: 14,
                                     fontWeight: '800',
                                 }}
@@ -334,7 +334,7 @@ function NotificationToastBanner({
                                 <Text
                                     numberOfLines={1}
                                     style={{
-                                        color: '#0F766E',
+                                        color: colors.primary,
                                         fontSize: 12,
                                         fontWeight: '700',
                                         marginTop: 2,
@@ -346,7 +346,7 @@ function NotificationToastBanner({
                             <Text
                                 numberOfLines={1}
                                 style={{
-                                    color: '#334155',
+                                    color: colors.textSecondary,
                                     fontSize: 12,
                                     marginTop: 3,
                                 }}
@@ -357,7 +357,7 @@ function NotificationToastBanner({
 
                         <Text
                             style={{
-                                color: '#64748b',
+                                color: colors.textSecondary,
                                 fontSize: 11,
                                 fontWeight: '600',
                                 marginLeft: 10,
