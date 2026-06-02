@@ -383,6 +383,28 @@ export default function ChatScreen() {
   const [groupBlockWarningDismissed, setGroupBlockWarningDismissed] =
     useState(false);
   const [blockRefreshKey, setBlockRefreshKey] = useState(0);
+  const [isFriend, setIsFriend] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (!authState.user?.userId || isGroup || !convDetails.otherUserId) {
+      if (isGroup) {
+        setIsFriend(true);
+      }
+      return;
+    }
+
+    const checkFriendship = async () => {
+      try {
+        const friendsList = await friendApi.getFriends(authState.user.userId);
+        const exists = friendsList.some((f) => f.id === convDetails.otherUserId);
+        setIsFriend(exists);
+      } catch (err) {
+        console.warn("[ChatScreen] Failed to fetch friends for check:", err);
+      }
+    };
+
+    void checkFriendship();
+  }, [authState.user?.userId, isGroup, convDetails.otherUserId, id]);
 
   useEffect(() => {
     setGroupBlockWarningDismissed(false);
@@ -979,6 +1001,7 @@ export default function ChatScreen() {
         onAudioCall={() => void handleStartCall("audio")}
         onVideoCall={() => void handleStartCall("video")}
         onMenuPress={() => setInfoVisible(true)}
+        hideCallButtons={!isGroup && !isFriend}
       />
 
       {/* Messages */}

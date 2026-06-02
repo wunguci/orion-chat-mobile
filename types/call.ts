@@ -123,7 +123,7 @@ export interface GroupParticipantJoinedData {
   userName?: string;
   userAvatar?: string;
   isHost?: boolean;
-  participants?: Array<{ id: string; name?: string }>;
+  participants?: Array<{ id: string; name?: string; avatar?: string }>;
 }
 
 export interface GroupParticipantLeftData {
