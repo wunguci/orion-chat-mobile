@@ -58,6 +58,7 @@ export interface FriendProfileItem {
   createdAt?: string;
   isOnline: boolean;
   friendshipSince?: string;
+  isProfileRestricted?: boolean;
 }
 
 export interface GroupItem {
@@ -94,4 +95,5 @@ export interface SearchUserItem {
   phoneNumber?: string;
   avatarUrl?: string;
   isOnline: boolean;
+  isProfileRestricted?: boolean;
 }

@@ -49,6 +49,80 @@ const toAbsoluteUrl = (url?: string | null) => {
   return `${base}${path}`;
 };
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error) {
+    return error.message || fallback;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error && typeof error === "object") {
+    const value = error as {
+      message?: unknown;
+      error?: unknown;
+    };
+
+    if (typeof value.message === "string") return value.message;
+    if (typeof value.error === "string") return value.error;
+  }
+
+  return fallback;
+};
+
+const getPrivacyAlert = (
+  message: string,
+  type: "chat" | "call",
+): { title: string; body: string } => {
+  const lowerMessage = message.toLowerCase();
+
+  if (
+    lowerMessage.includes("not accepting messages") ||
+    lowerMessage.includes("message_not_allowed")
+  ) {
+    return {
+      title: "Cannot Start Chat",
+      body: "This person is not accepting messages from you right now.",
+    };
+  }
+
+  if (
+    lowerMessage.includes("not accepting calls") ||
+    lowerMessage.includes("call_not_allowed")
+  ) {
+    return {
+      title: "Cannot Start Call",
+      body: "This person is not accepting calls from you right now.",
+    };
+  }
+
+  if (
+    lowerMessage.includes("turned off call notifications") ||
+    lowerMessage.includes("call_notifications_disabled")
+  ) {
+    return {
+      title: "Cannot Start Call",
+      body: "This person has turned off call notifications right now.",
+    };
+  }
+
+  if (
+    lowerMessage.includes("blocked") ||
+    lowerMessage.includes("not available")
+  ) {
+    return {
+      title: type === "chat" ? "Cannot Start Chat" : "Cannot Start Call",
+      body: "This action is unavailable because of privacy or block settings.",
+    };
+  }
+
+  return {
+    title: type === "chat" ? "Conversation" : "Call",
+    body: message,
+  };
+};
+
 export default function FriendViewScreen() {
   const router = useRouter();
   const callContext = useContext(CallContext);
@@ -164,10 +238,11 @@ export default function FriendViewScreen() {
         avatar: profile.avatarUrl || undefined,
       });
     } catch (error) {
-      Alert.alert(
-        "Call",
-        error instanceof Error ? error.message : "Cannot start call",
+      const alert = getPrivacyAlert(
+        getErrorMessage(error, "Cannot start call"),
+        "call",
       );
+      Alert.alert(alert.title, alert.body);
     }
   };
 
@@ -213,11 +288,11 @@ export default function FriendViewScreen() {
         },
       });
     } catch (error) {
-      console.error("[FriendView] Chat error:", error);
-      Alert.alert(
-        "Conversation",
-        error instanceof Error ? error.message : "Cannot open chat",
+      const alert = getPrivacyAlert(
+        getErrorMessage(error, "Cannot open chat"),
+        "chat",
       );
+      Alert.alert(alert.title, alert.body);
     }
   };
 
@@ -288,6 +363,11 @@ export default function FriendViewScreen() {
       },
     ]);
   };
+
+  const visibleText = (value?: string | null) =>
+    profile?.isProfileRestricted ? "****" : value || "Not updated";
+  const visibleDate = (value?: string | null) =>
+    profile?.isProfileRestricted ? "****" : formatDate(value);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -398,27 +478,35 @@ export default function FriendViewScreen() {
 
             <View className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
               <Text className="text-sm text-gray-text">
-                Phone: {profile.phoneNumber || "Not updated"}
+                Phone: {visibleText(profile.phoneNumber)}
               </Text>
               <Text className="mt-1 text-sm text-gray-text">
-                Email: {profile.email || "Not updated"}
+                Email: {visibleText(profile.email)}
               </Text>
               <Text className="mt-1 text-sm text-gray-text">
-                Gender: {profile.gender || "Not updated"}
+                Gender: {visibleText(profile.gender)}
               </Text>
               <Text className="mt-1 text-sm text-gray-text">
-                Birthdate: {formatDate(profile.birthDate)}
+                Birthdate: {visibleDate(profile.birthDate)}
               </Text>
             </View>
 
             <View className="mb-1 rounded-xl border border-gray-200 bg-gray-50 p-3">
               <Text className="text-sm text-gray-text">
-                Account created on: {formatDate(profile.createdAt)}
+                Account created on: {visibleDate(profile.createdAt)}
               </Text>
               <Text className="mt-1 text-sm text-gray-text">
-                Friend since: {formatDate(profile.friendshipSince)}
+                Friend since: {visibleDate(profile.friendshipSince)}
               </Text>
             </View>
+
+            {profile.isProfileRestricted ? (
+              <View className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <Text className="text-sm text-amber-800">
+                  This user only shares profile details with their selected audience.
+                </Text>
+              </View>
+            ) : null}
 
             {mode === "friend" && (
               <View className="mt-4 gap-2 border-t border-gray-200 pt-4">

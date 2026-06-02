@@ -71,6 +71,10 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({
   if (!visible || !profile) return null;
 
   const coverUri = toAbsoluteUrl(profile.coverImage);
+  const visibleText = (value?: string | null) =>
+    profile.isProfileRestricted ? "****" : value || "Not updated";
+  const visibleDate = (value?: string | null) =>
+    profile.isProfileRestricted ? "****" : formatDate(value);
 
   return (
     <Modal
@@ -180,27 +184,35 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({
 
             <View className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
               <Text className="text-sm text-gray-text">
-                Phone: {profile.phoneNumber || "Not updated"}
+                Phone: {visibleText(profile.phoneNumber)}
               </Text>
               <Text className="mt-1 text-sm text-gray-text">
-                Email: {profile.email || "Not updated"}
+                Email: {visibleText(profile.email)}
               </Text>
               <Text className="mt-1 text-sm text-gray-text">
-                Gender: {profile.gender || "Not updated"}
+                Gender: {visibleText(profile.gender)}
               </Text>
               <Text className="mt-1 text-sm text-gray-text">
-                Birthdate: {formatDate(profile.birthDate)}
+                Birthdate: {visibleDate(profile.birthDate)}
               </Text>
             </View>
 
             <View className="mb-1 rounded-xl border border-gray-200 bg-gray-50 p-3">
               <Text className="text-sm text-gray-text">
-                Account created on: {formatDate(profile.createdAt)}
+                Account created on: {visibleDate(profile.createdAt)}
               </Text>
               <Text className="mt-1 text-sm text-gray-text">
-                Friend since: {formatDate(profile.friendshipSince)}
+                Friend since: {visibleDate(profile.friendshipSince)}
               </Text>
             </View>
+
+            {profile.isProfileRestricted ? (
+              <View className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <Text className="text-sm text-amber-800">
+                  This user only shares profile details with their selected audience.
+                </Text>
+              </View>
+            ) : null}
 
             {mode === "friend" && (
               <View className="mt-4 gap-2 border-t border-gray-200 pt-4">

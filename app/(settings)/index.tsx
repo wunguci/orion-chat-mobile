@@ -91,13 +91,22 @@ export default function Setting() {
               className="h-16 w-16 rounded-full"
             />
             <View className="ml-4 flex-1">
-              <Text className="text-lg font-semibold" style={{ color: colors.text }}>
+              <Text
+                className="text-lg font-semibold"
+                style={{ color: colors.text }}
+              >
                 {user.name}
               </Text>
-              <Text className="mt-1 text-sm" style={{ color: colors.textSecondary }}>
+              <Text
+                className="mt-1 text-sm"
+                style={{ color: colors.textSecondary }}
+              >
                 {user.email}
               </Text>
-              <Text className="mt-0.5 text-sm" style={{ color: colors.textSecondary }}>
+              <Text
+                className="mt-0.5 text-sm"
+                style={{ color: colors.textSecondary }}
+              >
                 {user.phone}
               </Text>
             </View>
@@ -132,14 +141,14 @@ export default function Setting() {
               }}
             />
 
-            <SettingsItem
+            {/* <SettingsItem
               icon={<Smartphone size={24} color={colors.primary} />}
               title="Logged-in Devices"
               subtitle="Manage devices logged into your account"
               onPress={() => {
                 navigate("/(settings)/linked-devices");
               }}
-            />
+            /> */}
             <SettingsItem
               icon={<Server size={24} color={colors.orangePrimary} />}
               title="Mobile Configuration"
@@ -154,14 +163,14 @@ export default function Setting() {
         {/* Appearance */}
         <SettingsSection title="Appearance">
           <View className="overflow-hidden rounded-lg">
-            <SettingsItem
+            {/* <SettingsItem
               icon={<Moon size={24} color={colors.primary} />}
               title="Dark Mode"
               subtitle="Toggle dark theme"
               toggleValue={darkMode}
               onToggle={setDarkMode}
               showChevron={false}
-            />
+            /> */}
             <SettingsItem
               icon={<Palette size={24} color={colors.primary} />}
               title="Theme"
@@ -174,26 +183,22 @@ export default function Setting() {
         </SettingsSection>
 
         {/* Support */}
-        <SettingsSection title="Support">
+        {/* <SettingsSection title="Support">
           <View className="overflow-hidden rounded-lg">
             <SettingsItem
               icon={<HelpCircle size={24} color={colors.primary} />}
               title="Help Center"
               subtitle="FAQs and guides"
-              onPress={() => {
-                /* Navigate to help */
-              }}
+              onPress={() => {}}
             />
             <SettingsItem
               icon={<HelpCircle size={24} color={colors.primary} />}
               title="About App"
               subtitle="Version 1.0.0"
-              onPress={() => {
-                /* Show about */
-              }}
+              onPress={() => {}}
             />
           </View>
-        </SettingsSection>
+        </SettingsSection> */}
 
         {/* Logout */}
         <View className="mt-6 px-4 pb-8">

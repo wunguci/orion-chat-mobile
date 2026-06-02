@@ -40,6 +40,45 @@ export type CallContextValue = CallState & {
 
 export const CallContext = createContext<CallContextValue | null>(null);
 
+const getCallErrorAlert = (message: string) => {
+  const lowerMessage = message.toLowerCase();
+
+  if (
+    lowerMessage.includes("not accepting calls") ||
+    lowerMessage.includes("call_not_allowed")
+  ) {
+    return {
+      title: "Cannot Start Call",
+      body: "This person is not accepting calls from you right now.",
+    };
+  }
+
+  if (
+    lowerMessage.includes("turned off call notifications") ||
+    lowerMessage.includes("call_notifications_disabled")
+  ) {
+    return {
+      title: "Cannot Start Call",
+      body: "This person has turned off call notifications right now.",
+    };
+  }
+
+  if (
+    lowerMessage.includes("blocked") ||
+    lowerMessage.includes("not available")
+  ) {
+    return {
+      title: "Cannot Start Call",
+      body: "This call is unavailable because of privacy or block settings.",
+    };
+  }
+
+  return {
+    title: "Call",
+    body: message,
+  };
+};
+
 const INITIAL_STATE: CallState = {
   callId: null,
   conversationId: null,
@@ -448,12 +487,15 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       });
     };
 
-    const onError = (payload: { message?: string }) => {
+    const onError = (payload: { message?: string; error?: string }) => {
+      const message = payload?.error || payload?.message || "Call failed";
+      const alert = getCallErrorAlert(message);
       setCallState((prev) => ({
         ...prev,
         status: "failed",
-        error: payload?.message || "Call failed",
+        error: message,
       }));
+      Alert.alert(alert.title, alert.body);
       setTimeout(resetCall, 500);
     };
 

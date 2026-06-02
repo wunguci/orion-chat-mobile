@@ -7,6 +7,7 @@ import {
   saveConnectionSettings,
   type TurnProvider,
 } from "@/config/api";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import { Server, RotateCcw, Save, Wifi } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -22,11 +23,7 @@ import {
   View,
 } from "react-native";
 
-const PRIMARY = "#0d9488";
-const TEXT = "#1e293b";
-const MUTED = "#64748b";
-const BORDER = "#e2e8f0";
-const BG = "#f5f7fa";
+type ThemeColors = ReturnType<typeof useThemeColors>;
 
 const TURN_OPTIONS: Array<{
   value: TurnProvider;
@@ -62,6 +59,8 @@ const isValidUrl = (value: string) => {
 };
 
 export default function MobileConfigScreen() {
+  const colors = useThemeColors();
+  const themedStyles = useMemo(() => createStyles(colors), [colors]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [apiUrl, setApiUrl] = useState("");
@@ -156,29 +155,29 @@ export default function MobileConfigScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={PRIMARY} />
+      <View style={themedStyles.loading}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
     <KeyboardAvoidingView
-      style={styles.flex}
+      style={themedStyles.flex}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.content}
+        style={themedStyles.screen}
+        contentContainerStyle={themedStyles.content}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Server size={20} color={PRIMARY} />
-            <Text style={styles.sectionTitle}>Server Links</Text>
+        <View style={themedStyles.section}>
+          <View style={themedStyles.sectionHeader}>
+            <Server size={20} color={colors.primary} />
+            <Text style={themedStyles.sectionTitle}>Server Links</Text>
           </View>
 
-          <Text style={styles.label}>API URL</Text>
+          <Text style={themedStyles.label}>API URL</Text>
           <TextInput
             value={apiUrl}
             onChangeText={setApiUrl}
@@ -186,10 +185,11 @@ export default function MobileConfigScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="url"
-            style={styles.input}
+            style={themedStyles.input}
+            placeholderTextColor={colors.textSecondary}
           />
 
-          <Text style={styles.label}>Socket URL</Text>
+          <Text style={themedStyles.label}>Socket URL</Text>
           <TextInput
             value={socketUrl}
             onChangeText={setSocketUrl}
@@ -197,20 +197,21 @@ export default function MobileConfigScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="url"
-            style={styles.input}
+            style={themedStyles.input}
+            placeholderTextColor={colors.textSecondary}
           />
 
-          <View style={styles.summaryBox}>
-            <Text style={styles.summaryLabel}>Active Configuration</Text>
-            <Text style={styles.summaryValue}>{effectiveApiUrl}</Text>
-            <Text style={styles.summaryValue}>{effectiveSocketUrl}</Text>
+          <View style={themedStyles.summaryBox}>
+            <Text style={themedStyles.summaryLabel}>Active Configuration</Text>
+            <Text style={themedStyles.summaryValue}>{effectiveApiUrl}</Text>
+            <Text style={themedStyles.summaryValue}>{effectiveSocketUrl}</Text>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Wifi size={20} color={PRIMARY} />
-            <Text style={styles.sectionTitle}>TURN / ICE</Text>
+        <View style={themedStyles.section}>
+          <View style={themedStyles.sectionHeader}>
+            <Wifi size={20} color={colors.primary} />
+            <Text style={themedStyles.sectionTitle}>TURN / ICE</Text>
           </View>
 
           {TURN_OPTIONS.map((option) => {
@@ -221,22 +222,22 @@ export default function MobileConfigScreen() {
                 key={option.value}
                 activeOpacity={0.75}
                 onPress={() => setTurnProvider(option.value)}
-                style={[styles.option, active && styles.optionActive]}
+                style={[themedStyles.option, active && themedStyles.optionActive]}
               >
-                <View style={[styles.radio, active && styles.radioActive]}>
-                  {active ? <View style={styles.radioDot} /> : null}
+                <View style={[themedStyles.radio, active && themedStyles.radioActive]}>
+                  {active ? <View style={themedStyles.radioDot} /> : null}
                 </View>
-                <View style={styles.optionText}>
-                  <Text style={styles.optionTitle}>{option.title}</Text>
-                  <Text style={styles.optionSubtitle}>{option.subtitle}</Text>
+                <View style={themedStyles.optionText}>
+                  <Text style={themedStyles.optionTitle}>{option.title}</Text>
+                  <Text style={themedStyles.optionSubtitle}>{option.subtitle}</Text>
                 </View>
               </TouchableOpacity>
             );
           })}
 
           {turnProvider === "coturn" ? (
-            <View style={styles.coturnBox}>
-              <Text style={styles.label}>IP running coturn</Text>
+            <View style={themedStyles.coturnBox}>
+              <Text style={themedStyles.label}>IP running coturn</Text>
               <TextInput
                 value={coturnHost}
                 onChangeText={setCoturnHost}
@@ -244,9 +245,10 @@ export default function MobileConfigScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="numbers-and-punctuation"
-                style={styles.input}
+                style={themedStyles.input}
+                placeholderTextColor={colors.textSecondary}
               />
-              <Text style={styles.helpText}>
+              <Text style={themedStyles.helpText}>
                 App will generate STUN/TURN using this IP and the port from .env
                 (default 3478).
               </Text>
@@ -254,29 +256,29 @@ export default function MobileConfigScreen() {
           ) : null}
         </View>
 
-        <View style={styles.actions}>
+        <View style={themedStyles.actions}>
           <TouchableOpacity
             activeOpacity={0.75}
             onPress={handleReset}
             disabled={saving}
-            style={[styles.button, styles.secondaryButton]}
+            style={[themedStyles.button, themedStyles.secondaryButton]}
           >
-            <RotateCcw size={18} color={PRIMARY} />
-            <Text style={styles.secondaryButtonText}>Default .env</Text>
+            <RotateCcw size={18} color={colors.primary} />
+            <Text style={themedStyles.secondaryButtonText}>Default .env</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.75}
             onPress={handleSave}
             disabled={saving}
-            style={[styles.button, styles.primaryButton, saving && styles.disabled]}
+            style={[themedStyles.button, themedStyles.primaryButton, saving && themedStyles.disabled]}
           >
             {saving ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <>
                 <Save size={18} color="#fff" />
-                <Text style={styles.primaryButtonText}>Save</Text>
+                <Text style={themedStyles.primaryButtonText}>Save</Text>
               </>
             )}
           </TouchableOpacity>
@@ -286,7 +288,7 @@ export default function MobileConfigScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   flex: {
     flex: 1,
   },
@@ -294,11 +296,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: BG,
+    backgroundColor: colors.background,
   },
   screen: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: colors.background,
   },
   content: {
     padding: 16,
@@ -306,10 +308,10 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   section: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: colors.border,
     padding: 16,
   },
   sectionHeader: {
@@ -319,12 +321,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    color: TEXT,
+    color: colors.text,
     fontSize: 17,
     fontWeight: "700",
   },
   label: {
-    color: TEXT,
+    color: colors.text,
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 8,
@@ -332,26 +334,26 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 48,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: 12,
-    color: TEXT,
-    backgroundColor: "#f8fafc",
+    color: colors.text,
+    backgroundColor: colors.backgroundSecondary,
     marginBottom: 14,
   },
   summaryBox: {
     borderRadius: 10,
-    backgroundColor: "#ecfeff",
+    backgroundColor: colors.primaryLight,
     padding: 12,
     gap: 4,
   },
   summaryLabel: {
-    color: PRIMARY,
+    color: colors.primary,
     fontWeight: "700",
     fontSize: 13,
   },
   summaryValue: {
-    color: MUTED,
+    color: colors.textSecondary,
     fontSize: 12,
   },
   option: {
@@ -359,43 +361,43 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: colors.border,
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
   },
   optionActive: {
-    borderColor: PRIMARY,
-    backgroundColor: "#f0fdfa",
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
   },
   radio: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: "#cbd5e1",
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
   radioActive: {
-    borderColor: PRIMARY,
+    borderColor: colors.primary,
   },
   radioDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: PRIMARY,
+    backgroundColor: colors.primary,
   },
   optionText: {
     flex: 1,
   },
   optionTitle: {
-    color: TEXT,
+    color: colors.text,
     fontWeight: "700",
     fontSize: 15,
   },
   optionSubtitle: {
-    color: MUTED,
+    color: colors.textSecondary,
     marginTop: 2,
     fontSize: 12,
   },
@@ -403,7 +405,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   helpText: {
-    color: MUTED,
+    color: colors.textSecondary,
     fontSize: 12,
     lineHeight: 18,
   },
@@ -421,19 +423,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryButton: {
-    backgroundColor: PRIMARY,
+    backgroundColor: colors.primary,
   },
   secondaryButton: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: PRIMARY,
+    borderColor: colors.primary,
   },
   primaryButtonText: {
     color: "#fff",
     fontWeight: "700",
   },
   secondaryButtonText: {
-    color: PRIMARY,
+    color: colors.primary,
     fontWeight: "700",
   },
   disabled: {
