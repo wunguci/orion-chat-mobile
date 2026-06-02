@@ -77,11 +77,11 @@ export default function VideoCallScreen() {
   const callMode = call?.callType || params.callMode || "video";
 
   const remoteStreamUrl = useMemo(
-    () => call?.remoteStream?.toURL() || null,
+    () => call?.remoteStream?.toURL() || "",
     [call?.remoteStream],
   );
   const localStreamUrl = useMemo(
-    () => call?.localStream?.toURL() || null,
+    () => call?.localStream?.toURL() || "",
     [call?.localStream],
   );
 

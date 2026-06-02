@@ -112,10 +112,10 @@ export default function GroupCallScreen() {
           id: participant.id,
           name: participant.name,
           avatar: participant.avatar || "",
-          stream: participant.stream,
+          stream: participant.stream || null,
           isVideoEnabled: participant.isVideoEnabled,
           isAudioEnabled: participant.isAudioEnabled,
-          isHost: participant.isHost,
+          isHost: !!participant.isHost,
           isLocal: false,
         });
       }
@@ -165,7 +165,7 @@ export default function GroupCallScreen() {
           <View className="flex-row flex-wrap">
             {tiles.map((tile, index) => {
               const columnIndex = index % columnCount;
-              const streamUrl = tile.stream?.toURL?.() || null;
+              const streamUrl = tile.stream?.toURL?.() || "";
               const showVideo = Boolean(streamUrl) && tile.isVideoEnabled;
               const isActive = call.activeParticipantId === tile.id;
 

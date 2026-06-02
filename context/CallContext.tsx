@@ -906,23 +906,14 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     const nextEnabled = !callState.isAudioEnabled;
 
     setCallState((prev) => {
-      let updatedStream = prev.localStream;
       if (prev.localStream) {
-        let MediaStreamCtor: any = null;
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          MediaStreamCtor = require("@stream-io/react-native-webrtc").MediaStream;
-        } catch {
-          MediaStreamCtor = null;
-        }
-        if (MediaStreamCtor) {
-          updatedStream = new MediaStreamCtor(prev.localStream.getTracks());
-        }
+        prev.localStream.getAudioTracks().forEach((track) => {
+          track.enabled = nextEnabled;
+        });
       }
       return {
         ...prev,
         isAudioEnabled: nextEnabled,
-        localStream: updatedStream,
       };
     });
 
@@ -949,23 +940,14 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     const nextEnabled = !callState.isVideoEnabled;
 
     setCallState((prev) => {
-      let updatedStream = prev.localStream;
       if (prev.localStream) {
-        let MediaStreamCtor: any = null;
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          MediaStreamCtor = require("@stream-io/react-native-webrtc").MediaStream;
-        } catch {
-          MediaStreamCtor = null;
-        }
-        if (MediaStreamCtor) {
-          updatedStream = new MediaStreamCtor(prev.localStream.getTracks());
-        }
+        prev.localStream.getVideoTracks().forEach((track) => {
+          track.enabled = nextEnabled;
+        });
       }
       return {
         ...prev,
         isVideoEnabled: nextEnabled,
-        localStream: updatedStream,
       };
     });
 

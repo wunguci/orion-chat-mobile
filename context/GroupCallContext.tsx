@@ -471,12 +471,51 @@ export function GroupCallProvider({
 
     const onParticipantJoined = async (data: GroupParticipantJoinedData) => {
       if (data.callId !== currentCallIdRef.current) return;
-      if (data.userId === userId) return;
+      
+      console.log(`[GroupCallContext Mobile] Participant joined event: ${data.userId}`);
 
-      const participantName =
-        data.userName ||
+      if (data.userId === userId) {
+        const existingParticipants = (data.participants || [])
+          .filter((p) => p.id !== userId)
+          .map((p) => ({
+            id: p.id,
+            name: p.name || "User",
+            avatar: p.avatar || "",
+            isVideoEnabled: true,
+            isAudioEnabled: true,
+            isHost: false,
+          }));
+
+        setCallState((prev) => {
+          const updated = [...prev.participants];
+          existingParticipants.forEach((ep) => {
+            if (!updated.some((p) => p.id === ep.id)) {
+              updated.push(ep);
+            }
+          });
+          return {
+            ...prev,
+            participants: updated,
+          };
+        });
+
+        if (!streamVideoEnabled) {
+          for (const participant of existingParticipants) {
+            try {
+              if (!getAllParticipantIds().includes(participant.id)) {
+                await createPeerForParticipant(participant.id, participant.name, false);
+              }
+            } catch (error) {
+              console.log(`[GroupCallContext Mobile] Error creating peer for existing participant ${participant.id}:`, error);
+            }
+          }
+        }
+        return;
+      }
+
+      const participantName = (data.userName ||
         data.participants?.find((p) => p.id === data.userId)?.name ||
-        "User";
+        "User") as string;
 
       if (streamVideoEnabled) {
         setCallState((prev) => {
@@ -885,26 +924,10 @@ export function GroupCallProvider({
       track.enabled = nextEnabled;
     });
 
-    setCallState((prev) => {
-      let updatedStream = prev.localStream;
-      if (prev.localStream) {
-        let MediaStreamCtor: any = null;
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          MediaStreamCtor = require("@stream-io/react-native-webrtc").MediaStream;
-        } catch {
-          MediaStreamCtor = null;
-        }
-        if (MediaStreamCtor) {
-          updatedStream = new MediaStreamCtor(prev.localStream.getTracks());
-        }
-      }
-      return {
-        ...prev,
-        isAudioEnabled: nextEnabled,
-        localStream: updatedStream,
-      };
-    });
+    setCallState((prev) => ({
+      ...prev,
+      isAudioEnabled: nextEnabled,
+    }));
 
     const socket = callSocketService.getSocket();
     if (socket && callState.callId) {
@@ -931,26 +954,10 @@ export function GroupCallProvider({
       track.enabled = nextEnabled;
     });
 
-    setCallState((prev) => {
-      let updatedStream = prev.localStream;
-      if (prev.localStream) {
-        let MediaStreamCtor: any = null;
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          MediaStreamCtor = require("@stream-io/react-native-webrtc").MediaStream;
-        } catch {
-          MediaStreamCtor = null;
-        }
-        if (MediaStreamCtor) {
-          updatedStream = new MediaStreamCtor(prev.localStream.getTracks());
-        }
-      }
-      return {
-        ...prev,
-        isVideoEnabled: nextEnabled,
-        localStream: updatedStream,
-      };
-    });
+    setCallState((prev) => ({
+      ...prev,
+      isVideoEnabled: nextEnabled,
+    }));
 
     const socket = callSocketService.getSocket();
     if (socket && callState.callId) {
