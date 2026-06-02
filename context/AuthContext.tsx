@@ -1,5 +1,11 @@
-import React, { createContext, useEffect, useRef, useState } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import React, {
+    createContext,
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+} from 'react';
+import { Alert, AppState, AppStateStatus } from 'react-native';
 import { AuthState, User } from '../types/auth';
 import { tokenUtils } from '../utils/tokenUtils';
 import { login as apiLogin, logout as apiLogout } from '../services/api/auth';
@@ -9,6 +15,7 @@ import {
     UpdateProfileDto,
     UpdateProfileFiles,
 } from '../services/api/profile';
+import { subscribeSessionExpired } from '../services/auth/sessionEvents';
 
 export const AuthContext = createContext<{
     state: AuthState;
@@ -17,7 +24,7 @@ export const AuthContext = createContext<{
         password: string,
         rememberMe: boolean,
     ) => Promise<void>;
-    logout: () => Promise<void>;
+    logout: (options?: { skipApi?: boolean }) => Promise<void>;
     isSessionValid: () => Promise<boolean>;
     updateUserProfile: (
         updateData: UpdateProfileDto,
@@ -36,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     const appStateRef = useRef<AppStateStatus>('active');
+    const sessionExpiredAlertShownRef = useRef(false);
     const sessionCheckIntervalRef = useRef<ReturnType<
         typeof setInterval
     > | null>(null);
@@ -203,6 +211,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    useEffect(() => {
+        if (!state.isAuthenticated) {
+            sessionExpiredAlertShownRef.current = false;
+            return;
+        }
+
+        return subscribeSessionExpired((payload) => {
+            if (sessionExpiredAlertShownRef.current) return;
+            sessionExpiredAlertShownRef.current = true;
+
+            console.log(
+                '[AuthContext] Session expired or replaced:',
+                payload.message ||
+                    'Phiên làm việc đã hết hạn hoặc bạn đã đăng nhập ở nơi khác',
+            );
+
+            Alert.alert(
+                'Phiên đăng nhập đã hết hạn',
+                'Phiên làm việc đã hết hạn hoặc bạn đã đăng nhập ở nơi khác. Bạn cần đăng nhập lại.',
+                [
+                    {
+                        text: 'OK',
+                        onPress: () => {
+                            void logout({ skipApi: true }).catch((error) => {
+                                console.log(
+                                    '[AuthContext] Local logout after session expiry failed:',
+                                    error,
+                                );
+                            });
+                        },
+                    },
+                ],
+                { cancelable: false },
+            );
+        });
+    }, [state.isAuthenticated]);
+
     const login = async (
         phone: string,
         password: string,
@@ -287,12 +332,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const logout = async () => {
+    const logout = useCallback(async (options?: { skipApi?: boolean }) => {
         try {
             console.log('[AuthContext] Starting logout...');
 
             const token = state.token;
-            if (token) {
+            if (token && !options?.skipApi) {
                 try {
                     console.log('[AuthContext] Calling backend logout API...');
                     await apiLogout(token);
@@ -306,6 +351,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     );
                     // Continue with local logout even if API fails
                 }
+            } else if (options?.skipApi) {
+                console.log(
+                    '[AuthContext] Skipping backend logout API; clearing local session only',
+                );
             }
 
             console.log(
@@ -336,7 +385,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error('[AuthContext] Error during logout:', error);
             throw error;
         }
-    };
+    }, [state.token]);
 
     const updateUserProfile = async (
         updateData: UpdateProfileDto,

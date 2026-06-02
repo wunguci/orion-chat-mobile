@@ -7,7 +7,7 @@ import { GroupRow } from "@/components/friends/GroupRow";
 import { SearchUserRow } from "@/components/friends/SearchUserRow";
 import { CallContext } from "@/context/CallContext";
 import { friendApi } from "@/services/api/friend";
-import { presenceSocketService } from "@/services/websocket/presenceSocket";
+import { useSocket } from "@/hooks/useSocket";
 import type { CallType } from "@/types/call";
 import type {
   BlockedFriendItem,
@@ -59,6 +59,7 @@ export default function Friends() {
   const params = useLocalSearchParams<{ activeCategory?: string }>();
   const callContext = useContext(CallContext);
   const groupCallContext = useContext(GroupCallContext);
+  const { socket, isConnected } = useSocket();
   const [activeCategory, setActiveCategory] =
     useState<FriendCategory>("friends");
   const [searchQuery, setSearchQuery] = useState("");
@@ -252,9 +253,7 @@ export default function Friends() {
   );
 
   useEffect(() => {
-    if (!currentUserId) return;
-
-    const socket = presenceSocketService.connect(currentUserId);
+    if (!currentUserId || !socket || !isConnected) return;
 
     const onOnline = ({ userId }: { userId: string }) => {
       setFriends((prev) =>
@@ -306,9 +305,8 @@ export default function Friends() {
       socket.off("presence:user-online", onOnline);
       socket.off("presence:user-offline", onOffline);
       socket.off("presence:online-list", onOnlineList);
-      presenceSocketService.disconnect();
     };
-  }, [currentUserId]);
+  }, [currentUserId, socket, isConnected]);
 
   useEffect(() => {
     if (!currentUserId) return;

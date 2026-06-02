@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ChatItem } from '@/types/chat';
 import { chatApi, ConversationResponse } from '@/services/api/chat';
 import { chatSocketService } from '@/services/websocket/chatSocket';
+import { isSessionExpiredError } from '@/services/auth/sessionEvents';
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import {
     FlatList,
@@ -148,22 +149,20 @@ export default function ChatsScreen() {
                 );
                 setConversations(chatItems);
             } catch (err) {
+                if (isSessionExpiredError(err)) {
+                    console.log(
+                        'Session expired while loading conversations. Waiting for user confirmation.',
+                    );
+                    setError(null);
+                    return;
+                }
+
                 const errorMessage =
                     err instanceof Error
                         ? err.message
                         : 'Failed to load conversations';
-                const lowerMessage = errorMessage.toLowerCase();
-                const isSessionConflict =
-                    lowerMessage.includes('phien lam viec') ||
-                    lowerMessage.includes('unauthorized') ||
-                    (lowerMessage.includes('statuscode') &&
-                        lowerMessage.includes('401'));
-
-                if (!isSessionConflict) {
-                    setError(errorMessage);
-                }
-
                 console.error('Error loading conversations:', err);
+                setError(errorMessage);
             } finally {
                 setLoading(false);
             }

@@ -44,6 +44,7 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({
                 token,
             );
             setSocket(connectedSocket);
+            setIsConnected(connectedSocket.connected);
             lastTokenRef.current = token;
 
             const handleConnect = () => {

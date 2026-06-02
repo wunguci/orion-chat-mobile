@@ -1,5 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL, fetchWithTimeout } from "@/config/api";
+import {
+  notifySessionExpired,
+  SessionExpiredError,
+} from "@/services/auth/sessionEvents";
 
 /**
  * Xây dựng URL với query parameters
@@ -25,7 +29,24 @@ const buildUrl = (
 const toJson = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `Request failed with ${response.status}`);
+    let message = text || `Request failed with ${response.status}`;
+
+    try {
+      const errorData = JSON.parse(text);
+      message =
+        errorData?.message ||
+        errorData?.error ||
+        `Request failed with ${response.status}`;
+    } catch {
+      // Keep the plain response text when the server does not return JSON.
+    }
+
+    if (response.status === 401) {
+      notifySessionExpired({ message });
+      throw new SessionExpiredError(message);
+    }
+
+    throw new Error(message);
   }
   return (await response.json()) as T;
 };

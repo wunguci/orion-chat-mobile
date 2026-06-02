@@ -36,6 +36,7 @@ import {
   SocketMessage,
 } from "@/services/websocket/chatSocket";
 import { formatTime } from "@/hooks/useChat";
+import { isSessionExpiredError } from "@/services/auth/sessionEvents";
 
 /**
  * Trích xuất text preview cho tin nhắn cuối cùng giống như trên Web
@@ -374,6 +375,15 @@ export default function ChatsScreen() {
       setConversations(sortedItems);
       setLoading(false);
     } catch (err) {
+      if (isSessionExpiredError(err)) {
+        console.log(
+          "Session expired while loading conversations. Waiting for user confirmation.",
+        );
+        setError(null);
+        setLoading(false);
+        return;
+      }
+
       console.error("Error loading conversations:", err);
 
       // Load cache nếu có khi API call thất bại
@@ -397,16 +407,7 @@ export default function ChatsScreen() {
 
       const errorMessage =
         err instanceof Error ? err.message : "Failed to load conversations";
-      const lowerMessage = errorMessage.toLowerCase();
-      const isSessionConflict =
-        lowerMessage.includes("phiên làm việc") ||
-        lowerMessage.includes("phien lam viec") ||
-        lowerMessage.includes("unauthorized") ||
-        (lowerMessage.includes("statuscode") && lowerMessage.includes("401"));
-
-      if (!isSessionConflict) {
-        setError(errorMessage);
-      }
+      setError(errorMessage);
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

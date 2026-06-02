@@ -7,7 +7,12 @@ export const useSessionConflictListener = () => {
     const { socket, isConnected } = useSocket();
     const { logout, state } = useAuth();
     const handledRef = useRef(false);
-    const loginTimeRef = useRef(0);
+
+    useEffect(() => {
+        if (state.isAuthenticated) {
+            handledRef.current = false;
+        }
+    }, [state.isAuthenticated, state.token]);
 
     useEffect(() => {
         if (!socket || !isConnected || !state.isAuthenticated) return;
@@ -23,9 +28,6 @@ export const useSessionConflictListener = () => {
             if (data.oldPlatform !== 'mobile' || data.newPlatform !== 'mobile')
                 return;
 
-            const timeSinceSetup = Date.now() - loginTimeRef.current;
-            if (timeSinceSetup < 1000) return;
-
             if (handledRef.current) return;
             handledRef.current = true;
 
@@ -36,7 +38,12 @@ export const useSessionConflictListener = () => {
                     {
                         text: 'OK',
                         onPress: () => {
-                            void logout();
+                            void logout({ skipApi: true }).catch((error) => {
+                                console.log(
+                                    '[SessionConflict] Local logout failed:',
+                                    error,
+                                );
+                            });
                         },
                     },
                 ],
@@ -44,7 +51,6 @@ export const useSessionConflictListener = () => {
             );
         };
 
-        loginTimeRef.current = Date.now();
         socket.on('session:conflict', handleSessionConflict);
 
         return () => {

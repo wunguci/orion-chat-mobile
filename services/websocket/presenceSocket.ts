@@ -4,10 +4,17 @@ import { getSocketNamespaceUrl } from '@/config/api';
 class PresenceSocketService {
     private socket: Socket | null = null;
     private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+    private connectionKey: string | null = null;
 
     connect(userId: string, platform: string = 'mobile', token?: string) {
-        if (this.socket?.connected) {
+        const nextConnectionKey = `${userId}:${platform}:${token || ''}`;
+
+        if (this.socket?.connected && this.connectionKey === nextConnectionKey) {
             return this.socket;
+        }
+
+        if (this.socket) {
+            this.disconnect();
         }
 
         console.log(
@@ -23,6 +30,7 @@ class PresenceSocketService {
             transports: ['websocket'],
             forceNew: false,
         });
+        this.connectionKey = nextConnectionKey;
 
         this.socket.on('connect', () => {
             console.log('[PresenceSocket] Connected to presence server');
@@ -55,6 +63,7 @@ class PresenceSocketService {
     disconnect() {
         this.socket?.disconnect();
         this.socket = null;
+        this.connectionKey = null;
         if (this.heartbeatTimer) {
             clearInterval(this.heartbeatTimer);
             this.heartbeatTimer = null;
