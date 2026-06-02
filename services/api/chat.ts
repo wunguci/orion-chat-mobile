@@ -255,6 +255,7 @@ export interface MessageItem {
 export interface MessageResponse {
   conversationId: string;
   items: MessageItem[];
+  nextCursor?: string | null;
 }
 
 /**
@@ -628,12 +629,15 @@ export const chatApi = {
   /**
    * Lấy danh sách Messages trong một Conversation
    */
-  async getMessages(conversationId: string, limit = 50, offset = 0) {
+  async getMessages(conversationId: string, limit = 50, cursor?: string) {
+    const params: Record<string, string> = {
+      limit: limit.toString(),
+    };
+    if (cursor) {
+      params.cursor = cursor;
+    }
     const response = await authFetch(
-      buildUrl(`/conversations/${conversationId}/messages`, {
-        limit: limit.toString(),
-        offset: offset.toString(),
-      }),
+      buildUrl(`/conversations/${conversationId}/messages`, params),
     );
     return toJson<MessageResponse>(response);
   },

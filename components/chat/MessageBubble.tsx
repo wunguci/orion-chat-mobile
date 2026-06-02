@@ -278,17 +278,14 @@ function TextBubble({
           return (
             <Text style={{ color: textColor, fontSize: 15, lineHeight: 21 }}>
               {parts.map((part, index) => {
-                if (pattern.test(part)) {
-                  // highlight mention
+                if (index % 2 === 1) {
+                  // highlight mention (split with capturing group puts matches at odd indices)
                   return (
                     <Text
                       key={index}
                       style={{
                         color: message.isMine ? "#fff" : colors.primary,
                         fontWeight: "bold",
-                        backgroundColor: message.isMine
-                          ? "rgba(255,255,255,0.2)"
-                          : "rgba(0, 177, 79, 0.15)",
                       }}
                     >
                       {part}
@@ -1673,7 +1670,6 @@ export default function MessageBubble({
         currentUserId &&
         (message.mentionAll || (message.mentions && message.mentions.includes(currentUserId)))
     );
-    const finalReceivedBg = isMentioned ? "rgba(255, 171, 0, 0.15)" : receivedBg;
 
     switch (messageType) {
       case "IMAGE":
@@ -1729,10 +1725,10 @@ export default function MessageBubble({
         return (
           <TextBubble
             message={message}
-            bubbleBg={message.isMine ? sentBg : finalReceivedBg}
+            bubbleBg={message.isMine ? sentBg : receivedBg}
             textColor={message.isMine ? SENT_TEXT : receivedText}
             onReplyPreviewPress={onReplyPreviewPress}
-            isHighlighted={isHighlighted || isMentioned}
+            isHighlighted={isHighlighted}
             participants={participants}
             currentUserId={currentUserId}
           />
