@@ -539,6 +539,9 @@ export default function ChatScreen() {
     replyToMessage,
     setReplyToMessage,
     clearReplyToMessage,
+    loadMoreMessages,
+    isLoadingMore,
+    hasMore,
   } = useChat(id || "");
   const listRef = useRef<FlatList>(null);
 
@@ -1112,9 +1115,18 @@ export default function ChatScreen() {
           contentContainerStyle={{
             paddingVertical: 12,
           }}
-          onContentSizeChange={() =>
-            listRef.current?.scrollToEnd({ animated: false })
-          }
+          onScroll={(e) => {
+            if (e.nativeEvent.contentOffset.y <= 0 && hasMore && !isLoadingMore) {
+              void loadMoreMessages();
+            }
+          }}
+          onContentSizeChange={(_, contentHeight) => {
+            // Only auto-scroll to bottom if we are not loading more messages
+            if (!isLoadingMore && hasMore !== undefined) {
+               // Fallback: mostly scroll to end if not in middle of fetching history
+               listRef.current?.scrollToEnd({ animated: false });
+            }
+          }}
           onScrollToIndexFailed={(info) => {
             listRef.current?.scrollToOffset({
               offset: info.averageItemLength * info.index,

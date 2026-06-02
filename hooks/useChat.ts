@@ -217,6 +217,9 @@ interface UseChatState {
   messages: Message[];
   inputText: string;
   isLoading: boolean;
+  isLoadingMore: boolean;
+  hasMore: boolean;
+  nextCursor: string | null;
   error: string | null;
   replyToMessage: Message | null;
 }
@@ -236,6 +239,9 @@ export const useChat = (conversationId: string) => {
     messages: [],
     inputText: "",
     isLoading: false,
+    isLoadingMore: false,
+    hasMore: true,
+    nextCursor: null,
     error: null,
     replyToMessage: null,
   });
@@ -385,7 +391,7 @@ export const useChat = (conversationId: string) => {
         try {
           const [messagesResult, conversationResult] = await Promise.allSettled(
             [
-              chatApi.getMessages(conversationId, 50, 0),
+              chatApi.getMessages(conversationId, 50, undefined),
               chatApi.getConversation(conversationId).catch(() => null),
             ],
           );
@@ -438,6 +444,8 @@ export const useChat = (conversationId: string) => {
           setState((prev) => ({
             ...prev,
             messages: nextMessages,
+            nextCursor: messagesResult.value.nextCursor || null,
+            hasMore: !!messagesResult.value.nextCursor,
             isLoading: false,
             error: null,
           }));
@@ -1077,6 +1085,72 @@ export const useChat = (conversationId: string) => {
     [conversationId, currentUserId, flushPendingMessages],
   );
 
+  // // ─────────────────────────────────────────────────────────
+  // // PAGINATION
+  // // ─────────────────────────────────────────────────────────
+
+  const loadMoreMessages = useCallback(async () => {
+    if (!conversationId || !currentUserId || state.isLoadingMore || !state.hasMore || !state.nextCursor) return;
+
+    try {
+      setState((prev) => ({ ...prev, isLoadingMore: true, error: null }));
+
+      let participantLookup = buildParticipantLookup(null);
+      const [messagesResult, conversationResult] = await Promise.allSettled([
+        chatApi.getMessages(conversationId, 50, state.nextCursor),
+        chatApi.getConversation(conversationId).catch(() => null),
+      ]);
+
+      if (conversationResult.status === "fulfilled") {
+        participantLookup = buildParticipantLookup(conversationResult.value);
+      }
+
+      if (messagesResult.status !== "fulfilled") {
+        throw messagesResult.reason;
+      }
+
+      const formattedMessages = (messagesResult.value.items || []).map((msg) =>
+        convertApiMessageToUIMessage(
+          msg,
+          currentUserId,
+          participantLookup.namesById,
+          participantLookup.avatarsById,
+        ),
+      );
+
+      const sortedMessages = formattedMessages.sort((a, b) => {
+        const dateA = new Date(a.timestamp.includes(":") ? a.timestamp : "").getTime() || 0;
+        const dateB = new Date(b.timestamp.includes(":") ? b.timestamp : "").getTime() || 0;
+        return dateA - dateB;
+      });
+
+      setState((prev) => {
+        const nextMessages = dedupeMessages([...sortedMessages, ...prev.messages]);
+        
+        void saveMessages(currentUserId, conversationId, nextMessages);
+
+        return {
+          ...prev,
+          messages: nextMessages,
+          nextCursor: messagesResult.value.nextCursor || null,
+          hasMore: !!messagesResult.value.nextCursor,
+          isLoadingMore: false,
+          error: null,
+        };
+      });
+    } catch (error) {
+      console.warn("[useChat] loadMoreMessages failed:", error);
+      setState((prev) => ({
+        ...prev,
+        isLoadingMore: false,
+        error: error instanceof Error ? error.message : "Failed to load more messages",
+      }));
+    }
+  }, [conversationId, currentUserId, state.isLoadingMore, state.hasMore, state.nextCursor]);
+
+  // ─────────────────────────────────────────────────────────
+  // SETTERS
+  // ─────────────────────────────────────────────────────────
 
   const setInputText = useCallback((text: string) => {
     setState((prev) => ({
@@ -1108,7 +1182,10 @@ export const useChat = (conversationId: string) => {
     clearReplyToMessage,
     sendMessage,
     sendAttachment,
+    loadMoreMessages,
     isLoading: state.isLoading,
+    isLoadingMore: state.isLoadingMore,
+    hasMore: state.hasMore,
     error: state.error,
   };
 };
