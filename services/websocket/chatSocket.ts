@@ -40,6 +40,8 @@ export interface SocketMessage {
 
     reactions?: [];
     callData?: any;
+    mentions?: string[];
+    mentionAll?: boolean;
   };
 }
 
@@ -239,6 +241,8 @@ class ChatSocketService {
           mimeType: serverMessage.mimeType,
           reactions: serverMessage.reactions,
           callData: serverMessage.callData,
+          mentions: serverMessage.mentions,
+          mentionAll: serverMessage.mentionAll,
         },
       };
 
@@ -428,6 +432,7 @@ class ChatSocketService {
     content: string,
     clientMessageId: string,
     onAck: SendAckCallback,
+    options?: { mentions?: string[]; mentionAll?: boolean }
   ): void {
     if (!this.socket?.connected) {
       console.error("[ChatSocket] Socket not connected:", {
@@ -468,6 +473,8 @@ class ChatSocketService {
         content,
         clientMessageId,
         type: "text",
+        mentions: options?.mentions,
+        mentionAll: options?.mentionAll,
       },
       (ackData: any, error: any) => {
         clearTimeout(timeoutId);
@@ -530,6 +537,7 @@ class ChatSocketService {
     content: string,
     clientMessageId: string,
     replyToMessageId?: string | null,
+    options?: { mentions?: string[]; mentionAll?: boolean }
   ): Promise<{
     clientMessageId: string;
     messageId: string;
@@ -552,6 +560,8 @@ class ChatSocketService {
           clientMessageId,
           type: "text",
           replyToMessageId: replyToMessageId || undefined,
+          mentions: options?.mentions,
+          mentionAll: options?.mentionAll,
         },
         (error: any, ackData: any) => {
           if (error) {

@@ -191,12 +191,16 @@ function TextBubble({
   textColor,
   onReplyPreviewPress,
   isHighlighted = false,
+  participants = [],
+  currentUserId,
 }: {
   message: Message;
   bubbleBg: string;
   textColor: string;
   onReplyPreviewPress?: (messageId: string) => void;
   isHighlighted?: boolean;
+  participants?: any[];
+  currentUserId?: string;
 }) {
   const { colors } = useTheme();
 
@@ -243,9 +247,59 @@ function TextBubble({
 
         {message.isPinned ? <PinnedBadge isMine={message.isMine} /> : null}
 
-        <Text style={{ color: textColor, fontSize: 15, lineHeight: 21 }}>
-          {message.text}
-        </Text>
+        {(() => {
+          if (!message.text) return null;
+          if (!participants || participants.length === 0) {
+            return (
+              <Text style={{ color: textColor, fontSize: 15, lineHeight: 21 }}>
+                {message.text}
+              </Text>
+            );
+          }
+          const names = participants
+            .filter((p) => p.userId !== currentUserId)
+            .map((p) => p.fullName)
+            .filter(Boolean)
+            .sort((a, b) => b.length - a.length);
+          const escapedNames = names.map((name) =>
+            name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+          );
+          escapedNames.push("all");
+          escapedNames.push("tất cả");
+          if (escapedNames.length === 0) {
+            return (
+              <Text style={{ color: textColor, fontSize: 15, lineHeight: 21 }}>
+                {message.text}
+              </Text>
+            );
+          }
+          const pattern = new RegExp(`(@(?:${escapedNames.join("|")}))`, "gi");
+          const parts = message.text.split(pattern);
+          return (
+            <Text style={{ color: textColor, fontSize: 15, lineHeight: 21 }}>
+              {parts.map((part, index) => {
+                if (pattern.test(part)) {
+                  // highlight mention
+                  return (
+                    <Text
+                      key={index}
+                      style={{
+                        color: message.isMine ? "#fff" : colors.primary,
+                        fontWeight: "bold",
+                        backgroundColor: message.isMine
+                          ? "rgba(255,255,255,0.2)"
+                          : "rgba(0, 177, 79, 0.15)",
+                      }}
+                    >
+                      {part}
+                    </Text>
+                  );
+                }
+                return <Text key={index}>{part}</Text>;
+              })}
+            </Text>
+          );
+        })()}
 
         <Text
           style={{
@@ -1519,6 +1573,8 @@ interface MessageBubbleProps {
   onReply?: (message: Message) => void;
   onReplyPreviewPress?: (messageId: string) => void;
   onImagePress?: (message: Message) => void;
+  participants?: { userId: string; fullName: string; avatarUrl?: string }[];
+  currentUserId?: string;
 }
 
 const SENT_TEXT = "#FFFFFF";
@@ -1535,6 +1591,8 @@ export default function MessageBubble({
   onReply,
   onReplyPreviewPress,
   onImagePress,
+  participants = [],
+  currentUserId,
 }: MessageBubbleProps) {
   const { colors } = useTheme();
   const [fullscreenImageUri, setFullscreenImageUri] = useState<string | null>(null);
@@ -1609,6 +1667,14 @@ export default function MessageBubble({
     }
 
     const messageType = String(message.type || "").toUpperCase();
+    const isMentioned = Boolean(
+      !message.isMine &&
+        !message.isRecalled &&
+        currentUserId &&
+        (message.mentionAll || (message.mentions && message.mentions.includes(currentUserId)))
+    );
+    const finalReceivedBg = isMentioned ? "rgba(255, 171, 0, 0.15)" : receivedBg;
+
     switch (messageType) {
       case "IMAGE":
         return (
@@ -1663,10 +1729,12 @@ export default function MessageBubble({
         return (
           <TextBubble
             message={message}
-            bubbleBg={message.isMine ? sentBg : receivedBg}
+            bubbleBg={message.isMine ? sentBg : finalReceivedBg}
             textColor={message.isMine ? SENT_TEXT : receivedText}
             onReplyPreviewPress={onReplyPreviewPress}
-            isHighlighted={isHighlighted}
+            isHighlighted={isHighlighted || isMentioned}
+            participants={participants}
+            currentUserId={currentUserId}
           />
         );
     }

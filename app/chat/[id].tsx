@@ -637,13 +637,13 @@ export default function ChatScreen() {
     Alert.alert("Cannot send message", privateBlockMessage);
   }, [privateBlockMessage]);
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback((options?: { mentions?: string[]; mentionAll?: boolean }) => {
     if (privateMessagingBlocked) {
       handleBlockedSendAttempt();
       return;
     }
 
-    void sendMessage(inputText);
+    void sendMessage(inputText, options);
     setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 100);
   }, [
     handleBlockedSendAttempt,
@@ -916,6 +916,8 @@ export default function ChatScreen() {
                 : undefined
             }
             onLongPress={handleMessageLongPress}
+            participants={convDetails.participants}
+            currentUserId={authState.user?.userId}
             onCallBack={(callType) => void handleStartCall(callType)}
             onReply={setReplyToMessage}
             onReplyPreviewPress={handleReplyPreviewPress}
@@ -934,6 +936,8 @@ export default function ChatScreen() {
       handleReplyPreviewPress,
       handleOpenImageViewer,
       setReplyToMessage,
+      convDetails.participants,
+      authState.user?.userId,
     ],
   );
 
@@ -1231,7 +1235,13 @@ export default function ChatScreen() {
           replyToMessage={replyToMessage}
           onCancelReply={clearReplyToMessage}
           disabled={privateMessagingBlocked}
-          disabledPlaceholder="Messaging disabled"
+          disabledPlaceholder={
+            privateMessagingBlocked
+              ? privateBlockMessage
+              : "Type your message"
+          }
+          participants={convDetails.participants}
+          currentUserId={authState.user?.userId}
         />
       </KeyboardAvoidingView>
 

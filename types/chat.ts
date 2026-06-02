@@ -122,4 +122,6 @@ export interface Message {
     snippet?: string;
     createdAt?: string;
   };
+  mentions?: string[];
+  mentionAll?: boolean;
 }

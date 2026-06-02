@@ -733,6 +733,7 @@ export const useChat = (conversationId: string) => {
           pending.content,
           pending.clientMessageId,
           pending.replyToMessageId,
+          { mentions: pending.mentions, mentionAll: pending.mentionAll }
         );
 
         await removePendingTextMessage(pending.clientMessageId);
@@ -818,7 +819,10 @@ export const useChat = (conversationId: string) => {
    * 5. Client cập nhật message ID từ client -> server
    */
   const sendMessage = useCallback(
-    async (text: string) => {
+    async (
+      text: string,
+      options?: { mentions?: string[]; mentionAll?: boolean }
+    ) => {
       if (!text.trim() || !currentUserId || !conversationId) {
         console.warn("[useChat] Cannot send message:", {
           hasText: !!text.trim(),
@@ -868,6 +872,8 @@ export const useChat = (conversationId: string) => {
               createdAt: replyToMessage.timestamp,
             }
           : undefined,
+        mentions: options?.mentions,
+        mentionAll: options?.mentionAll,
       };
 
       const pendingItem: PendingTextMessage = {
@@ -882,6 +888,8 @@ export const useChat = (conversationId: string) => {
           : ("pending" as const),
         replyToMessageId: replyToMessage?.id ?? null,
         replyToMessagePreview: optimisticMessage.replyToMessagePreview,
+        mentions: options?.mentions,
+        mentionAll: options?.mentionAll,
       };
 
       await enqueuePendingTextMessage(pendingItem);

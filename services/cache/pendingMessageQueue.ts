@@ -18,6 +18,8 @@ export type PendingTextMessage = {
     snippet?: string;
     createdAt?: string;
   };
+  mentions?: string[];
+  mentionAll?: boolean;
 };
 
 /**
