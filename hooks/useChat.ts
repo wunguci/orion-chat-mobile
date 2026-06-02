@@ -249,7 +249,6 @@ export const useChat = (conversationId: string) => {
   const { state: authState } = useAuth();
   const currentUserId = authState.user?.userId ?? null;
 
-  // const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
 
   // /**
@@ -608,11 +607,6 @@ export const useChat = (conversationId: string) => {
         // Handler cho ACK từ server
         const handleAck = (ackData: any) => {
           if (!isMounted) return;
-
-          // console.log("[useChat] ACK received:", {
-          //   clientMessageId: ackData.clientMessageId,
-          //   messageId: ackData.messageId,
-          // });
 
           // Cập nhật message: thay client ID bằng server ID
           setState((prev) => ({
