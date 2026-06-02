@@ -127,7 +127,7 @@ export default function NotificationSettingScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
 
         {/* Mute All */}
-        <View className="mx-4 mt-6">
+        <View className="mx-4 mt-0">
           <View
             className="overflow-hidden rounded-2xl"
             style={{

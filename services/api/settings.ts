@@ -26,14 +26,60 @@ export type NotificationSettingsResponse = {
   doNotDisturbEnd?: number;
 };
 
+export type ProfileVisibility = "public" | "friends" | "private";
+export type ContactPermission = "everyone" | "friends" | "nobody";
+
+export type PrivacySettingsResponse = {
+  id?: string;
+  userId?: string;
+  profileVisibility?: ProfileVisibility;
+  messagePermission?: ContactPermission;
+  callPermission?: ContactPermission;
+  lastSeenVisibility?: boolean;
+  onlineStatusVisibility?: boolean;
+  allowAIToSeeProfile?: boolean;
+  allowAIToSeeMessages?: boolean;
+  allowAIToSeeMedia?: boolean;
+  allowScreenSharing?: boolean;
+  allowDataCollection?: boolean;
+  allowAnalytics?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 const buildUrl = (path: string) => `${API_BASE_URL}${path}`;
+
+const extractErrorMessage = (payload: unknown, fallback: string) => {
+  if (!payload || typeof payload !== "object") {
+    return fallback;
+  }
+
+  const data = payload as {
+    message?: unknown;
+    error?: unknown;
+  };
+
+  if (typeof data.message === "string") return data.message;
+
+  if (data.message && typeof data.message === "object") {
+    const nested = data.message as { message?: unknown; error?: unknown };
+    if (typeof nested.message === "string") return nested.message;
+    if (typeof nested.error === "string") return nested.error;
+  }
+
+  if (typeof data.error === "string") return data.error;
+
+  return fallback;
+};
 
 const toJson = async <T>(response: Response): Promise<T> => {
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
 
   if (!response.ok) {
-    throw new Error(data?.message || `Request failed: ${response.status}`);
+    throw new Error(
+      extractErrorMessage(data, `Request failed: ${response.status}`),
+    );
   }
 
   return data as T;
@@ -72,6 +118,22 @@ export const notificationSettingsApi = {
       method: "PATCH",
     });
     return toJson<NotificationSettingsResponse>(response);
+  },
+};
+
+export const privacySettingsApi = {
+  async getMySettings() {
+    const response = await authFetch(buildUrl("/privacy-settings/me"));
+    return toJson<PrivacySettingsResponse>(response);
+  },
+
+  async updateMySettings(payload: Partial<PrivacySettingsResponse>) {
+    const response = await authFetch(buildUrl("/privacy-settings/me/update"), {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+
+    return toJson<PrivacySettingsResponse>(response);
   },
 };
 

@@ -26,6 +26,37 @@ const buildUrl = (
 /**
  * Parse JSON response từ API
  */
+const extractErrorMessage = (payload: unknown, fallback: string) => {
+  if (!payload || typeof payload !== "object") {
+    return fallback;
+  }
+
+  const data = payload as {
+    message?: unknown;
+    error?: unknown;
+  };
+
+  if (typeof data.message === "string") {
+    return data.message;
+  }
+
+  if (data.message && typeof data.message === "object") {
+    const nested = data.message as { message?: unknown; error?: unknown };
+    if (typeof nested.message === "string") {
+      return nested.message;
+    }
+    if (typeof nested.error === "string") {
+      return nested.error;
+    }
+  }
+
+  if (typeof data.error === "string") {
+    return data.error;
+  }
+
+  return fallback;
+};
+
 const toJson = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
     const text = await response.text();
@@ -33,10 +64,10 @@ const toJson = async <T>(response: Response): Promise<T> => {
 
     try {
       const errorData = JSON.parse(text);
-      message =
-        errorData?.message ||
-        errorData?.error ||
-        `Request failed with ${response.status}`;
+      message = extractErrorMessage(
+        errorData,
+        `Request failed with ${response.status}`,
+      );
     } catch {
       // Keep the plain response text when the server does not return JSON.
     }
