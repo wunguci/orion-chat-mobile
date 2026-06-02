@@ -1,5 +1,6 @@
 /* eslint-disable */
 import { API_BASE_URL } from '@/config/api';
+import { QrCode } from '@/components/common/QrCode';
 import { useTheme } from '@/hooks/useTheme';
 import {
     chatApi,
@@ -9,6 +10,11 @@ import {
     GroupMemberItem,
     PinnedMessageItem,
 } from '@/services/api/chat';
+import {
+    chatSocketService,
+    GroupJoinRequestCreatedPayload,
+    GroupJoinRequestUpdatedPayload,
+} from '@/services/websocket/chatSocket';
 import { friendApi, FriendResponse } from '@/services/api/friend';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -105,6 +111,9 @@ const getRoleLabel = (role?: string | null) => {
     return 'Member';
 };
 
+const createGroupInviteLink = (conversationId: string) =>
+    `orionchatmobile://group-join/${conversationId}`;
+
 export default function ConversationInfoModal({
     visible,
     conversationId,
@@ -155,6 +164,10 @@ export default function ConversationInfoModal({
         groupMode && conversation?.groupInfo?.groupAvatar
             ? conversation.groupInfo.groupAvatar
             : avatarUri,
+    );
+    const groupInviteLink = useMemo(
+        () => createGroupInviteLink(conversationId),
+        [conversationId],
     );
     const memberCount =
         groupMembers.length || conversation?.participants?.length || 0;
@@ -546,8 +559,8 @@ export default function ConversationInfoModal({
 
     const handleCopyConversationId = () => {
         void runAction(async () => {
-            await Clipboard.setStringAsync(conversationId);
-        }, 'Group ID copied');
+            await Clipboard.setStringAsync(groupMode ? groupInviteLink : conversationId);
+        }, groupMode ? 'Group invite link copied' : 'Group ID copied');
     };
 
     const handleUnpinMessage = (messageId: string) => {
@@ -965,7 +978,7 @@ export default function ConversationInfoModal({
                                                 }}
                                                 numberOfLines={1}
                                             >
-                                                {conversationId}
+                                                {groupInviteLink}
                                             </Text>
                                         </View>
                                         <MaterialCommunityIcons
@@ -1308,7 +1321,6 @@ export default function ConversationInfoModal({
                     isOwner={isOwner}
                     onClose={() => setGroupManagementVisible(false)}
                     onMemberPress={handleMemberAction}
-                    onCopyLink={handleCopyConversationId}
                     onDissolveGroup={handleDissolveGroup}
                     onDataChanged={refreshData}
                 />
@@ -2350,7 +2362,6 @@ function GroupManagementModalV2({
     isOwner,
     onClose,
     onMemberPress,
-    onCopyLink,
     onDissolveGroup,
     onDataChanged,
 }: {
@@ -2361,7 +2372,6 @@ function GroupManagementModalV2({
     isOwner: boolean;
     onClose: () => void;
     onMemberPress: (member: GroupMemberItem) => void;
-    onCopyLink: () => void;
     onDissolveGroup: () => void;
     onDataChanged: () => void;
 }) {
@@ -2369,7 +2379,15 @@ function GroupManagementModalV2({
     const insets = useSafeAreaInsets();
     const [showMembers, setShowMembers] = useState(false);
     const [showJoinRequests, setShowJoinRequests] = useState(false);
+    const [showQrCode, setShowQrCode] = useState(false);
     const [joinRequests, setJoinRequests] = useState<GroupJoinRequest[]>([]);
+    const [pendingJoinRequestCount, setPendingJoinRequestCount] = useState(0);
+    const [processingJoinRequestId, setProcessingJoinRequestId] = useState<
+        string | null
+    >(null);
+    const [joinRequestError, setJoinRequestError] = useState<string | null>(
+        null,
+    );
     const [memberLimit, setMemberLimit] = useState(10);
     const [loadingRequests, setLoadingRequests] = useState(false);
     const [permissions, setPermissions] = useState({
@@ -2385,7 +2403,8 @@ function GroupManagementModalV2({
         allowReadRecentMessages: true,
         allowJoinLink: true,
     });
-    const groupLink = `zalo.me/g/${conversationId}`;
+    const locallyHandledJoinRequestsRef = useRef(new Set<string>());
+    const groupLink = createGroupInviteLink(conversationId);
 
     useEffect(() => {
         if (!visible || !conversationId) return;
@@ -2426,24 +2445,99 @@ function GroupManagementModalV2({
         }
     };
 
-    const loadJoinRequests = async () => {
-        setLoadingRequests(true);
+    const normalizeJoinRequests = (
+        response: GroupJoinRequest[] | { items?: GroupJoinRequest[] },
+    ) => {
+        const items = Array.isArray(response) ? response : response.items || [];
+        return items.filter((item) => item.status === 'pending');
+    };
+
+    const refreshJoinRequestsCount = useCallback(async () => {
+        if (!visible || !conversationId || !canManage) {
+            setPendingJoinRequestCount(0);
+            return;
+        }
+
         try {
             const response = await chatApi.getGroupJoinRequests(conversationId);
-            const items = Array.isArray(response)
-                ? response
-                : response.items || [];
-            setJoinRequests(items.filter((item) => item.status === 'pending'));
-            setShowJoinRequests(true);
+            setPendingJoinRequestCount(normalizeJoinRequests(response).length);
+        } catch {
+            setPendingJoinRequestCount(0);
+        }
+    }, [canManage, conversationId, visible]);
+
+    useEffect(() => {
+        void refreshJoinRequestsCount();
+    }, [refreshJoinRequestsCount, settings.approveNewMembers]);
+
+    useEffect(() => {
+        if (!visible || !conversationId || !canManage) return;
+
+        let active = true;
+        void chatSocketService
+            .connect()
+            .then(() => {
+                if (!active) return;
+                chatSocketService.joinConversation(conversationId);
+            })
+            .catch(() => undefined);
+
+        const handleCreated = (payload: GroupJoinRequestCreatedPayload) => {
+            if (payload.groupId !== conversationId) return;
+            setPendingJoinRequestCount((prev) => prev + 1);
+            if (showJoinRequests) {
+                void loadJoinRequests(true);
+            }
+        };
+
+        const handleUpdated = (payload: GroupJoinRequestUpdatedPayload) => {
+            if (payload.groupId !== conversationId) return;
+            if (locallyHandledJoinRequestsRef.current.has(payload.requestId)) {
+                locallyHandledJoinRequestsRef.current.delete(payload.requestId);
+                return;
+            }
+            setPendingJoinRequestCount((prev) => Math.max(prev - 1, 0));
+            setJoinRequests((prev) =>
+                prev.filter((item) => item.requestId !== payload.requestId),
+            );
+        };
+
+        chatSocketService.onGroupJoinRequestCreated(handleCreated);
+        chatSocketService.onGroupJoinRequestUpdated(handleUpdated);
+
+        return () => {
+            active = false;
+            chatSocketService.offGroupJoinRequestCreated(handleCreated);
+            chatSocketService.offGroupJoinRequestUpdated(handleUpdated);
+        };
+    }, [canManage, conversationId, showJoinRequests, visible]);
+
+    const loadJoinRequests = async (silent = false) => {
+        if (!silent) {
+            setLoadingRequests(true);
+        }
+        setJoinRequestError(null);
+        try {
+            const response = await chatApi.getGroupJoinRequests(conversationId);
+            const items = normalizeJoinRequests(response);
+            setJoinRequests(items);
+            setPendingJoinRequestCount(items.length);
+            if (!silent) {
+                setShowJoinRequests(true);
+            }
         } catch (error) {
-            Alert.alert(
-                'Unable to load join requests',
+            setJoinRequestError(
                 error instanceof Error
                     ? error.message
                     : 'Please try again later.',
             );
+            if (!silent) {
+                setShowJoinRequests(true);
+            }
         } finally {
-            setLoadingRequests(false);
+            if (!silent) {
+                setLoadingRequests(false);
+            }
         }
     };
 
@@ -2455,11 +2549,15 @@ function GroupManagementModalV2({
             ? chatApi.approveGroupJoinRequest
             : chatApi.rejectGroupJoinRequest;
 
+        setProcessingJoinRequestId(request.requestId);
+        setJoinRequestError(null);
+        locallyHandledJoinRequestsRef.current.add(request.requestId);
         void action(conversationId, request.requestId)
             .then(() => {
                 setJoinRequests((prev) =>
                     prev.filter((item) => item.requestId !== request.requestId),
                 );
+                setPendingJoinRequestCount((prev) => Math.max(prev - 1, 0));
                 if (approved) {
                     onDataChanged();
                 }
@@ -2471,17 +2569,26 @@ function GroupManagementModalV2({
                 );
             })
             .catch((error) => {
-                Alert.alert(
-                    'Unable to perform action',
+                locallyHandledJoinRequestsRef.current.delete(request.requestId);
+                setJoinRequestError(
                     error instanceof Error
                         ? error.message
                         : 'Please try again later.',
                 );
+            })
+            .finally(() => {
+                setProcessingJoinRequestId(null);
             });
     };
 
     const shareGroupLink = () => {
         void Share.share({ message: groupLink }).catch(() => undefined);
+    };
+
+    const copyGroupLink = () => {
+        void Clipboard.setStringAsync(groupLink).then(() => {
+            Alert.alert('Copied', 'Group invite link copied.');
+        });
     };
 
     const refreshGroupLink = () => {
@@ -2499,6 +2606,8 @@ function GroupManagementModalV2({
             onRequestClose={
                 showJoinRequests
                     ? () => setShowJoinRequests(false)
+                    : showQrCode
+                      ? () => setShowQrCode(false)
                     : showMembers
                       ? () => setShowMembers(false)
                       : onClose
@@ -2520,6 +2629,8 @@ function GroupManagementModalV2({
                     onBack={
                         showJoinRequests
                             ? () => setShowJoinRequests(false)
+                            : showQrCode
+                              ? () => setShowQrCode(false)
                             : showMembers
                               ? () => setShowMembers(false)
                               : onClose
@@ -2537,15 +2648,47 @@ function GroupManagementModalV2({
                     <View style={{ paddingVertical: 28 }}>
                         <ActivityIndicator color={LOGIN_PRIMARY} />
                     </View>
+                ) : joinRequestError ? (
+                    <View
+                        style={{
+                            margin: 16,
+                            borderRadius: 10,
+                            backgroundColor: '#fef2f2',
+                            padding: 14,
+                        }}
+                    >
+                        <Text style={{ color: '#b91c1c', textAlign: 'center' }}>
+                            {joinRequestError}
+                        </Text>
+                    </View>
                 ) : joinRequests.length ? (
-                    joinRequests.map((request) => (
-                        <JoinRequestRow
-                            key={request.requestId}
-                            request={request}
-                            onApprove={() => handleJoinRequest(request, true)}
-                            onReject={() => handleJoinRequest(request, false)}
-                        />
-                    ))
+                    <>
+                        <Text
+                            style={{
+                                color: colors.textSecondary,
+                                fontSize: 13,
+                                paddingHorizontal: 16,
+                                paddingVertical: 12,
+                            }}
+                        >
+                            Review people waiting to join this group.
+                        </Text>
+                        {joinRequests.map((request) => (
+                            <JoinRequestRow
+                                key={request.requestId}
+                                request={request}
+                                processing={
+                                    processingJoinRequestId === request.requestId
+                                }
+                                onApprove={() =>
+                                    handleJoinRequest(request, true)
+                                }
+                                onReject={() =>
+                                    handleJoinRequest(request, false)
+                                }
+                            />
+                        ))}
+                    </>
                 ) : (
                     <Text
                         style={{
@@ -2554,11 +2697,119 @@ function GroupManagementModalV2({
                             paddingVertical: 28,
                         }}
                     >
-                    No join requests
+                        No pending join requests
                     </Text>
                 )}
             </ScrollView>,
-            'Join Requests',
+            pendingJoinRequestCount > 0
+                ? `Join Requests (${pendingJoinRequestCount})`
+                : 'Join Requests',
+        );
+    }
+
+    if (showQrCode) {
+        return renderShell(
+            <ScrollView
+                contentContainerStyle={{
+                    paddingHorizontal: 20,
+                    paddingTop: 24,
+                    paddingBottom: 32,
+                    alignItems: 'center',
+                }}
+            >
+                <View
+                    style={{
+                        width: 236,
+                        height: 236,
+                        borderRadius: 12,
+                        backgroundColor: '#fff',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        shadowColor: '#000',
+                        shadowOpacity: 0.08,
+                        shadowRadius: 10,
+                        elevation: 2,
+                    }}
+                >
+                    <QrCode value={groupLink} size={212} />
+                </View>
+                <Text
+                    style={{
+                        color: colors.text,
+                        fontSize: 18,
+                        fontWeight: '800',
+                        marginTop: 20,
+                        textAlign: 'center',
+                    }}
+                >
+                    Group QR Code
+                </Text>
+                <Text
+                    style={{
+                        color: colors.textSecondary,
+                        fontSize: 13,
+                        lineHeight: 19,
+                        marginTop: 8,
+                        textAlign: 'center',
+                    }}
+                >
+                    Scan this QR code from another phone to join the group or send a join request.
+                </Text>
+                <View
+                    style={{
+                        marginTop: 18,
+                        borderRadius: 10,
+                        backgroundColor: colors.backgroundSecondary,
+                        padding: 12,
+                        width: '100%',
+                    }}
+                >
+                    <Text
+                        style={{
+                            color: LOGIN_PRIMARY,
+                            fontSize: 12,
+                            textAlign: 'center',
+                        }}
+                    >
+                        {groupLink}
+                    </Text>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
+                    <TouchableOpacity
+                        onPress={copyGroupLink}
+                        activeOpacity={0.75}
+                        style={{
+                            flex: 1,
+                            minHeight: 44,
+                            borderRadius: 22,
+                            backgroundColor: colors.backgroundSecondary,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                        }}
+                    >
+                        <Text style={{ color: colors.text, fontWeight: '800' }}>
+                            Copy Link
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={shareGroupLink}
+                        activeOpacity={0.75}
+                        style={{
+                            flex: 1,
+                            minHeight: 44,
+                            borderRadius: 22,
+                            backgroundColor: LOGIN_PRIMARY,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                        }}
+                    >
+                        <Text style={{ color: '#fff', fontWeight: '800' }}>
+                            Share
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </ScrollView>,
+            'Group QR Code',
         );
     }
 
@@ -2675,10 +2926,21 @@ function GroupManagementModalV2({
                 >
                     {groupLink}
                 </Text>
-                <TouchableOpacity onPress={onCopyLink} hitSlop={8}>
+                <TouchableOpacity onPress={copyGroupLink} hitSlop={8}>
                     <MaterialCommunityIcons
                         name="content-copy"
                         size={22}
+                        color={colors.textSecondary}
+                    />
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => setShowQrCode(true)}
+                    hitSlop={8}
+                    style={{ marginLeft: 18 }}
+                >
+                    <MaterialCommunityIcons
+                        name="qrcode"
+                        size={23}
                         color={colors.textSecondary}
                     />
                 </TouchableOpacity>
@@ -2723,10 +2985,19 @@ function GroupManagementModalV2({
                     title={`Leaders & Deputies (${members.length}/${memberLimit})`}
                     onPress={() => setShowMembers(true)}
                 />
-                {canManage && settings.approveNewMembers ? (
+                <ManagementMenuRow
+                    icon="qrcode-scan"
+                    title="Group QR Code"
+                    onPress={() => setShowQrCode(true)}
+                />
+                {canManage ? (
                     <ManagementMenuRow
                         icon="account-clock-outline"
-                        title="Join Requests"
+                        title={
+                            pendingJoinRequestCount > 0
+                                ? `Join Requests (${pendingJoinRequestCount})`
+                                : 'Join Requests'
+                        }
                         onPress={() => void loadJoinRequests()}
                     />
                 ) : null}
@@ -3003,89 +3274,159 @@ function MemberManagementRow({
 
 function JoinRequestRow({
     request,
+    processing,
     onApprove,
     onReject,
 }: {
     request: GroupJoinRequest;
+    processing: boolean;
     onApprove: () => void;
     onReject: () => void;
 }) {
     const { colors } = useTheme();
     const LOGIN_PRIMARY = colors.primary;
+    const requesterName = request.requester.fullName || request.requester.userId;
+    const createdAt = request.createdAt
+        ? new Date(request.createdAt).toLocaleDateString('vi-VN')
+        : '';
+
     return (
         <View
             style={{
-                minHeight: 84,
+                minHeight: 118,
                 paddingHorizontal: 16,
                 paddingVertical: 12,
                 borderBottomWidth: 0.5,
                 borderBottomColor: colors.divider,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
             }}
         >
             <View
                 style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    backgroundColor: LOGIN_PRIMARY,
+                    flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'center',
+                    gap: 12,
                 }}
             >
-                <Text style={{ color: '#fff', fontWeight: '800' }}>
-                    {(request.requester.fullName || '?')
-                        .split(' ')
-                        .map((word) => word[0])
-                        .join('')
-                        .toUpperCase()
-                        .slice(0, 2)}
-                </Text>
-            </View>
-            <View style={{ flex: 1 }}>
-                <Text
+                <View
                     style={{
-                        color: colors.text,
-                        fontWeight: '700',
-                        fontSize: 15,
+                        width: 44,
+                        height: 44,
+                        borderRadius: 22,
+                        backgroundColor: LOGIN_PRIMARY,
+                        alignItems: 'center',
+                        justifyContent: 'center',
                     }}
-                    numberOfLines={1}
                 >
-                    {request.requester.fullName || 'User'}
-                </Text>
-                {request.message ? (
+                    <Text style={{ color: '#fff', fontWeight: '800' }}>
+                        {requesterName
+                            .split(' ')
+                            .map((word) => word[0])
+                            .join('')
+                            .toUpperCase()
+                            .slice(0, 2)}
+                    </Text>
+                </View>
+                <View style={{ flex: 1 }}>
                     <Text
                         style={{
-                            color: colors.textSecondary,
-                            fontSize: 12,
-                            marginTop: 3,
+                            color: colors.text,
+                            fontWeight: '700',
+                            fontSize: 15,
                         }}
-                        numberOfLines={2}
+                        numberOfLines={1}
                     >
-                        {request.message}
+                        {requesterName}
                     </Text>
-                ) : null}
+                    {createdAt ? (
+                        <Text
+                            style={{
+                                color: colors.textSecondary,
+                                fontSize: 12,
+                                marginTop: 3,
+                            }}
+                        >
+                            {createdAt}
+                        </Text>
+                    ) : null}
+                </View>
             </View>
-            <TouchableOpacity onPress={onReject} hitSlop={8}>
-                <MaterialCommunityIcons
-                    name="close-circle-outline"
-                    size={28}
-                    color="#ef4444"
-                />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={onApprove} hitSlop={8}>
-                <MaterialCommunityIcons
-                    name="check-circle-outline"
-                    size={28}
-                    color={LOGIN_PRIMARY}
-                />
-            </TouchableOpacity>
+            {request.message ? (
+                <Text
+                    style={{
+                        color: colors.textSecondary,
+                        fontSize: 12,
+                        lineHeight: 18,
+                        marginTop: 10,
+                        borderRadius: 8,
+                        backgroundColor: colors.backgroundSecondary,
+                        paddingHorizontal: 10,
+                        paddingVertical: 8,
+                    }}
+                    numberOfLines={3}
+                >
+                    {request.message}
+                </Text>
+            ) : null}
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                <TouchableOpacity
+                    onPress={onReject}
+                    disabled={processing}
+                    activeOpacity={0.75}
+                    style={{
+                        flex: 1,
+                        minHeight: 40,
+                        borderRadius: 20,
+                        borderWidth: 1,
+                        borderColor: '#fecaca',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: processing ? 0.6 : 1,
+                    }}
+                >
+                    {processing ? (
+                        <ActivityIndicator color="#ef4444" />
+                    ) : (
+                        <Text
+                            style={{
+                                color: '#ef4444',
+                                fontWeight: '800',
+                            }}
+                        >
+                            Reject
+                        </Text>
+                    )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={onApprove}
+                    disabled={processing}
+                    activeOpacity={0.75}
+                    style={{
+                        flex: 1,
+                        minHeight: 40,
+                        borderRadius: 20,
+                        backgroundColor: LOGIN_PRIMARY,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: processing ? 0.6 : 1,
+                    }}
+                >
+                    {processing ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <Text
+                            style={{
+                                color: '#fff',
+                                fontWeight: '800',
+                            }}
+                        >
+                            Approve
+                        </Text>
+                    )}
+                </TouchableOpacity>
+            </View>
         </View>
     );
 }
-
 // Kept temporarily as a fallback for the member-only management view.
 
 function GroupManagementModal({

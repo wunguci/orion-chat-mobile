@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   chatApi,
   ConversationResponse,
+  isConversationUnavailableError,
   MessageItem,
 } from "@/services/api/chat";
 import {
@@ -20,9 +21,7 @@ import {
   PendingTextMessage,
 } from "@/services/cache/pendingMessageQueue";
 
-/**
- * Generate unique ID cho client message
- */
+
 function generateUniqueId(): string {
   const timestamp = Date.now().toString(36);
   const randomStr = Math.random().toString(36).substring(2, 15);
@@ -211,10 +210,6 @@ function buildAttachmentFields(
   return {};
 }
 
-// ═══════════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════════
-
 /**
  * Trạng thái của useChat hook
  */
@@ -225,10 +220,6 @@ interface UseChatState {
   error: string | null;
   replyToMessage: Message | null;
 }
-
-// ═══════════════════════════════════════════════════════════
-// HOOK - useChat
-// ═══════════════════════════════════════════════════════════
 
 /**
  * Custom hook để quản lý chat với một conversation
@@ -254,9 +245,6 @@ export const useChat = (conversationId: string) => {
 
   // const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // // ─────────────────────────────────────────────────────────
-  // // INITIALIZERS
-  // // ─────────────────────────────────────────────────────────
 
   // /**
   //  * Lấy ID user hiện tại từ AsyncStorage
@@ -454,6 +442,21 @@ export const useChat = (conversationId: string) => {
             error: null,
           }));
         } catch (apiError) {
+          if (isConversationUnavailableError(apiError)) {
+            console.log(
+              "[useChat] Conversation is no longer available; stopping message load.",
+            );
+
+            if (!isMounted) return;
+
+            setState((prev) => ({
+              ...prev,
+              isLoading: false,
+              error: null,
+            }));
+            return;
+          }
+
           console.warn(
             "[useChat] API unavailable, keeping cached messages",
             apiError,
@@ -699,10 +702,6 @@ export const useChat = (conversationId: string) => {
       chatSocketService.leaveConversation(conversationId);
     };
   }, [conversationId, currentUserId]);
-
-  // ─────────────────────────────────────────────────────────
-  // MESSAGE SENDING
-  // ─────────────────────────────────────────────────────────
 
   /**
    * Thử gửi lại một tin nhắn bị lỗi hoặc chưa gửi được.
@@ -1078,9 +1077,6 @@ export const useChat = (conversationId: string) => {
     [conversationId, currentUserId, flushPendingMessages],
   );
 
-  // ─────────────────────────────────────────────────────────
-  // SETTERS
-  // ─────────────────────────────────────────────────────────
 
   const setInputText = useCallback((text: string) => {
     setState((prev) => ({
@@ -1116,10 +1112,6 @@ export const useChat = (conversationId: string) => {
     error: state.error,
   };
 };
-
-// ═══════════════════════════════════════════════════════════
-// HELPER FUNCTIONS
-// ═══════════════════════════════════════════════════════════
 
 /**
  * Chuyển đổi format message từ API -> UI

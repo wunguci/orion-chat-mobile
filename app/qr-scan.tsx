@@ -1,11 +1,12 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { chatApi } from '@/services/api/chat';
 import {
     BarcodeScanningResult,
     CameraView,
     useCameraPermissions,
 } from 'expo-camera';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Alert,
     Linking,
@@ -18,32 +19,115 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PRIMARY = '#006275';
 
-function extractQrLoginToken(rawValue: string): string {
+type ParsedQr =
+    | { type: 'login'; token: string }
+    | { type: 'group_join'; groupId: string };
+
+const UUID_PATTERN =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function normalizeGroupId(value: string | null | undefined): string {
+    const groupId = String(value || '').trim();
+    if (!groupId) return '';
+    return /^[a-zA-Z0-9_-]{8,80}$/.test(groupId) || UUID_PATTERN.test(groupId)
+        ? groupId
+        : '';
+}
+
+function extractGroupIdFromPath(pathname: string): string {
+    const parts = pathname.split('/').filter(Boolean);
+    const groupIndex = parts.findIndex((part) =>
+        ['group', 'groups', 'chat', 'conversation'].includes(
+            part.toLowerCase(),
+        ),
+    );
+
+    if (groupIndex >= 0) {
+        return normalizeGroupId(parts[groupIndex + 1]);
+    }
+
+    const joinIndex = parts.findIndex((part) =>
+        ['join-group', 'group-join'].includes(part.toLowerCase()),
+    );
+
+    if (joinIndex >= 0) {
+        return normalizeGroupId(parts[joinIndex + 1]);
+    }
+
+    return '';
+}
+
+function parseScannedQr(rawValue: string): ParsedQr | null {
     const value = rawValue.trim();
-    if (!value) return '';
+    if (!value) return null;
 
     try {
         const json = JSON.parse(value) as {
+            type?: unknown;
+            groupId?: unknown;
+            conversationId?: unknown;
             token?: unknown;
             qrToken?: unknown;
             qrData?: unknown;
         };
+
+        const jsonGroupId = normalizeGroupId(
+            typeof json.groupId === 'string'
+                ? json.groupId
+                : typeof json.conversationId === 'string'
+                  ? json.conversationId
+                  : '',
+        );
+
+        if (
+            jsonGroupId &&
+            (json.type === 'group_join' ||
+                json.type === 'join_group' ||
+                json.type === 'group_invite' ||
+                json.type === 'group')
+        ) {
+            return { type: 'group_join', groupId: jsonGroupId };
+        }
+
+        if (typeof json.qrData === 'string') {
+            const nested = parseScannedQr(json.qrData);
+            if (nested) return nested;
+        }
+
         const jsonToken =
             typeof json.qrToken === 'string'
                 ? json.qrToken
                 : typeof json.token === 'string'
                   ? json.token
-                  : typeof json.qrData === 'string'
-                    ? extractQrLoginToken(json.qrData)
-                    : '';
+                  : '';
 
-        if (jsonToken) return jsonToken;
+        if (jsonToken) return { type: 'login', token: jsonToken };
     } catch {
         // Not JSON, continue with URL/plain token parsing.
     }
 
     try {
         const url = new URL(value);
+        const host = url.hostname.toLowerCase();
+        const groupId =
+            normalizeGroupId(url.searchParams.get('groupId')) ||
+            normalizeGroupId(url.searchParams.get('conversationId')) ||
+            (['group', 'groups', 'join-group', 'group-join'].includes(host)
+                ? normalizeGroupId(url.pathname.split('/').filter(Boolean)[0])
+                : '') ||
+            extractGroupIdFromPath(url.pathname);
+
+        if (
+            groupId &&
+            (url.protocol === 'orionchatmobile:' ||
+                host.includes('orion') ||
+                url.pathname.includes('join-group') ||
+                url.pathname.includes('group-join') ||
+                url.pathname.includes('/groups/'))
+        ) {
+            return { type: 'group_join', groupId };
+        }
+
         const token =
             url.searchParams.get('token') || url.searchParams.get('qrToken');
         if (
@@ -52,7 +136,7 @@ function extractQrLoginToken(rawValue: string): string {
                 url.pathname.includes('qr-login') ||
                 url.hostname.includes('qr-login'))
         ) {
-            return token;
+            return { type: 'login', token };
         }
 
         if (
@@ -60,13 +144,20 @@ function extractQrLoginToken(rawValue: string): string {
             url.hostname.includes('qr-login')
         ) {
             const pathToken = url.pathname.replace(/^\//, '');
-            if (pathToken) return decodeURIComponent(pathToken);
+            if (pathToken)
+                return { type: 'login', token: decodeURIComponent(pathToken) };
         }
     } catch {
         // Plain token fallback for development QR values.
     }
 
-    return value.length >= 20 && !value.includes(' ') ? value : '';
+    if (UUID_PATTERN.test(value)) {
+        return { type: 'group_join', groupId: value };
+    }
+
+    return value.length >= 20 && !value.includes(' ')
+        ? { type: 'login', token: value }
+        : null;
 }
 
 export default function QrScanScreen() {
@@ -74,26 +165,149 @@ export default function QrScanScreen() {
     const insets = useSafeAreaInsets();
     const [permission, requestPermission] = useCameraPermissions();
     const [scanned, setScanned] = useState(false);
+    const scannedRef = useRef(false);
+    const handledGroupIdsRef = useRef(new Set<string>());
+
+    const resetScanner = useCallback(() => {
+        handledGroupIdsRef.current.clear();
+        scannedRef.current = false;
+        setScanned(false);
+    }, []);
+
+    const submitGroupJoin = useCallback(
+        async (groupId: string) => {
+            try {
+                const result = await chatApi.joinGroup(
+                    groupId,
+                    'Joined from mobile QR scan',
+                );
+
+                if (result.status === 'pending_approval') {
+                    Alert.alert(
+                        'Request sent',
+                        'Your request has been sent to the group admins.',
+                        [{ text: 'OK', onPress: () => router.back() }],
+                    );
+                    return;
+                }
+
+                router.replace({
+                    pathname: '/chat/[id]',
+                    params: { id: groupId },
+                });
+            } catch (error) {
+                handledGroupIdsRef.current.delete(groupId);
+                Alert.alert(
+                    'Unable to join group',
+                    error instanceof Error
+                        ? error.message
+                        : 'Please try again.',
+                    [{ text: 'Scan again', onPress: resetScanner }],
+                );
+            }
+        },
+        [resetScanner, router],
+    );
+
+    const joinScannedGroup = useCallback(
+        async (groupId: string) => {
+            if (handledGroupIdsRef.current.has(groupId)) return;
+
+            try {
+                const detail = await chatApi.getGroupDetail(groupId);
+                const groupName = detail.groupName || 'this group';
+
+                if (detail.isMember) {
+                    handledGroupIdsRef.current.add(groupId);
+                    Alert.alert('Already in group', `You are already a member of ${groupName}.`, [
+                        {
+                            text: 'Open Group',
+                            onPress: () =>
+                                router.replace({
+                                    pathname: '/chat/[id]',
+                                    params: { id: groupId },
+                                }),
+                        },
+                        {
+                            text: 'Scan again',
+                            onPress: resetScanner,
+                        },
+                    ]);
+                    return;
+                }
+
+                if (detail.myJoinRequestStatus === 'pending') {
+                    handledGroupIdsRef.current.add(groupId);
+                    Alert.alert(
+                        'Request pending',
+                        `Your request to join ${groupName} is already waiting for approval.`,
+                        [{ text: 'OK', onPress: () => router.back() }],
+                    );
+                    return;
+                }
+
+                Alert.alert(
+                    'Join Group',
+                    detail.joinRequireApproval
+                        ? `Send a request to join ${groupName}?`
+                        : `Join ${groupName}?`,
+                    [
+                        { text: 'Cancel', style: 'cancel', onPress: resetScanner },
+                        {
+                            text: detail.joinRequireApproval
+                                ? 'Send Request'
+                                : 'Join',
+                            onPress: () => {
+                                handledGroupIdsRef.current.add(groupId);
+                                scannedRef.current = true;
+                                setScanned(true);
+                                setTimeout(() => {
+                                    void submitGroupJoin(groupId);
+                                }, 0);
+                            },
+                        },
+                    ],
+                );
+            } catch (error) {
+                Alert.alert(
+                    'Invalid group QR',
+                    error instanceof Error
+                        ? error.message
+                        : 'Could not read this group QR code.',
+                    [{ text: 'Scan again', onPress: resetScanner }],
+                );
+            }
+        },
+        [resetScanner, router, submitGroupJoin],
+    );
 
     const processScannedValue = useCallback(
         (rawValue: string) => {
-            if (scanned) return;
+            if (scannedRef.current) return;
+            scannedRef.current = true;
+            setScanned(true);
 
-            const token = extractQrLoginToken(rawValue || '');
-            if (!token) {
-                setScanned(true);
+            const parsed = parseScannedQr(rawValue || '');
+            if (!parsed) {
                 Alert.alert(
                     'Invalid QR Code',
-                    'This is not an Orion Chat Web login code.',
-                    [{ text: 'Scan again', onPress: () => setScanned(false) }],
+                    'This is not an Orion Chat login or group invite QR code.',
+                    [{ text: 'Scan again', onPress: resetScanner }],
                 );
                 return;
             }
 
-            setScanned(true);
-            router.replace({ pathname: '/qr-login', params: { token } });
+            if (parsed.type === 'login') {
+                router.replace({
+                    pathname: '/qr-login',
+                    params: { token: parsed.token },
+                });
+                return;
+            }
+
+            void joinScannedGroup(parsed.groupId);
         },
-        [router, scanned],
+        [joinScannedGroup, resetScanner, router],
     );
 
     const handleBarcodeScanned = useCallback(
@@ -114,7 +328,7 @@ export default function QrScanScreen() {
     }, [processScannedValue]);
 
     const openSystemScanner = useCallback(async () => {
-        if (scanned) return;
+        if (scannedRef.current) return;
 
         try {
             await CameraView.launchScanner({
@@ -303,7 +517,7 @@ export default function QrScanScreen() {
                 <Text
                     style={{ color: '#fff', fontSize: 17, fontWeight: '800' }}
                 >
-                    Scan Login QR
+                    Scan QR
                 </Text>
                 <View style={{ width: 42 }} />
             </View>
@@ -327,7 +541,7 @@ export default function QrScanScreen() {
                         textAlign: 'center',
                     }}
                 >
-                    Align the web QR code inside the frame
+                    Align the QR code inside the frame
                 </Text>
                 <Text
                     style={{
@@ -338,7 +552,7 @@ export default function QrScanScreen() {
                         marginTop: 6,
                     }}
                 >
-                    After scanning, you will confirm to log in to the web app using this mobile account.
+                    Scan a web login QR or a group invite QR to continue.
                 </Text>
                 <TouchableOpacity
                     onPress={openSystemScanner}

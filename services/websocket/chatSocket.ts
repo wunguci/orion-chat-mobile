@@ -55,6 +55,22 @@ export type SendAckCallback = (data: {
   timestamp: string;
 }) => void;
 
+export type GroupJoinRequestCreatedPayload = {
+  groupId: string;
+  requestId: string;
+  requesterId: string;
+  createdAt: string;
+};
+
+export type GroupJoinRequestUpdatedPayload = {
+  groupId: string;
+  requestId: string;
+  status: "approved" | "rejected";
+  actedBy?: string;
+  actedAt?: string;
+  requesterId?: string;
+};
+
 // ═══════════════════════════════════════════════════════════
 // CHAT SOCKET SERVICE
 // ═══════════════════════════════════════════════════════════
@@ -72,6 +88,12 @@ class ChatSocketService {
   private connectedListeners: Set<() => void> = new Set();
   private globalMessageListeners: Set<(message: SocketMessage) => void> =
     new Set();
+  private groupJoinRequestCreatedListeners: Set<
+    (payload: GroupJoinRequestCreatedPayload) => void
+  > = new Set();
+  private groupJoinRequestUpdatedListeners: Set<
+    (payload: GroupJoinRequestUpdatedPayload) => void
+  > = new Set();
 
   /**
    * Khởi tạo WebSocket connection
@@ -355,6 +377,18 @@ class ChatSocketService {
     this.socket.on("conversation:deleted", (deleteData: any) => {
       this.conversationDeletedListeners.forEach((callback) => {
         callback(deleteData);
+      });
+    });
+
+    this.socket.on("group:join_request_created", (payload: any) => {
+      this.groupJoinRequestCreatedListeners.forEach((callback) => {
+        callback(payload);
+      });
+    });
+
+    this.socket.on("group:join_request_updated", (payload: any) => {
+      this.groupJoinRequestUpdatedListeners.forEach((callback) => {
+        callback(payload);
       });
     });
   }
@@ -798,6 +832,30 @@ class ChatSocketService {
     this.conversationDeletedListeners.delete(callback);
   }
 
+  onGroupJoinRequestCreated(
+    callback: (payload: GroupJoinRequestCreatedPayload) => void,
+  ): void {
+    this.groupJoinRequestCreatedListeners.add(callback);
+  }
+
+  offGroupJoinRequestCreated(
+    callback: (payload: GroupJoinRequestCreatedPayload) => void,
+  ): void {
+    this.groupJoinRequestCreatedListeners.delete(callback);
+  }
+
+  onGroupJoinRequestUpdated(
+    callback: (payload: GroupJoinRequestUpdatedPayload) => void,
+  ): void {
+    this.groupJoinRequestUpdatedListeners.add(callback);
+  }
+
+  offGroupJoinRequestUpdated(
+    callback: (payload: GroupJoinRequestUpdatedPayload) => void,
+  ): void {
+    this.groupJoinRequestUpdatedListeners.delete(callback);
+  }
+
   /**
    * Ngắt kết nối WebSocket
    */
@@ -813,6 +871,8 @@ class ChatSocketService {
       this.deleteListeners.clear();
       this.conversationDeletedListeners.clear();
       this.connectedListeners.clear();
+      this.groupJoinRequestCreatedListeners.clear();
+      this.groupJoinRequestUpdatedListeners.clear();
     }
   }
 

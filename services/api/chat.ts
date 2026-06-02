@@ -51,6 +51,21 @@ const toJson = async <T>(response: Response): Promise<T> => {
   return (await response.json()) as T;
 };
 
+export const isConversationUnavailableError = (error: unknown) => {
+  if (!(error instanceof Error)) return false;
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("conversation not found") ||
+    message.includes("conversation is not found") ||
+    message.includes("you are not a member") ||
+    message.includes("not a member of this group") ||
+    message.includes("you are not a member of this group") ||
+    message.includes("group not found") ||
+    message.includes("this group has been dissolved")
+  );
+};
+
 /**
  * Lấy JWT token từ AsyncStorage
  */
@@ -90,9 +105,6 @@ const authFetch = async (url: string, init?: RequestInit) => {
   });
 };
 
-// ═══════════════════════════════════════════════════════════
-// TYPES / TYPES
-// ═══════════════════════════════════════════════════════════
 
 /**
  * Thông tin Conversation
@@ -177,13 +189,23 @@ export interface UpdateGroupAvatarResponse {
 
 export interface GroupDetailResponse {
   groupId: string;
+  groupName?: string;
+  groupAvatar?: string;
+  ownerId?: string;
   joinRequireApproval: boolean;
   memberCount: number;
   memberLimit: number;
   isMember: boolean;
-  myJoinRequestStatus: "none" | "pending" | "approved" | "rejected";
+  myJoinRequestStatus?: "none" | "pending" | "approved" | "rejected" | null;
   myRole?: "leader" | "deputy" | "member" | "guest" | "admin" | "co-admin";
   status?: "active" | "dissolved";
+}
+
+export interface JoinGroupResponse {
+  status: "joined" | "pending_approval";
+  groupId: string;
+  requestId?: string;
+  memberLimit?: number;
 }
 
 export interface GroupJoinRequest {
@@ -306,10 +328,6 @@ export interface SendMessagePayload {
   fileName?: string;
   fileSize?: number;
 }
-
-// ═══════════════════════════════════════════════════════════
-// CHAT API SERVICE
-// ═══════════════════════════════════════════════════════════
 
 /**
  * Chat API Service untuk mobile platform
@@ -529,6 +547,14 @@ export const chatApi = {
   async getGroupDetail(groupId: string) {
     const response = await authFetch(buildUrl(`/groups/${groupId}`));
     return toJson<GroupDetailResponse>(response);
+  },
+
+  async joinGroup(groupId: string, message?: string) {
+    const response = await authFetch(buildUrl(`/groups/${groupId}/join`), {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    });
+    return toJson<JoinGroupResponse>(response);
   },
 
   async getGroupJoinRequests(groupId: string) {

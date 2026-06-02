@@ -30,7 +30,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import ForwardConversationModal from "@/components/chat/ForwardConversationModal";
 import { generateUniqueId } from "@/utils/generateUniqueId";
-import { chatApi, PinnedMessageItem } from "@/services/api/chat";
+import {
+  chatApi,
+  PinnedMessageItem,
+  isConversationUnavailableError,
+} from "@/services/api/chat";
 import { friendApi } from "@/services/api/friend";
 import { useNotificationContext } from "@/context/NotificationContext";
 import { useFocusEffect } from "expo-router";
@@ -494,6 +498,14 @@ export default function ChatScreen() {
           }
         }
       } catch (error) {
+        if (isConversationUnavailableError(error)) {
+          console.log(
+            "[ChatScreen] Conversation is no longer available; leaving chat screen.",
+          );
+          router.replace("/(tabs)");
+          return;
+        }
+
         console.error(
           "[ChatScreen] Error fetching conversation details:",
           error,
@@ -588,6 +600,14 @@ export default function ChatScreen() {
         return next;
       });
     } catch (error) {
+      if (isConversationUnavailableError(error)) {
+        console.log(
+          "[ChatScreen] Pinned messages skipped because conversation is no longer available.",
+        );
+        setPinnedMessages([]);
+        return;
+      }
+
       console.warn("[ChatScreen] Failed to load pinned messages:", error);
       setPinnedMessages([]);
     }
