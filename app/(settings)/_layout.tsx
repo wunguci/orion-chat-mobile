@@ -9,7 +9,7 @@ export default function SettingsLayout() {
     <Stack
       screenOptions={{
         headerShown: true,
-        headerBackTitle: "Quay lại",
+        headerBackTitle: "Back",
         headerStyle: {
           backgroundColor: colors.card,
         },
@@ -27,49 +27,49 @@ export default function SettingsLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: "Cài đặt",
+          title: "Settings",
         }}
       />
       <Stack.Screen
         name="profile"
         options={{
-          title: "Hồ sơ",
+          title: "Profile",
         }}
       />
       <Stack.Screen
         name="profile-settings"
         options={{
-          title: "Cài đặt hồ sơ",
+          title: "Profile Settings",
         }}
       />
       <Stack.Screen
         name="appearance-setting"
         options={{
-          title: "Giao diện",
+          title: "Appearance",
         }}
       />
       <Stack.Screen
         name="linked-devices"
         options={{
-          title: "Thiết bị đã liên kết",
+          title: "Linked Devices",
         }}
       />
       <Stack.Screen
         name="mobile-config"
         options={{
-          title: "Cấu hình Mobile",
+          title: "Mobile Configuration",
         }}
       />
       <Stack.Screen
         name="notification-setting"
         options={{
-          title: "Thông báo",
+          title: "Notifications",
         }}
       />
       <Stack.Screen
         name="privacy-security"
         options={{
-          title: "Bảo mật & Quyền riêng tư",
+          title: "Privacy & Security",
         }}
       />
     </Stack>

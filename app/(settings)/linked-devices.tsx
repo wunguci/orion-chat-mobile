@@ -1,10 +1,8 @@
-import SettingsHeader from "@/components/setting/SettingsHeader";
 import SettingsSection from "@/components/setting/SettingsSection";
 import { useRouter } from "expo-router";
 import { Info, Laptop, Monitor, QrCode, Smartphone } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  SafeAreaView,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -52,11 +50,10 @@ export default function DevicesScreen() {
   ]);
 
   return (
-    <SafeAreaView
+    <View
       className="flex-1"
       style={{ backgroundColor: colors.background }}
     >
-      <SettingsHeader title="Linked Devices" />
       <ScrollView
         className="flex-1 pb-4"
         style={{ backgroundColor: colors.background }}
@@ -200,6 +197,6 @@ export default function DevicesScreen() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

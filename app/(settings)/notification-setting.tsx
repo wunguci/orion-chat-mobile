@@ -1,271 +1,290 @@
-import SettingsHeader from "@/components/setting/SettingsHeader";
-import { useNotificationContext } from "@/context/NotificationContext";
+import SettingsItem from "@/components/setting/SettingsItem";
+import SettingsSection from "@/components/setting/SettingsSection";
+import { useNotificationSettings } from "@/hooks/useNotificationSettings";
 import { useThemeColors } from "@/hooks/useThemeColors";
-import type { AppNotification, NotificationType } from "@/types/notification";
-import React, { useMemo, useState } from "react";
+import {
+  Bell,
+  BellOff,
+  MessageSquare,
+  Phone,
+  Play,
+  UserPlus,
+  Users,
+} from "lucide-react-native";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
-  RefreshControl,
+  ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
-type NotificationFilter = "all" | "unread" | NotificationType;
+type FormData = {
+  muteAll: boolean;
+  messageNotifications: boolean;
+  friendRequestNotifications: boolean;
+  groupNotifications: boolean;
+  tagNotifications: boolean;
+  callNotifications: boolean;
+  notificationSound: string;
+};
 
-const FILTER_OPTIONS: Array<{ key: NotificationFilter; label: string }> = [
-  { key: "all", label: "Tất cả" },
-  { key: "unread", label: "Chưa đọc" },
-  { key: "message", label: "Tin nhắn" },
-  { key: "call", label: "Cuộc gọi" },
-  { key: "friend_request", label: "Kết bạn" },
-  { key: "group_invite", label: "Nhóm" },
-  { key: "event_invite", label: "Lịch" },
-  { key: "event_reminder", label: "Nhắc lịch" },
-  { key: "system", label: "Hệ thống" },
-];
+const DEFAULT_FORM: FormData = {
+  muteAll: false,
+  messageNotifications: true,
+  friendRequestNotifications: true,
+  groupNotifications: true,
+  tagNotifications: true,
+  callNotifications: true,
+  notificationSound: "Crystal Clear",
+};
 
-function formatTimeLabel(value: string) {
-  const createdAt = new Date(value).getTime();
-  if (Number.isNaN(createdAt)) return "Vừa xong";
+const SOUND_OPTIONS = ["Crystal Clear", "Bell", "Chime", "Ding"];
 
-  const diffMs = Date.now() - createdAt;
-  const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return "Vừa xong";
-  if (diffMin < 60) return `${diffMin} phút trước`;
-
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour} giờ trước`;
-
-  const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 7) return `${diffDay} ngày trước`;
-
-  return new Date(value).toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+function settingsToForm(s: Record<string, any> | null): FormData {
+  if (!s) return DEFAULT_FORM;
+  return {
+    muteAll: s.muteAll ?? false,
+    messageNotifications: s.messageNotifications ?? true,
+    friendRequestNotifications: s.friendRequestNotifications ?? true,
+    groupNotifications: s.groupNotifications ?? true,
+    tagNotifications: s.tagNotifications ?? true,
+    callNotifications: s.callNotifications ?? true,
+    notificationSound: s.notificationSound ?? "Crystal Clear",
+  };
 }
 
-function NotificationCard({
-  item,
-  onOpen,
-  onMarkRead,
-  onDelete,
-}: {
-  item: AppNotification;
-  onOpen: () => void;
-  onMarkRead: () => void;
-  onDelete: () => void;
-}) {
+export default function NotificationSettingScreen() {
   const colors = useThemeColors();
+  const { settings, loading, updateSettings } = useNotificationSettings();
+
+  const [formData, setFormData] = useState<FormData>(DEFAULT_FORM);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (settings) {
+      setFormData(settingsToForm(settings));
+      setHasChanges(false);
+    }
+  }, [settings]);
+
+  const handleToggle = useCallback((field: keyof FormData) => {
+    setFormData((prev) => ({ ...prev, [field]: !prev[field] }));
+    setHasChanges(true);
+    setSaveError(null);
+    setSaveSuccess(null);
+  }, []);
+
+  const handleSoundChange = useCallback((value: string) => {
+    setFormData((prev) => ({ ...prev, notificationSound: value }));
+    setHasChanges(true);
+    setSaveError(null);
+    setSaveSuccess(null);
+  }, []);
+
+  const handleDiscard = useCallback(() => {
+    setFormData(settingsToForm(settings));
+    setHasChanges(false);
+    setSaveError(null);
+    setSaveSuccess(null);
+  }, [settings]);
+
+  const handleSave = useCallback(async () => {
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(null);
+    try {
+      await updateSettings(formData);
+      setHasChanges(false);
+      setSaveSuccess("Settings saved successfully");
+      setTimeout(() => setSaveSuccess(null), 3000);
+    } catch (err: any) {
+      setSaveError(err.message || "Failed to save settings");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [formData, updateSettings]);
+
+  if (loading && !settings) {
+    return (
+      <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text className="mt-3 text-sm" style={{ color: colors.textSecondary }}>
+          Loading settings...
+        </Text>
+      </View>
+    );
+  }
+
+  const disabledSectionStyle = formData.muteAll ? { opacity: 0.4 } : undefined;
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={onOpen}
-      className="mb-2 rounded-xl px-4 py-3"
-      style={{
-        borderWidth: 1,
-        borderColor: item.isRead ? colors.border : colors.primary,
-        backgroundColor: item.isRead ? colors.card : colors.primaryLight,
-      }}
-    >
-      <View className="flex-row items-start justify-between">
-        <View className="mr-3 flex-1">
-          <Text className="text-base font-semibold" style={{ color: colors.text }}>
-            {item.title || "Thông báo"}
-          </Text>
-          <Text className="mt-1 text-sm" style={{ color: colors.textSecondary }}>{item.body}</Text>
-          <Text className="mt-2 text-xs" style={{ color: colors.textSecondary }}>
-            {formatTimeLabel(item.createdAt)}
-          </Text>
-        </View>
+    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
 
-        {!item.isRead && (
+        {/* Mute All */}
+        <View className="mx-4 mt-6">
           <View
-            className="mt-1 h-2.5 w-2.5 rounded-full"
-            style={{ backgroundColor: colors.primary }}
-          />
-        )}
-      </View>
-
-      <View className="mt-3 flex-row gap-2">
-        {!item.isRead && (
-          <TouchableOpacity
-            activeOpacity={0.85}
-            className="rounded-lg px-3 py-2"
-            style={{ backgroundColor: colors.card }}
-            onPress={(event) => {
-              event.stopPropagation();
-              onMarkRead();
+            className="overflow-hidden rounded-2xl"
+            style={{
+              borderWidth: 1.5,
+              borderColor: formData.muteAll ? colors.primary : colors.border,
+              backgroundColor: formData.muteAll ? colors.primaryLight : colors.card,
             }}
           >
-            <Text className="text-xs font-semibold" style={{ color: colors.text }}>Đánh dấu đã đọc</Text>
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity
-          activeOpacity={0.85}
-          className="rounded-lg px-3 py-2"
-          style={{ backgroundColor: colors.backgroundSecondary }}
-          onPress={(event) => {
-            event.stopPropagation();
-            onDelete();
-          }}
-        >
-          <Text className="text-xs font-semibold" style={{ color: "#ef4444" }}>Xoá</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-export default function NotificationsScreen() {
-  const colors = useThemeColors();
-  const {
-    notifications,
-    unreadCount,
-    loading,
-    fetchNotifications,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-    openNotification,
-  } = useNotificationContext();
-
-  const [filter, setFilter] = useState<NotificationFilter>("all");
-
-  const filteredNotifications = useMemo(() => {
-    if (filter === "all") return notifications;
-    if (filter === "unread") return notifications.filter((item) => !item.isRead);
-    return notifications.filter((item) => item.type === filter);
-  }, [notifications, filter]);
-
-  const isInitialLoading = loading && notifications.length === 0;
-
-  return (
-    <SafeAreaView
-      className="flex-1"
-      style={{ backgroundColor: colors.background }}
-    >
-      <SettingsHeader title="Thông báo" />
-
-      <View className="flex-1" style={{ backgroundColor: colors.background }}>
-        <View
-          className="px-4 pb-3 pt-3"
-          style={{
-            backgroundColor: colors.card,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
-          }}
-        >
-          <View className="mb-3 flex-row items-center justify-between">
-            <View>
-              <Text className="text-xl font-bold" style={{ color: colors.text }}>
-                Trung tâm thông báo
-              </Text>
-              <Text className="mt-1 text-xs" style={{ color: colors.textSecondary }}>
-                {unreadCount} chưa đọc
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              disabled={unreadCount === 0}
-              className="rounded-lg px-3 py-2"
-              style={{
-                backgroundColor:
-                  unreadCount === 0
-                    ? colors.backgroundSecondary
-                    : colors.primary,
-              }}
-              onPress={() => {
-                void markAllAsRead();
-              }}
-            >
-              <Text className="text-xs font-semibold text-white">Đánh dấu tất cả</Text>
-            </TouchableOpacity>
+            <SettingsItem
+              icon={<BellOff size={24} color={colors.primary} />}
+              title="Mute All Notifications"
+              subtitle={
+                formData.muteAll
+                  ? "All notifications are currently muted — turn this off to receive notifications"
+                  : "Temporarily silence all notifications"
+              }
+              toggleValue={formData.muteAll}
+              onToggle={() => handleToggle("muteAll")}
+              showChevron={false}
+            />
           </View>
-
-          <FlatList
-            horizontal
-            data={FILTER_OPTIONS}
-            keyExtractor={(item) => item.key}
-            contentContainerStyle={{ paddingRight: 8 }}
-            showsHorizontalScrollIndicator={false}
-            renderItem={({ item }) => {
-              const active = item.key === filter;
-              return (
-                <TouchableOpacity
-                  className="mr-2 rounded-full px-3 py-1.5"
-                  style={{
-                    backgroundColor: active
-                      ? colors.primary
-                      : colors.backgroundSecondary,
-                  }}
-                  onPress={() => setFilter(item.key)}
-                >
-                  <Text
-                    className="text-xs font-semibold"
-                    style={{ color: active ? "#FFFFFF" : colors.text }}
-                  >
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            }}
-          />
         </View>
 
-        {isInitialLoading ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text className="mt-2 text-sm" style={{ color: colors.textSecondary }}>
-              Đang tải thông báo...
-            </Text>
+        {/* Sections disabled when muteAll is on */}
+        <View style={disabledSectionStyle} pointerEvents={formData.muteAll ? "none" : "auto"}>
+
+          {/* Message Notifications */}
+          <SettingsSection title="Messages">
+            <View className="overflow-hidden rounded-2xl">
+              <SettingsItem
+                icon={<MessageSquare size={24} color={colors.primary} />}
+                title="Message Notifications"
+                subtitle="Receive notifications for new messages"
+                toggleValue={formData.messageNotifications}
+                onToggle={() => handleToggle("messageNotifications")}
+                showChevron={false}
+              />
+              <SettingsItem
+                icon={<UserPlus size={24} color={colors.primary} />}
+                title="Friend Request Notifications"
+                subtitle="Receive notifications for friend requests"
+                toggleValue={formData.friendRequestNotifications}
+                onToggle={() => handleToggle("friendRequestNotifications")}
+                showChevron={false}
+              />
+            </View>
+          </SettingsSection>
+
+          {/* Group Notifications */}
+          <SettingsSection title="Groups">
+            <View className="overflow-hidden rounded-2xl">
+              <SettingsItem
+                icon={<Users size={24} color={colors.primary} />}
+                title="Group Notifications"
+                subtitle="Receive notifications for group chats"
+                toggleValue={formData.groupNotifications}
+                onToggle={() => handleToggle("groupNotifications")}
+                showChevron={false}
+              />
+              <SettingsItem
+                icon={<Bell size={24} color={colors.primary} />}
+                title="Tag Notifications"
+                subtitle="Only notify me if someone tags me"
+                toggleValue={formData.tagNotifications}
+                onToggle={() => handleToggle("tagNotifications")}
+                showChevron={false}
+              />
+            </View>
+          </SettingsSection>
+
+          {/* Call Notifications */}
+          <SettingsSection title="Calls">
+            <View className="overflow-hidden rounded-2xl">
+              <SettingsItem
+                icon={<Phone size={24} color={colors.primary} />}
+                title="Call Notifications"
+                subtitle="Receive notifications for incoming calls"
+                toggleValue={formData.callNotifications}
+                onToggle={() => handleToggle("callNotifications")}
+                showChevron={false}
+              />
+            </View>
+          </SettingsSection>
+
+        </View>
+
+        {/* Sound Settings */}
+        <SettingsSection title="Sound">
+          <View className="overflow-hidden rounded-2xl">
+            <SettingsItem
+              icon={<Play size={24} color={colors.primary} />}
+              title="Notification Sound"
+              subtitle="Choose the sound for notifications"
+              isRingtone
+              ringtoneValue={formData.notificationSound}
+              ringtoneOptions={SOUND_OPTIONS}
+              onRingtoneChange={handleSoundChange}
+            />
           </View>
-        ) : (
-          <FlatList
-            data={filteredNotifications}
-            keyExtractor={(item) => item._id}
-            contentContainerStyle={{ padding: 12, paddingBottom: 28 }}
-            refreshControl={
-              <RefreshControl
-                refreshing={loading}
-                onRefresh={() => {
-                  void fetchNotifications();
-                }}
-              />
-            }
-            ListEmptyComponent={
-              <View className="mt-14 items-center px-8">
-                <Text className="text-base font-semibold" style={{ color: colors.text }}>
-                  Không có thông báo
-                </Text>
-                <Text className="mt-1 text-center text-sm" style={{ color: colors.textSecondary }}>
-                  Khi có hoạt động mới, thông báo sẽ xuất hiện tại đây.
-                </Text>
-              </View>
-            }
-            renderItem={({ item }) => (
-              <NotificationCard
-                item={item}
-                onOpen={() => {
-                  void openNotification(item);
-                }}
-                onMarkRead={() => {
-                  void markAsRead(item._id);
-                }}
-                onDelete={() => {
-                  void deleteNotification(item._id);
-                }}
-              />
-            )}
-          />
-        )}
-      </View>
-    </SafeAreaView>
+        </SettingsSection>
+
+        {/* Save / Discard */}
+        <View className="mx-4 mb-10 mt-6">
+          {saveError && (
+            <View className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+              <Text className="text-sm text-red-600">{saveError}</Text>
+            </View>
+          )}
+          {saveSuccess && (
+            <View
+              className="mb-3 rounded-xl px-4 py-3"
+              style={{
+                backgroundColor: colors.primaryLight,
+                borderWidth: 1,
+                borderColor: colors.primary,
+              }}
+            >
+              <Text className="text-sm font-medium" style={{ color: colors.primary }}>
+                {saveSuccess}
+              </Text>
+            </View>
+          )}
+
+          <View className="flex-row justify-end gap-3">
+            <TouchableOpacity
+              onPress={handleDiscard}
+              disabled={isSaving || !hasChanges}
+              className="rounded-xl px-6 py-3"
+              style={{
+                backgroundColor: colors.card,
+                borderWidth: 1,
+                borderColor: colors.border,
+                opacity: isSaving || !hasChanges ? 0.45 : 1,
+              }}
+            >
+              <Text className="font-semibold" style={{ color: colors.text }}>
+                Discard Changes
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => { void handleSave(); }}
+              disabled={isSaving || !hasChanges}
+              className="rounded-xl px-6 py-3"
+              style={{
+                backgroundColor: colors.primary,
+                opacity: isSaving || !hasChanges ? 0.45 : 1,
+              }}
+            >
+              <Text className="font-semibold text-white">
+                {isSaving ? "Saving..." : "Save Changes"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+      </ScrollView>
+    </View>
   );
 }
