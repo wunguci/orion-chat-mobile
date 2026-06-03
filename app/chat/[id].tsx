@@ -481,8 +481,8 @@ export default function ChatScreen() {
             );
             const hasBlockedParticipant = Boolean(
               conversation.myIsBlocked ||
-                allBlockedIds.length > 0 ||
-                conversation.blockStatus?.isBlocked,
+              allBlockedIds.length > 0 ||
+              conversation.blockStatus?.isBlocked,
             );
 
             setGroupHasBlockedParticipant(hasBlockedParticipant);
@@ -561,6 +561,7 @@ export default function ChatScreen() {
     replyToMessage,
     setReplyToMessage,
     clearReplyToMessage,
+    clearMessages,
     loadMoreMessages,
     isLoadingMore,
     hasMore,
@@ -602,17 +603,15 @@ export default function ChatScreen() {
 
     try {
       const response = await chatApi.getPinnedMessages(id);
-      const sorted = (response.items || [])
-        .slice(0, 3)
-        .sort((left, right) => {
-          const leftTime = new Date(
-            String(left.pinnedAt || left.createdAt || 0),
-          ).getTime();
-          const rightTime = new Date(
-            String(right.pinnedAt || right.createdAt || 0),
-          ).getTime();
-          return rightTime - leftTime;
-        });
+      const sorted = (response.items || []).slice(0, 3).sort((left, right) => {
+        const leftTime = new Date(
+          String(left.pinnedAt || left.createdAt || 0),
+        ).getTime();
+        const rightTime = new Date(
+          String(right.pinnedAt || right.createdAt || 0),
+        ).getTime();
+        return rightTime - leftTime;
+      });
       setPinnedMessages(sorted);
       setPinOverrides((prev) => {
         const next = { ...prev };
@@ -682,34 +681,27 @@ export default function ChatScreen() {
     Alert.alert("Cannot send message", privateBlockMessage);
   }, [privateBlockMessage]);
 
-  const handleSend = useCallback((options?: { mentions?: string[]; mentionAll?: boolean }) => {
-    if (privateMessagingBlocked) {
-      handleBlockedSendAttempt();
-      return;
-    }
+  const handleSend = useCallback(
+    (options?: { mentions?: string[]; mentionAll?: boolean }) => {
+      if (privateMessagingBlocked) {
+        handleBlockedSendAttempt();
+        return;
+      }
 
-    void sendMessage(inputText, options);
-    setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 100);
-  }, [
-    handleBlockedSendAttempt,
-    inputText,
-    privateMessagingBlocked,
-    sendMessage,
-  ]);
+      void sendMessage(inputText, options);
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 100);
+    },
+    [handleBlockedSendAttempt, inputText, privateMessagingBlocked, sendMessage],
+  );
 
   const handleMessageLongPress = useCallback((message: Message) => {
     setSelectedMessage(message);
     setShowActionMenu(true);
   }, []);
 
-  const handleMessageDeleted = useCallback(() => {
-    // Remove message from list
-    // The useChat hook should handle this via socket event
-  }, []);
+  const handleMessageDeleted = useCallback(() => {}, []);
 
-  const handleMessageRecalled = useCallback(() => {
-    // The useChat hook should handle this via socket event
-  }, []);
+  const handleMessageRecalled = useCallback(() => {}, []);
 
   const handleForward = useCallback((messageId: string) => {
     setForwardMessageId(messageId);
@@ -733,24 +725,30 @@ export default function ChatScreen() {
   const handleLeaveGroupFromWarning = useCallback(() => {
     if (!id) return;
 
-    Alert.alert("Leave Group", `Do you want to leave the group ${name || "this group"}?`, [
-      { text: "Stay", style: "cancel" },
-      {
-        text: "Leave Group",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await chatApi.leaveGroup(id);
-            router.back();
-          } catch (error) {
-            Alert.alert(
-              "Unable to leave group",
-              error instanceof Error ? error.message : "Please try again later",
-            );
-          }
+    Alert.alert(
+      "Leave Group",
+      `Do you want to leave the group ${name || "this group"}?`,
+      [
+        { text: "Stay", style: "cancel" },
+        {
+          text: "Leave Group",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await chatApi.leaveGroup(id);
+              router.back();
+            } catch (error) {
+              Alert.alert(
+                "Unable to leave group",
+                error instanceof Error
+                  ? error.message
+                  : "Please try again later",
+              );
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   }, [id, name, router]);
 
   const handleUnblockFromChat = useCallback(async () => {
@@ -892,7 +890,10 @@ export default function ChatScreen() {
       });
 
       if (targetIndex === -1) {
-        Alert.alert("Message not found", "This message has not been loaded yet.");
+        Alert.alert(
+          "Message not found",
+          "This message has not been loaded yet.",
+        );
         return;
       }
 
@@ -927,6 +928,14 @@ export default function ChatScreen() {
     },
     [scrollToMessageId],
   );
+
+  const handleConversationHistoryCleared = useCallback(() => {
+    void clearMessages();
+    setPinnedMessages([]);
+    setPinnedExpanded(false);
+    setPinOverrides({});
+    setHighlightedMessageId(null);
+  }, [clearMessages]);
 
   const renderItem = useCallback(
     ({ item, index }: { item: ChatMessageListItem; index: number }) => {
@@ -1062,7 +1071,11 @@ export default function ChatScreen() {
                     fontWeight: "700",
                   }}
                 >
-                  Pinned{pinnedMessages.length > 1 ? ` (${pinnedMessages.length})` : ""}:{" "}
+                  Pinned
+                  {pinnedMessages.length > 1
+                    ? ` (${pinnedMessages.length})`
+                    : ""}
+                  :{" "}
                   {pinnedMessages[0].content ||
                     pinnedMessages[0].attachment?.fileName ||
                     "Pinned content"}
@@ -1139,15 +1152,17 @@ export default function ChatScreen() {
             paddingVertical: 12,
           }}
           onScroll={(e) => {
-            if (e.nativeEvent.contentOffset.y <= 0 && hasMore && !isLoadingMore) {
+            if (
+              e.nativeEvent.contentOffset.y <= 0 &&
+              hasMore &&
+              !isLoadingMore
+            ) {
               void loadMoreMessages();
             }
           }}
           onContentSizeChange={(_, contentHeight) => {
-            // Only auto-scroll to bottom if we are not loading more messages
             if (!isLoadingMore && hasMore !== undefined) {
-               // Fallback: mostly scroll to end if not in middle of fetching history
-               listRef.current?.scrollToEnd({ animated: false });
+              listRef.current?.scrollToEnd({ animated: false });
             }
           }}
           onScrollToIndexFailed={(info) => {
@@ -1291,9 +1306,7 @@ export default function ChatScreen() {
           onCancelReply={clearReplyToMessage}
           disabled={privateMessagingBlocked}
           disabledPlaceholder={
-            privateMessagingBlocked
-              ? privateBlockMessage
-              : "Type your message"
+            privateMessagingBlocked ? privateBlockMessage : "Type your message"
           }
           participants={convDetails.participants}
           currentUserId={authState.user?.userId}
@@ -1348,6 +1361,7 @@ export default function ChatScreen() {
           setBlockRefreshKey((value) => value + 1);
         }}
         onConversationDeleted={() => router.back()}
+        onConversationHistoryCleared={handleConversationHistoryCleared}
       />
       {forwardMessageId && (
         <ForwardConversationModal
