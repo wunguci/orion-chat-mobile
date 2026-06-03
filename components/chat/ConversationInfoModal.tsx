@@ -54,6 +54,7 @@ interface ConversationInfoModalProps {
     isGroup?: boolean;
     onClose: () => void;
     onConversationDeleted?: (conversationId: string) => void;
+    onConversationHistoryCleared?: (conversationId: string) => void;
 }
 
 type PasswordMode = 'hide' | 'reveal' | null;
@@ -122,6 +123,7 @@ export default function ConversationInfoModal({
     isGroup,
     onClose,
     onConversationDeleted,
+    onConversationHistoryCleared,
 }: ConversationInfoModalProps) {
     const { colors } = useTheme();
     const LOGIN_PRIMARY = colors.primary;
@@ -450,6 +452,7 @@ export default function ConversationInfoModal({
             `Clear all chat history with ${displayName}?`,
             async () => {
                 await chatApi.clearConversationHistory(conversationId);
+                onConversationHistoryCleared?.(conversationId);
                 onClose();
             },
         );

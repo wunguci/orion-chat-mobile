@@ -29,6 +29,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { Swipeable } from "react-native-gesture-handler";
 import {
   getConversationsCache,
+  saveMessages,
   saveConversationsToCache,
 } from "@/services/cache/chatCache";
 import {
@@ -37,6 +38,7 @@ import {
 } from "@/services/websocket/chatSocket";
 import { formatTime } from "@/hooks/useChat";
 import { isSessionExpiredError } from "@/services/auth/sessionEvents";
+import { removePendingTextMessagesByConversation } from "@/services/cache/pendingMessageQueue";
 
 /**
  * Trích xuất text preview cho tin nhắn cuối cùng giống như trên Web
@@ -569,6 +571,15 @@ export default function ChatsScreen() {
           onPress: async () => {
             try {
               await chatApi.clearConversationHistory(item.id);
+              if (authState.user?.userId) {
+                await Promise.all([
+                  saveMessages(authState.user.userId, item.id, []),
+                  removePendingTextMessagesByConversation(
+                    authState.user.userId,
+                    item.id,
+                  ),
+                ]);
+              }
               await loadConversations();
             } catch (err) {
               Alert.alert(
@@ -580,7 +591,7 @@ export default function ChatsScreen() {
         },
       ]);
     },
-    [loadConversations],
+    [authState.user?.userId, loadConversations],
   );
 
   const handleDeleteConversation = useCallback((item: ChatItem) => {

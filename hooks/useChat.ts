@@ -17,6 +17,7 @@ import {
   enqueuePendingTextMessage,
   getPendingTextMessagesByConversation,
   markPendingTextMessageFailed,
+  removePendingTextMessagesByConversation,
   removePendingTextMessage,
   PendingTextMessage,
 } from "@/services/cache/pendingMessageQueue";
@@ -434,9 +435,7 @@ export const useChat = (conversationId: string) => {
             ...pendingMessages.map(pendingTextToMessage),
           ]);
 
-          if (nextMessages.length > 0) {
-            await saveMessages(currentUserId, conversationId, nextMessages);
-          }
+          await saveMessages(currentUserId, conversationId, nextMessages);
 
           if (!isMounted) return;
 
@@ -1167,6 +1166,24 @@ export const useChat = (conversationId: string) => {
     }));
   }, []);
 
+  const clearMessages = useCallback(async () => {
+    setState((prev) => ({
+      ...prev,
+      messages: [],
+      replyToMessage: null,
+      nextCursor: null,
+      hasMore: false,
+      error: null,
+    }));
+
+    if (!currentUserId || !conversationId) return;
+
+    await Promise.all([
+      saveMessages(currentUserId, conversationId, []),
+      removePendingTextMessagesByConversation(currentUserId, conversationId),
+    ]);
+  }, [conversationId, currentUserId]);
+
   return {
     messages: state.messages,
     inputText: state.inputText,
@@ -1174,6 +1191,7 @@ export const useChat = (conversationId: string) => {
     setInputText,
     setReplyToMessage,
     clearReplyToMessage,
+    clearMessages,
     sendMessage,
     sendAttachment,
     loadMoreMessages,

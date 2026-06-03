@@ -106,6 +106,19 @@ export async function removePendingTextMessage(clientMessageId: string) {
   );
 }
 
+export async function removePendingTextMessagesByConversation(
+  userId: string,
+  conversationId: string,
+) {
+  const current = await getAllPendingMessages();
+  await saveAllPendingMessages(
+    current.filter(
+      (item) =>
+        item.userId !== userId || item.conversationId !== conversationId,
+    ),
+  );
+}
+
 /**
  * Đánh dấu một tin nhắn là thất bại và tăng số lần retry.
  * Gọi hàm này khi API call bị lỗi (timeout, network error, server error...).
