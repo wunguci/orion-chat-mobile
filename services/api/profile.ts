@@ -1,0 +1,185 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL, fetchWithTimeout } from '@/config/api';
+
+export { API_BASE_URL };
+
+// Get auth token from storage keys used across the app.
+const getAuthToken = async () => {
+    const tokenCandidates = [
+        await AsyncStorage.getItem('auth_token'),
+        await AsyncStorage.getItem('token'),
+        await AsyncStorage.getItem('accessToken'),
+    ];
+
+    return tokenCandidates.find((item) => !!item) || null;
+};
+
+const appendFile = (
+    formData: FormData,
+    fieldName: 'avatar' | 'cover',
+    file: { uri: string; name: string; type: string },
+) => {
+    formData.append(fieldName, {
+        uri: file.uri,
+        name: file.name,
+        type: file.type,
+    } as any);
+};
+
+export interface ProfilePayload {
+    userId: string;
+    phoneNumber: string;
+    fullName?: string;
+    email?: string;
+    gender?: string;
+    birthDate?: string;
+    avatarUrl?: string;
+    coverImage?: string;
+    isOnline?: boolean;
+    showOnlineStatus?: boolean;
+    isActive?: boolean;
+    isDeleted?: boolean;
+    createdAt?: string;
+    lastLoginAt?: string;
+}
+
+export interface ProfileResponse {
+    success: boolean;
+    message: string;
+    data: ProfilePayload;
+    timestamp: string;
+}
+
+export interface UpdateProfileDto {
+    fullName?: string;
+    email?: string;
+    phoneNumber?: string;
+    birthDate?: string;
+    gender?: string;
+}
+
+export interface UpdateProfileFiles {
+    avatar?: {
+        uri: string;
+        name: string;
+        type: string;
+    };
+    cover?: {
+        uri: string;
+        name: string;
+        type: string;
+    };
+}
+
+export const profileApi = {
+    async getProfile() {
+        const token = await getAuthToken();
+        const url = `${API_BASE_URL}/users/profile`;
+
+        try {
+            const response = await fetchWithTimeout(url, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'X-Platform': 'mobile',
+                },
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || `HTTP ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    async updateProfile(
+        updateData: UpdateProfileDto,
+        files?: UpdateProfileFiles,
+    ) {
+        const token = await getAuthToken();
+        const url = `${API_BASE_URL}/users/profile`;
+
+        try {
+            if (!files?.avatar && !files?.cover) {
+                const payload = {
+                    ...(updateData.fullName && {
+                        fullName: updateData.fullName,
+                    }),
+                    ...(updateData.email && { email: updateData.email }),
+                    ...(updateData.phoneNumber && {
+                        phoneNumber: updateData.phoneNumber,
+                    }),
+                    ...(updateData.birthDate && {
+                        birthDate: updateData.birthDate,
+                    }),
+                    ...(updateData.gender && { gender: updateData.gender }),
+                };
+
+                const response = await fetchWithTimeout(url, {
+                    method: 'PATCH',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'X-Platform': 'mobile',
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(text || `HTTP ${response.status}`);
+                }
+
+                return await response.json();
+            }
+
+            const formData = new FormData();
+
+            if (updateData.fullName) {
+                formData.append('fullName', updateData.fullName);
+            }
+            if (updateData.email) {
+                formData.append('email', updateData.email);
+            }
+            if (updateData.phoneNumber) {
+                formData.append('phoneNumber', updateData.phoneNumber);
+            }
+            if (updateData.birthDate) {
+                formData.append('birthDate', updateData.birthDate);
+            }
+            if (updateData.gender) {
+                formData.append('gender', updateData.gender);
+            }
+
+            if (files?.avatar) {
+                appendFile(formData, 'avatar', files.avatar);
+            }
+
+            if (files?.cover) {
+                appendFile(formData, 'cover', files.cover);
+            }
+
+            const response = await fetchWithTimeout(url, {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'X-Platform': 'mobile',
+                },
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || `HTTP ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            throw error;
+        }
+    },
+};

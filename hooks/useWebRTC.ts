@@ -1,0 +1,374 @@
+import { useCallback, useEffect, useRef } from "react";
+import type {
+  MediaStream,
+  RTCPeerConnection,
+  RTCIceCandidate,
+  RTCSessionDescription,
+} from "@stream-io/react-native-webrtc";
+import { getIceConfiguration } from "@/config/webrtcIce";
+
+type WebRTCModule = {
+  mediaDevices: {
+    getUserMedia: (constraints: MediaStreamConstraints) => Promise<MediaStream>;
+  };
+  MediaStream: new (tracks?: MediaStreamTrack[]) => MediaStream;
+  RTCPeerConnection: new (
+    configuration?: RTCConfiguration,
+  ) => RTCPeerConnection;
+  RTCIceCandidate: new (
+    candidateInitDict?: RTCIceCandidateInit,
+  ) => RTCIceCandidate;
+  RTCSessionDescription: new (
+    descriptionInitDict?: RTCSessionDescriptionInit,
+  ) => RTCSessionDescription;
+};
+
+let webRTCModule: WebRTCModule | null = null;
+
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  webRTCModule = require("@stream-io/react-native-webrtc") as WebRTCModule;
+} catch {
+  webRTCModule = null;
+}
+
+const ensureWebRTCModule = (): WebRTCModule => {
+  if (!webRTCModule) {
+    throw new Error(
+      "WebRTC native module is unavailable in this runtime. Use a development build (expo prebuild + run:android/run:ios) instead of Expo Go.",
+    );
+  }
+
+  return webRTCModule;
+};
+
+interface UseWebRTCProps {
+  onRemoteStream: (stream: MediaStream) => void;
+  onIceCandidate: (candidate: RTCIceCandidate) => void;
+  onConnectionStateChange: (state: RTCPeerConnectionState) => void;
+  onIceRestart?: (offer: RTCSessionDescriptionInit) => Promise<void>;
+  onRemoteTrackMuteChange?: (kind: "video" | "audio", muted: boolean) => void;
+}
+
+export const useWebRTC = ({
+  onRemoteStream,
+  onIceCandidate,
+  onConnectionStateChange,
+  onIceRestart,
+  onRemoteTrackMuteChange,
+}: UseWebRTCProps) => {
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
+  const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const iceRestartCountRef = useRef(0);
+
+  const onRemoteStreamRef = useRef(onRemoteStream);
+  const onIceCandidateRef = useRef(onIceCandidate);
+  const onConnectionStateChangeRef = useRef(onConnectionStateChange);
+  const onIceRestartRef = useRef(onIceRestart);
+  const onRemoteTrackMuteChangeRef = useRef(onRemoteTrackMuteChange);
+
+  useEffect(() => {
+    onRemoteStreamRef.current = onRemoteStream;
+  }, [onRemoteStream]);
+
+  useEffect(() => {
+    onIceCandidateRef.current = onIceCandidate;
+  }, [onIceCandidate]);
+
+  useEffect(() => {
+    onConnectionStateChangeRef.current = onConnectionStateChange;
+  }, [onConnectionStateChange]);
+
+  useEffect(() => {
+    onIceRestartRef.current = onIceRestart;
+  }, [onIceRestart]);
+
+  useEffect(() => {
+    onRemoteTrackMuteChangeRef.current = onRemoteTrackMuteChange;
+  }, [onRemoteTrackMuteChange]);
+
+  const restartIce = useCallback(async () => {
+    const peerConnection = peerConnectionRef.current;
+    if (!peerConnection || !onIceRestartRef.current) {
+      return;
+    }
+
+    try {
+      const offer = await peerConnection.createOffer({ iceRestart: true });
+      await peerConnection.setLocalDescription(offer);
+      await onIceRestartRef.current(offer);
+    } catch (error) {
+      console.log("[WebRTC] ICE restart failed", error);
+    }
+  }, []);
+
+  const flushPendingIceCandidates = useCallback(async () => {
+    const peerConnection = peerConnectionRef.current;
+    if (!peerConnection?.remoteDescription) {
+      return;
+    }
+
+    if (pendingIceCandidatesRef.current.length === 0) {
+      return;
+    }
+
+    const pending = [...pendingIceCandidatesRef.current];
+    pendingIceCandidatesRef.current = [];
+    const { RTCIceCandidate } = ensureWebRTCModule();
+
+    for (const candidate of pending) {
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (error) {
+        console.log("[WebRTC] Failed to flush ICE candidate", error);
+      }
+    }
+  }, []);
+
+  const initializePeerConnection = useCallback(() => {
+    if (peerConnectionRef.current) {
+      return peerConnectionRef.current;
+    }
+
+    const { MediaStream, RTCPeerConnection } = ensureWebRTCModule();
+
+    const peerConnection = new RTCPeerConnection(getIceConfiguration());
+
+    peerConnection.onicecandidate = (event: any) => {
+      if (event.candidate) {
+        onIceCandidateRef.current(event.candidate);
+      }
+    };
+
+    peerConnection.ontrack = (event: any) => {
+      const { MediaStream } = ensureWebRTCModule();
+      if (!remoteStreamRef.current) {
+        remoteStreamRef.current = new MediaStream();
+      }
+
+      const attachMuteListeners = (track: any) => {
+        if (!track) return;
+        track.onmute = () => {
+          console.log(`[WebRTC Mobile] Remote track muted: ${track.kind}`);
+          if (onRemoteTrackMuteChangeRef.current) {
+            onRemoteTrackMuteChangeRef.current(track.kind as "video" | "audio", true);
+          }
+        };
+        track.onunmute = () => {
+          console.log(`[WebRTC Mobile] Remote track unmuted: ${track.kind}`);
+          if (onRemoteTrackMuteChangeRef.current) {
+            onRemoteTrackMuteChangeRef.current(track.kind as "video" | "audio", false);
+          }
+        };
+      };
+
+      if (event.track) {
+        attachMuteListeners(event.track);
+        const hasTrack = remoteStreamRef.current
+          .getTracks()
+          .some((t) => t.id === event.track.id);
+        if (!hasTrack) {
+          remoteStreamRef.current.addTrack(event.track);
+        }
+      } else if (event.streams?.[0]) {
+        event.streams[0].getTracks().forEach((track: any) => {
+          attachMuteListeners(track);
+          const hasTrack = remoteStreamRef.current!
+            .getTracks()
+            .some((t) => t.id === track.id);
+          if (!hasTrack) {
+            remoteStreamRef.current!.addTrack(track);
+          }
+        });
+      }
+      const nextStream = new (ensureWebRTCModule().MediaStream)(
+        remoteStreamRef.current.getTracks() as any,
+      );
+      onRemoteStreamRef.current(nextStream);
+    };
+
+    peerConnection.onconnectionstatechange = () => {
+      onConnectionStateChangeRef.current(peerConnection.connectionState);
+
+      if (
+        peerConnection.connectionState === "failed" &&
+        iceRestartCountRef.current < 3
+      ) {
+        iceRestartCountRef.current += 1;
+        void restartIce();
+      }
+    };
+
+    peerConnection.oniceconnectionstatechange = () => {
+      if (peerConnection.iceConnectionState === "disconnected") {
+        setTimeout(() => {
+          if (
+            peerConnectionRef.current?.iceConnectionState === "disconnected"
+          ) {
+            void restartIce();
+          }
+        }, 2500);
+      }
+    };
+
+    peerConnectionRef.current = peerConnection;
+    return peerConnection;
+  }, [restartIce]);
+
+  const getLocalStream = useCallback(
+    async (videoEnabled = true, audioEnabled = true) => {
+      const { mediaDevices } = ensureWebRTCModule();
+
+      const stream = await mediaDevices.getUserMedia({
+        video: videoEnabled
+          ? {
+              facingMode: "user",
+              width: 480,
+              height: 360,
+              frameRate: 15,
+            }
+          : false,
+        audio: audioEnabled,
+      });
+
+      localStreamRef.current = stream;
+
+      const peerConnection = peerConnectionRef.current;
+      if (peerConnection) {
+        stream.getTracks().forEach((track) => {
+          peerConnection.addTrack(track, stream);
+        });
+      }
+
+      return stream;
+    },
+    [],
+  );
+
+  const createOffer = useCallback(async () => {
+    const peerConnection = initializePeerConnection();
+    const offer = await peerConnection.createOffer({
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: true,
+    });
+    await peerConnection.setLocalDescription(offer);
+    return offer;
+  }, [initializePeerConnection]);
+
+  const handleOffer = useCallback(
+    async (offer: RTCSessionDescriptionInit) => {
+      const { RTCSessionDescription } = ensureWebRTCModule();
+
+      const peerConnection = initializePeerConnection();
+      await peerConnection.setRemoteDescription(
+        new RTCSessionDescription(offer),
+      );
+      await flushPendingIceCandidates();
+
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+
+      return answer;
+    },
+    [flushPendingIceCandidates, initializePeerConnection],
+  );
+
+  const handleAnswer = useCallback(
+    async (answer: RTCSessionDescriptionInit) => {
+      const { RTCSessionDescription } = ensureWebRTCModule();
+
+      const peerConnection = peerConnectionRef.current;
+      if (!peerConnection) {
+        throw new Error("Peer connection not initialized");
+      }
+
+      await peerConnection.setRemoteDescription(
+        new RTCSessionDescription(answer),
+      );
+      await flushPendingIceCandidates();
+    },
+    [flushPendingIceCandidates],
+  );
+
+  const addIceCandidate = useCallback(
+    async (candidate: RTCIceCandidateInit) => {
+      const { RTCIceCandidate } = ensureWebRTCModule();
+
+      const peerConnection = peerConnectionRef.current;
+
+      if (!peerConnection || !peerConnection.remoteDescription) {
+        pendingIceCandidatesRef.current.push(candidate);
+        return;
+      }
+
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (error) {
+        console.log("[WebRTC] Failed to add ICE candidate", error);
+      }
+    },
+    [],
+  );
+
+  const toggleVideo = useCallback((enabled: boolean) => {
+    const stream = localStreamRef.current;
+    if (!stream) {
+      return;
+    }
+
+    stream.getVideoTracks().forEach((track) => {
+      track.enabled = enabled;
+    });
+  }, []);
+
+  const toggleAudio = useCallback((enabled: boolean) => {
+    const stream = localStreamRef.current;
+    if (!stream) {
+      return;
+    }
+
+    stream.getAudioTracks().forEach((track) => {
+      track.enabled = enabled;
+    });
+  }, []);
+
+  const cleanup = useCallback(() => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => {
+        track.stop();
+      });
+      localStreamRef.current = null;
+    }
+
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+
+    remoteStreamRef.current = null;
+    pendingIceCandidatesRef.current = [];
+    iceRestartCountRef.current = 0;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      cleanup();
+    };
+  }, [cleanup]);
+
+  return {
+    initializePeerConnection,
+    getLocalStream,
+    createOffer,
+    handleOffer,
+    handleAnswer,
+    addIceCandidate,
+    toggleVideo,
+    toggleAudio,
+    cleanup,
+    restartIce,
+    isSupported: Boolean(webRTCModule),
+  };
+};

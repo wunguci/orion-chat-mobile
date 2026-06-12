@@ -1,111 +1,703 @@
-import { Button } from "@/components/common/Button";
-import { Input } from "@/components/common/Input";
-import { FontSizes, Spacing } from "@/constants/theme";
-import { useTheme } from "@/hooks/useTheme";
-import { router } from "expo-router";
-import React, { useState } from "react";
-import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Eye, EyeOff } from '@/components/common/Icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { router } from 'expo-router';
+import { useRef, useState } from 'react';
+import {
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
+    Alert,
+    ActivityIndicator,
+} from 'react-native';
+import { sendOtp, verifyOtp, completeRegister } from '@/services/api/auth';
 
 export default function RegisterScreen() {
-  const { colors } = useTheme();
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+    const [step, setStep] = useState<1 | 2 | 3>(1);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-  const handleRegister = async () => {
-    setLoading(true);
-    // TODO: Implement register logic
-    setTimeout(() => {
-      setLoading(false);
-      router.replace("/(tabs)");
-    }, 1000);
-  };
+    // Step 1
+    const [phone, setPhone] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.content}
-    >
-      <Text style={[styles.title, { color: colors.text }]}>Đăng ký</Text>
-      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        Tạo tài khoản mới
-      </Text>
+    // Step 2
+    const [otp, setOtp] = useState(['', '', '', '', '', '']);
+    const otpInputs = useRef<(TextInput | null)[]>([]);
 
-      <View style={styles.form}>
-        <Input
-          label="Email"
-          type="email"
-          placeholder="example@email.com"
-          value={email}
-          onChangeText={setEmail}
-          icon="mail-outline"
-        />
+    // Step 3
+    const [fullName, setFullName] = useState('');
+    const [dob, setDob] = useState('');
+    const [date, setDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>('Male');
 
-        <Input
-          label="Tên người dùng"
-          placeholder="username"
-          value={username}
-          onChangeText={setUsername}
-          icon="at-outline"
-        />
+    // Password validation
+    const hasLength = password.length >= 8;
+    const hasSpecial = /[!@#$%^&*(),.?"':{}|<>\[\]\\/~`_+=;-]/.test(password);
+    const hasNumber = /\d/.test(password);
 
-        <Input
-          label="Tên hiển thị"
-          placeholder="Nguyen Van A"
-          value={displayName}
-          onChangeText={setDisplayName}
-          icon="person-outline"
-        />
+    // Handler for step 1: Send OTP
+    const handleSendOtp = async () => {
+        setError(null);
 
-        <Input
-          label="Mật khẩu"
-          type="password"
-          placeholder="Tối thiểu 6 ký tự"
-          value={password}
-          onChangeText={setPassword}
-          icon="lock-closed-outline"
-        />
+        if (!phone || phone.length < 10) {
+            setError('Phone number must be at least 10 digits');
+            return;
+        }
 
-        <Button
-          title="Đăng ký"
-          onPress={handleRegister}
-          loading={loading}
-          fullWidth
-        />
+        if (!password || password.length < 8) {
+            setError('Password must be at least 8 characters');
+            return;
+        }
 
-        <Button
-          title="Đã có tài khoản? Đăng nhập"
-          onPress={() => router.back()}
-          variant="ghost"
-          fullWidth
-        />
-      </View>
-    </ScrollView>
-  );
+        if (password !== confirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await sendOtp(phone);
+            setStep(2);
+            setError(null);
+        } catch (err: any) {
+            setError(err.message || 'Failed to send OTP');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handler for step 2: Verify OTP
+    const handleVerifyOtp = async () => {
+        setError(null);
+
+        const otpCode = otp.join('');
+        if (otpCode.length !== 6) {
+            setError('Please enter a 6-digit OTP');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await verifyOtp(phone, otpCode);
+            setStep(3);
+            setError(null);
+        } catch (err: any) {
+            let errorMessage = 'Invalid OTP';
+            if (err instanceof Error) {
+                errorMessage = err.message || 'Invalid OTP';
+            } else if (typeof err === 'string') {
+                errorMessage = err;
+            } else if (err?.message) {
+                errorMessage = err.message;
+            }
+            setError(errorMessage);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handler for step 3: Complete registration
+    const handleCompleteRegister = async () => {
+        setError(null);
+
+        // Validate fullName - not empty
+        if (!fullName || fullName.trim().length === 0) {
+            setError('Please enter your full name');
+            return;
+        }
+
+        // Validate dob - not empty
+        if (!dob) {
+            setError('Please select your date of birth');
+            return;
+        }
+
+        // Validate age - must be 15 or older
+        const today = new Date();
+        const birthDate = new Date(date);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (
+            monthDiff < 0 ||
+            (monthDiff === 0 && today.getDate() < birthDate.getDate())
+        ) {
+            age--;
+        }
+
+        if (age < 15) {
+            Alert.alert(
+                'Age Restriction',
+                'You must be at least 15 years old to register.',
+                [{ text: 'OK' }],
+            );
+            return;
+        }
+
+        setLoading(true);
+        try {
+            // Convert display date back to ISO format
+            const birthDateStr = date.toISOString().split('T')[0];
+
+            // Capitalize first letter of each word
+            const capitalizedName = fullName
+                .trim()
+                .split(' ')
+                .map(
+                    (word) =>
+                        word.charAt(0).toUpperCase() +
+                        word.slice(1).toLowerCase(),
+                )
+                .join(' ');
+
+            const registrationData = {
+                phoneNumber: phone,
+                password: password,
+                fullName: capitalizedName,
+                birthDate: birthDateStr,
+                gender: gender.toLowerCase() as 'male' | 'female' | 'other',
+            };
+
+            console.log(
+                '[handleCompleteRegister] Sending data:',
+                registrationData,
+            );
+
+            await completeRegister(registrationData);
+
+            // Success - go to login
+            Alert.alert('Success', 'Registration completed! Please log in.', [
+                {
+                    text: 'OK',
+                    onPress: () => router.replace('/login'),
+                },
+            ]);
+        } catch (err: any) {
+            setError(err.message || 'Failed to complete registration');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleOtpChange = (value: string, index: number) => {
+        const newOtp = [...otp];
+        newOtp[index] = value;
+        setOtp(newOtp);
+
+        // Auto-focus next input
+        if (value && index < 5) {
+            otpInputs.current[index + 1]?.focus();
+        }
+    };
+
+    const handleDateChange = (event: any, selectedDate?: Date) => {
+        // Trên Android, luôn đóng picker sau khi chọn
+        // Trên iOS, chỉ đóng khi người dùng nhấn Done/Cancel
+        if (Platform.OS === 'android') {
+            setShowDatePicker(false);
+        }
+
+        if (selectedDate) {
+            setDate(selectedDate);
+            // Format display text
+            const formatted = selectedDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+            });
+            setDob(formatted);
+        }
+
+        // Nếu người dùng cancel (selectedDate undefined) trên iOS
+        if (Platform.OS === 'ios' && !selectedDate) {
+            setShowDatePicker(false);
+        }
+    };
+
+    return (
+        <View className="flex-1 bg-white">
+            {/* Back Button */}
+            {step > 1 && (
+                <Pressable
+                    onPress={() => setStep((s) => (s - 1) as any)}
+                    className="absolute top-12 left-6 z-10"
+                >
+                    <Text className="text-3xl text-gray-400">←</Text>
+                </Pressable>
+            )}
+
+            {/* Progress Indicator */}
+            <View className="flex-row justify-center gap-2 mt-14 mb-8">
+                <View
+                    className={`h-1 w-16 rounded-full ${step >= 1 ? 'bg-[#2DB5B0]' : 'bg-gray-300'}`}
+                />
+                <View
+                    className={`h-1 w-16 rounded-full ${step >= 2 ? 'bg-[#2DB5B0]' : 'bg-gray-300'}`}
+                />
+                <View
+                    className={`h-1 w-16 rounded-full ${step >= 3 ? 'bg-[#2DB5B0]' : 'bg-gray-300'}`}
+                />
+            </View>
+
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ flexGrow: 1 }}
+            >
+                <View className="flex-1 px-6">
+                    {/* Title */}
+                    <Text className="text-4xl font-bold text-[#006275] text-center mb-4">
+                        {step === 1 && 'Register'}
+                        {step === 2 && 'Verification'}
+                        {step === 3 && 'Setup your identity'}
+                    </Text>
+
+                    {/* STEP 1 - Register */}
+                    {step === 1 && (
+                        <>
+                            <Text className="text-center text-gray-400 mb-8">
+                                Enter your phone number to get started with our
+                                social community
+                            </Text>
+
+                            {/* Phone Number */}
+                            <View className="mb-6">
+                                <Text className="text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                                    PHONE NUMBER
+                                </Text>
+                                <TextInput
+                                    placeholder="000 - 000 - 0000"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={phone}
+                                    onChangeText={setPhone}
+                                    keyboardType="phone-pad"
+                                    textAlignVertical="center"
+                                    style={{
+                                        height: 48,
+                                        borderWidth: 1,
+                                        borderColor: '#D1D5DB',
+                                        borderRadius: 24,
+                                        paddingHorizontal: 16,
+                                        fontSize: 16,
+                                        color: '#111827',
+                                        backgroundColor: '#FFFFFF',
+                                    }}
+                                    className="px-4"
+                                />
+                            </View>
+
+                            {/* Password */}
+                            <View className="mb-6">
+                                <Text className="text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                                    PASSWORD
+                                </Text>
+                                <View
+                                    className="flex-row items-center border border-gray-300 rounded-full px-4 bg-white"
+                                    style={{
+                                        height: 48,
+                                        borderRadius: 24,
+                                    }}
+                                >
+                                    <TextInput
+                                        placeholder="Enter password"
+                                        placeholderTextColor="#9CA3AF"
+                                        secureTextEntry={!showPassword}
+                                        value={password}
+                                        onChangeText={setPassword}
+                                        textAlignVertical="center"
+                                        style={{
+                                            flex: 1,
+                                            fontSize: 16,
+                                            color: '#111827',
+                                        }}
+                                    />
+                                    <Pressable
+                                        onPress={() =>
+                                            setShowPassword(!showPassword)
+                                        }
+                                        className="p-2"
+                                    >
+                                        {showPassword ? (
+                                            <EyeOff size={20} color="#9CA3AF" />
+                                        ) : (
+                                            <Eye size={20} color="#9CA3AF" />
+                                        )}
+                                    </Pressable>
+                                </View>
+                            </View>
+
+                            {/* Confirm Password */}
+                            <View className="mb-6">
+                                <Text className="text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                                    CONFIRM PASSWORD
+                                </Text>
+                                <View
+                                    className="flex-row items-center rounded-full px-4 bg-white"
+                                    style={{
+                                        height: 48,
+                                        borderRadius: 24,
+                                        borderWidth: 1,
+                                        borderColor:
+                                            confirmPassword &&
+                                            password &&
+                                            confirmPassword === password
+                                                ? '#10B981'
+                                                : confirmPassword &&
+                                                    password &&
+                                                    confirmPassword !== password
+                                                  ? '#EF4444'
+                                                  : '#D1D5DB',
+                                    }}
+                                >
+                                    <TextInput
+                                        placeholder="Confirm password"
+                                        placeholderTextColor="#9CA3AF"
+                                        secureTextEntry={!showConfirmPassword}
+                                        value={confirmPassword}
+                                        onChangeText={setConfirmPassword}
+                                        textAlignVertical="center"
+                                        style={{
+                                            flex: 1,
+                                            fontSize: 16,
+                                            color: '#111827',
+                                        }}
+                                    />
+                                    <Pressable
+                                        onPress={() =>
+                                            setShowConfirmPassword(
+                                                !showConfirmPassword,
+                                            )
+                                        }
+                                        className="p-2"
+                                    >
+                                        {showConfirmPassword ? (
+                                            <EyeOff size={20} color="#9CA3AF" />
+                                        ) : (
+                                            <Eye size={20} color="#9CA3AF" />
+                                        )}
+                                    </Pressable>
+                                </View>
+                            </View>
+
+                            {/* Requirements */}
+                            <View className="bg-gray-50 p-4 rounded-2xl mb-6">
+                                <Text className="text-sm font-semibold text-[#2DB5B0] mb-3">
+                                    REQUIREMENTS
+                                </Text>
+                                <View className="space-y-3">
+                                    {/* At least 8 characters */}
+                                    <View className="flex-row items-center gap-3 mb-2">
+                                        <View
+                                            className={`w-6 h-6 rounded-full items-center justify-center ${hasLength ? 'bg-[#2DB5B0]' : 'bg-white border-2 border-gray-300'}`}
+                                        >
+                                            {hasLength && (
+                                                <Text className="text-white text-xs">
+                                                    ✓
+                                                </Text>
+                                            )}
+                                        </View>
+                                        <Text
+                                            className={`text-sm ${hasLength ? 'text-[#2DB5B0]' : 'text-gray-400'}`}
+                                        >
+                                            At least 8 characters
+                                        </Text>
+                                    </View>
+
+                                    {/* Special symbol */}
+                                    <View className="flex-row items-center gap-3 mb-2">
+                                        <View
+                                            className={`w-6 h-6 rounded-full items-center justify-center ${hasSpecial ? 'bg-[#2DB5B0]' : 'bg-white border-2 border-gray-300'}`}
+                                        >
+                                            {hasSpecial && (
+                                                <Text className="text-white text-xs">
+                                                    ✓
+                                                </Text>
+                                            )}
+                                        </View>
+                                        <Text
+                                            className={`text-sm ${hasSpecial ? 'text-[#2DB5B0]' : 'text-gray-400'}`}
+                                        >
+                                            At least one special symbol (@, #,
+                                            $)
+                                        </Text>
+                                    </View>
+
+                                    {/* Number */}
+                                    <View className="flex-row items-center gap-3">
+                                        <View
+                                            className={`w-6 h-6 rounded-full items-center justify-center ${hasNumber ? 'bg-[#2DB5B0]' : 'bg-white border-2 border-gray-300'}`}
+                                        >
+                                            {hasNumber && (
+                                                <Text className="text-white text-xs">
+                                                    ✓
+                                                </Text>
+                                            )}
+                                        </View>
+                                        <Text
+                                            className={`text-sm ${hasNumber ? 'text-[#2DB5B0]' : 'text-gray-400'}`}
+                                        >
+                                            At least one number
+                                        </Text>
+                                    </View>
+                                </View>
+                            </View>
+
+                            <Text className="text-center text-sm text-gray-400 mb-8">
+                                By tapping Next, you may receive an SMS for
+                                verification. Message and data rates may apply.
+                            </Text>
+                        </>
+                    )}
+
+                    {/* STEP 2 - Verification */}
+                    {step === 2 && (
+                        <>
+                            <Text className="text-center text-gray-400 mb-8">
+                                We&apos;ve sent a 6-digit code to your
+                                registered mobile number{' '}
+                                <Text className="text-gray-900">
+                                    01* *** **89
+                                </Text>
+                            </Text>
+
+                            {/* OTP Inputs */}
+                            <View className="flex-row justify-center gap-3 mb-6">
+                                {otp.map((digit, index) => (
+                                    <TextInput
+                                        key={index}
+                                        ref={(ref) => {
+                                            otpInputs.current[index] = ref;
+                                        }}
+                                        value={digit}
+                                        onChangeText={(value) =>
+                                            handleOtpChange(value, index)
+                                        }
+                                        keyboardType="number-pad"
+                                        maxLength={1}
+                                        className="w-14 h-14 text-center text-2xl font-semibold text-gray-500 border border-gray-300 rounded-2xl bg-gray-50"
+                                    />
+                                ))}
+                            </View>
+
+                            {/* Resend */}
+                            <View className="items-center mb-8">
+                                <Text className="text-sm text-gray-400 mb-2">
+                                    Resend code in{' '}
+                                    <Text className="text-gray-700">00:55</Text>
+                                </Text>
+                                <Pressable>
+                                    <Text className="text-sm font-semibold text-[#2DB5B0]">
+                                        Resend now
+                                    </Text>
+                                </Pressable>
+                            </View>
+
+                            <Text className="text-center text-sm text-gray-400 mb-8">
+                                By entering the code, you agree to our{' '}
+                                <Text className="text-[#2DB5B0]">
+                                    Terms of Service
+                                </Text>{' '}
+                                and{' '}
+                                <Text className="text-[#2DB5B0]">
+                                    Privacy Policy
+                                </Text>
+                            </Text>
+                        </>
+                    )}
+
+                    {/* STEP 3 - Setup Identity */}
+                    {step === 3 && (
+                        <>
+                            <Text className="text-center text-gray-400 mb-8">
+                                Add details so people recognize you.
+                            </Text>
+
+                            {/* Full Name */}
+                            <View className="mb-6">
+                                <Text className="text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                                    FULL NAME
+                                </Text>
+
+                                <TextInput
+                                    placeholder="Nguyen Van A"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={fullName}
+                                    onChangeText={(text) => {
+                                        // Auto-capitalize first letter of each word
+                                        const capitalized = text
+                                            .split(' ')
+                                            .map((word) => {
+                                                if (word.length === 0)
+                                                    return '';
+                                                return (
+                                                    word
+                                                        .charAt(0)
+                                                        .toUpperCase() +
+                                                    word.slice(1).toLowerCase()
+                                                );
+                                            })
+                                            .join(' ');
+                                        setFullName(capitalized);
+                                    }}
+                                    keyboardType="default"
+                                    textAlignVertical="center"
+                                    style={{
+                                        height: 48,
+                                        fontSize: 16,
+                                        color: '#111827',
+                                        borderWidth: 1,
+                                        borderColor: '#D1D5DB',
+                                        borderRadius: 24,
+                                        paddingHorizontal: 16,
+                                        backgroundColor: '#FFFFFF',
+                                    }}
+                                />
+                            </View>
+
+                            {/* Date of Birth */}
+                            <View className="mb-6">
+                                <Text className="text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                                    DATE OF BIRTH
+                                </Text>
+
+                                <Pressable
+                                    onPress={() => {
+                                        setShowDatePicker(true);
+                                    }}
+                                >
+                                    <View pointerEvents="none">
+                                        <TextInput
+                                            placeholder="October 5, 2002"
+                                            placeholderTextColor="#9CA3AF"
+                                            value={dob}
+                                            editable={false}
+                                            className="border border-gray-300  rounded-full px-4 py-3.5 text-base text-gray-900 bg-white"
+                                        />
+                                    </View>
+                                </Pressable>
+
+                                {showDatePicker && (
+                                    <DateTimePicker
+                                        value={date}
+                                        mode="date"
+                                        display={
+                                            Platform.OS === 'ios'
+                                                ? 'spinner'
+                                                : 'default'
+                                        }
+                                        onChange={handleDateChange}
+                                        maximumDate={new Date()}
+                                        accentColor="#2DB5B0"
+                                        textColor="#006275"
+                                        themeVariant="light"
+                                    />
+                                )}
+                            </View>
+
+                            {/* Gender */}
+                            <View className="mb-8">
+                                <Text className="text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                                    GENDER
+                                </Text>
+                                <View className="bg-gray-100 rounded-full p-1 flex-row">
+                                    {(['Male', 'Female', 'Other'] as const).map(
+                                        (g) => (
+                                            <Pressable
+                                                key={g}
+                                                onPress={() => setGender(g)}
+                                                className={`flex-1 py-3 rounded-full items-center ${gender === g ? 'bg-white' : ''}`}
+                                            >
+                                                <Text
+                                                    className={`text-sm font-medium ${gender === g ? 'text-[#006275]' : 'text-gray-500'}`}
+                                                >
+                                                    {g}
+                                                </Text>
+                                            </Pressable>
+                                        ),
+                                    )}
+                                </View>
+                            </View>
+
+                            <Text className="text-center text-sm text-gray-400">
+                                By tapping &quot;Complete&quot;, you agree to
+                                our{' '}
+                                <Text className="text-[#2DB5B0]">
+                                    Terms of Service
+                                </Text>{' '}
+                                and{' '}
+                                <Text className="text-[#2DB5B0]">
+                                    Privacy Policy
+                                </Text>{' '}
+                                We use your data to enhance your discovery
+                                experience.
+                            </Text>
+                        </>
+                    )}
+                </View>
+            </ScrollView>
+
+            {/* Fixed Button at Bottom */}
+            <View className="px-6 pb-8 pt-4 bg-white border-t border-gray-100">
+                {/* Error message */}
+                {error && (
+                    <View className="mb-4 p-3 bg-red-100 rounded-lg border border-red-300">
+                        <Text className="text-red-700 text-sm">{error}</Text>
+                    </View>
+                )}
+
+                {step === 1 && (
+                    <Pressable
+                        onPress={handleSendOtp}
+                        disabled={loading}
+                        className={`py-4 rounded-full items-center ${loading ? 'bg-gray-300' : 'bg-[#2DB5B0]'}`}
+                    >
+                        {loading ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <Text className="text-white text-lg font-semibold">
+                                Send OTP
+                            </Text>
+                        )}
+                    </Pressable>
+                )}
+
+                {step === 2 && (
+                    <Pressable
+                        onPress={handleVerifyOtp}
+                        disabled={loading}
+                        className={`py-4 rounded-full items-center ${loading ? 'bg-gray-300' : 'bg-[#2DB5B0]'}`}
+                    >
+                        {loading ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <Text className="text-white text-lg font-semibold">
+                                Verify OTP
+                            </Text>
+                        )}
+                    </Pressable>
+                )}
+
+                {step === 3 && (
+                    <Pressable
+                        onPress={handleCompleteRegister}
+                        disabled={loading}
+                        className={`py-4 rounded-full items-center ${loading ? 'bg-gray-300' : 'bg-[#2DB5B0]'}`}
+                    >
+                        {loading ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <Text className="text-white text-lg font-semibold">
+                                Complete
+                            </Text>
+                        )}
+                    </Pressable>
+                )}
+            </View>
+        </View>
+    );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: Spacing.xl,
-    paddingTop: Platform.OS === "ios" ? 100 : Spacing.xl,
-  },
-  title: {
-    fontSize: FontSizes.xxxl,
-    fontWeight: "700",
-    marginBottom: Spacing.sm,
-  },
-  subtitle: {
-    fontSize: FontSizes.md,
-    marginBottom: Spacing.xxl,
-  },
-  form: {
-    gap: Spacing.base,
-  },
-});

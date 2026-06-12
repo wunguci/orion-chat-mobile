@@ -48,3 +48,25 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## EAS build APK
+
+Production backend is configured in `.env` and `eas.json`:
+
+- `EXPO_PUBLIC_API_URL=https://orion-chat.duckdns.org`
+- `EXPO_PUBLIC_SOCKET_URL=https://orion-chat.duckdns.org`
+
+Build commands:
+
+```bash
+npm install
+npx eas login
+npm run eas:configure
+npm run eas:build:apk
+```
+
+Optional Google Play bundle build:
+
+```bash
+npm run eas:build:aab
+```
